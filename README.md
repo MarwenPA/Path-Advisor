@@ -42,9 +42,9 @@ Structural differentiators:
 | Layer | Choice |
 |---|---|
 | **Frontend** | Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui + Radix UI |
-| **Backend** | Modular monolith (Node.js) + separate Python/FastAPI AI service |
+| **Backend** | Modular monolith in **Django 5 + DRF + drf-spectacular** (Python 3.12+) for main app API + separate **FastAPI** AI service for ML scaling independence |
 | **Data** | PostgreSQL (transactional + pgvector) + Redis (cache, queue, sessions) + encrypted S3-compatible storage (transcripts) |
-| **Job queue** | BullMQ / Sidekiq / Celery (team stack-dependent) — async OCR, notifications, early-send workflows |
+| **Job queue** | Celery (Python-native) — async OCR, notifications, early-send workflows |
 | **OCR** | Tesseract (local PoC) → AWS Textract / Mindee (production) |
 | **Payments** | Stripe (B2C premium €10.99/month) |
 | **Email** | Mailpit (local PoC) → Postmark / SendGrid (production) |

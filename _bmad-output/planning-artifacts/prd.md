@@ -481,7 +481,7 @@ Path-Advisor est une **Web App SaaS hybride** combinant un produit grand public 
 
 **Décisions architecturales structurantes :**
 - Front : **SPA + SSR hybride** (Next.js ou équivalent) — pour combiner expérience interactive (graphe de parcours, dashboard) et SEO B2C (pages métiers/formations indexables)
-- Back : monolithe modulaire (Node.js, Python, ou Ruby on Rails selon stack équipe) avec service IA séparé (Python — bibliothèques ML/DL natives)
+- Back : monolithe modulaire **Django 5 + DRF + drf-spectacular (Python 3.12+)** avec service IA séparé **FastAPI** (bibliothèques ML/DL natives Python) — choix figé en Architecture Decision Document
 - Stockage : PostgreSQL (transactionnel + vector store pour embeddings via pgvector) + S3 (bulletins chiffrés)
 - Architecture **PoC-local-first** : tout doit pouvoir tourner sur machine de dev avec Docker Compose avant tout déploiement cloud
 
@@ -495,7 +495,7 @@ Path-Advisor est une **Web App SaaS hybride** combinant un produit grand public 
 **Back-end :**
 - API REST + couche GraphQL optionnelle si besoin de jointures complexes côté dashboard B2B
 - Service IA séparé exposé en API interne (FastAPI ou équivalent) — versionnement modèles indépendant du back applicatif
-- Job queue (BullMQ, Sidekiq, Celery selon stack) pour : OCR async, génération de notifications, envoi anticipé, recalculs de stats
+- Job queue **Celery + Redis** (Python-native, mature, scaling clair) pour : OCR async, génération de notifications, envoi anticipé, recalculs de stats
 
 **Données :**
 - **PostgreSQL** : tables transactionnelles + référentiels (professions, formations, établissements)

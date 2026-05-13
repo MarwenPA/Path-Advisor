@@ -183,9 +183,9 @@ Requirements techniques transverses issus de l'Architecture Decision Document et
 - **ADD-2 — PoC local-first via Docker Compose** : toute la stack (front, back, IA, DB, cache, queue, OCR, mail, monitoring, analytics, stockage) lance en local < 5 min avec seeds — interfaces abstraites (Hexagonal / Ports & Adapters) pour permettre PoC local et prod cloud avec mêmes contrats
 - **ADD-3 — Multi-tenant hybride dès MVP** : Row-Level Security PostgreSQL, colonnes `tenant_id` (établissement) + `user_id` (élève) sur toutes les tables sensibles, tests d'isolation cross-tenant en CI obligatoires
 - **ADD-4 — Service IA séparé** : Python (FastAPI ou équivalent), scaling horizontal indépendant du back applicatif, versioning des modèles avec dataset + hyperparamètres + métriques tracés
-- **ADD-5 — Architecture monolithique modulaire** : pas de microservices prématurés, monolithe Node/Python/Ruby selon stack équipe + service IA séparé
+- **ADD-5 — Architecture monolithique modulaire** : pas de microservices prématurés. Stack figée : **Django 5 + DRF + drf-spectacular (Python 3.12+)** pour le back principal + **FastAPI** pour le service IA séparé (scaling indépendant)
 - **ADD-6 — Stack frontend imposée** : SPA + SSR hybride (Next.js ou Nuxt) pour combiner SEO B2C et interactivité, PWA installable comme fallback app mobile
-- **ADD-7 — Stockage de données** : PostgreSQL transactionnel + pgvector pour embeddings ; S3-compatible chiffré région UE pour bulletins ; Redis pour cache + sessions + rate limiting + recos pré-calculées ; job queue (BullMQ / Sidekiq / Celery) pour OCR async, notifications, envoi anticipé, recalculs stats
+- **ADD-7 — Stockage de données** : PostgreSQL transactionnel + pgvector pour embeddings ; S3-compatible chiffré région UE pour bulletins ; Redis pour cache + sessions + rate limiting + recos pré-calculées ; job queue **Celery + Redis** (Python-native) pour OCR async, notifications, envoi anticipé, recalculs stats
 - **ADD-8 — Pas de WebSocket MVP** : polling léger (30 s sur pages critiques) + notifications push standard suffisent — simplifie infra et coûts
 - **ADD-9 — Audit trail immuable** : table dédiée append-only access-write, conservation 3 ans, export régulier
 - **ADD-10 — Versioning modèles IA** : chaque déploiement de modèle versionné avec dataset + hyperparamètres + métriques d'éval, audit trail des décisions, monitoring drift en production
@@ -408,29 +408,40 @@ Polish post-MVP (mois 9-12) : détection profils à risque dashboard conseillèr
 
 Permettre à tout utilisateur (élève / parent / conseiller / école / admin) de créer un compte sécurisé conforme RGPD avec accès isolés par rôle, et poser les fondations techniques du produit (Docker Compose local-first, hébergement UE, tokens design system).
 
-### Story 1.1 : Initialisation du projet Next.js avec stack technique cible
+### Story 1.1 : Initialisation du projet (Next.js + Django + FastAPI + Docker)
 
 As a développeur Path-Advisor,
-I want initialiser le repo avec Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui + Docker Compose,
-So that toute la stack tourne localement en `docker-compose up < 5 min` et l'équipe peut démarrer le développement sur des fondations propres.
+I want initialiser le mono-repo avec Next.js 15 (front) + Django 5 / DRF (back) + FastAPI (service IA séparé) + Docker Compose,
+So that toute la stack tourne localement en `docker-compose up < 5 min` et l'équipe peut démarrer le développement sur des fondations propres (ADD-5 stack figée).
 
 **Acceptance Criteria :**
 
 **Given** un repo Git vide
 **When** je lance la commande d'initialisation projet
-**Then** le projet contient une app Next.js 15 + TypeScript fonctionnelle avec linting (ESLint + Prettier), tests (Jest / Vitest), et CI minimale (GitHub Actions ou équivalent)
-**And** Tailwind v4 est configuré avec `tailwind.config.ts` prêt à recevoir les tokens
-**And** shadcn/ui CLI est installé et au moins 5 composants prioritaires copiés (Button, Card, Dialog, Form, Input)
+**Then** le mono-repo contient 3 apps Python/TS dans `apps/`:
+- `apps/web` : Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui (front uniquement, SSR + RSC)
+- `apps/api` : Django 5 + DRF + drf-spectacular (back principal, Python 3.12+, géré via `uv`)
+- `apps/ai-service` : FastAPI + Pydantic v2 + scikit-learn (service IA séparé, scaling indépendant)
+**And** linting actif : ESLint + Prettier (TS) / Ruff + Black + mypy (Python) + pre-commit hooks via Lefthook
+**And** tests minimal : Vitest (TS), pytest-django + factory_boy (Django), pytest + hypothesis (AI)
+**And** CI minimale (GitHub Actions) : lint + tests + build front + génération OpenAPI Django → client TS
 
-**Given** la stack complète (front, postgres, redis, mailpit, minio, tesseract-ocr, posthog) est déclarée dans `docker-compose.yml`
+**Given** la stack complète déclarée dans `docker-compose.yml`
 **When** je lance `docker-compose up`
-**Then** tous les services démarrent en < 5 minutes
-**And** l'app Next.js est accessible sur `http://localhost:3000` avec une page d'accueil "Hello Path-Advisor"
-**And** les données de seed sont injectées automatiquement (1 user admin de test)
+**Then** tous les services démarrent en < 5 minutes (NFR-M1) : Next.js (port 3000) + Django (port 8000) + FastAPI AI (port 8001) + PostgreSQL + Redis + Mailpit + MinIO + Tesseract OCR + PostHog
+**And** Next.js est accessible sur `http://localhost:3000` avec une page d'accueil "Hello Path-Advisor"
+**And** Django Admin est accessible sur `http://localhost:8000/admin` (auth super-user de seed)
+**And** OpenAPI schema Django est généré automatiquement et consommé par Next.js (TS types auto via `openapi-typescript`)
+**And** données de seed injectées automatiquement (1 user admin de test)
+
+**Given** Tailwind v4 et shadcn/ui sont opérationnels
+**When** je consulte `apps/web`
+**Then** `tailwind.config.ts` est prêt à recevoir les tokens (Story 1.2)
+**And** shadcn/ui CLI est installé et au moins 5 composants prioritaires copiés (Button, Card, Dialog, Form, Input)
 
 **Given** la configuration multi-environnement (local / staging / production)
 **When** je consulte la documentation README
-**Then** un ADR #001 documente le choix Next.js + shadcn + Docker
+**Then** un ADR #001 documente le choix Django + Next.js + FastAPI + Docker (stack architecture.md figée)
 **And** un runbook explique le setup pas-à-pas pour un nouveau dev
 
 ### Story 1.2 : Définition et publication du design system de tokens
@@ -997,32 +1008,35 @@ So that aucune impasse ne casse l'expérience utilisateur, conformément à UX-D
 
 Servir le PREMIER moment "aha" : l'élève reçoit 8 métiers scorés avec phrase recopiable défendable et explicabilité des signaux contributifs (RGPD art. 22).
 
-### Story 3.1 : Service IA séparé Python/FastAPI (foundation)
+### Story 3.1 : Service IA `apps/ai-service` activé pour le scoring vocationnel
 
 As a système Path-Advisor,
-I want un service IA dédié en Python/FastAPI déployable indépendamment du back applicatif Next.js,
-So that le moteur de recommandation peut scaler horizontalement de manière séparée et bénéficier des bibliothèques ML/DL natives Python (ADD-4 + NFR-SC4).
+I want activer le service IA FastAPI (créé en Story 1.1) avec ses premiers endpoints de scoring vocationnel, distinct du back Django principal,
+So that le moteur de recommandation scale horizontalement de manière séparée (NFR-SC4) et bénéficie de l'écosystème ML/DL natif Python (ADD-4).
 
 **Acceptance Criteria :**
 
-**Given** un service Python FastAPI fraîchement créé
-**When** je lance `docker-compose up`
-**Then** le service IA démarre en local avec endpoints REST exposés (au moins `/health`, `/v1/score-metiers`)
-**And** il communique avec le back Next.js via API interne (auth par token de service)
+**Given** le service `apps/ai-service` (FastAPI) déjà initialisé en Story 1.1
+**When** je l'active pour le MVP
+**Then** il expose les premiers endpoints REST de scoring : `/health`, `/v1/score-metiers`, `/v1/model-version`
+**And** il communique avec le back Django via API interne (auth par token de service partagé)
+**And** la séparation est physique : 2 conteneurs Docker distincts, scaling indépendant configuré (réplicas FastAPI séparés de Django)
 
-**Given** le service IA est versionné
-**When** je consulte la documentation
-**Then** un ADR documente le choix Python/FastAPI vs Node.js et la séparation de scaling
-**And** un schéma d'architecture montre les flux Next.js → Service IA → DB
+**Given** la frontière Django ↔ FastAPI claire
+**When** je consulte un appel de scoring depuis le front
+**Then** le flow est : `Next.js → Django API (/recos) → Service FastAPI (/v1/score-metiers) → DB lecture profil + référentiel`
+**And** Django est responsable de l'authentification utilisateur, du multi-tenant et de la persistance
+**And** FastAPI est responsable uniquement du scoring (stateless côté IA, sauf modèle versionné chargé en mémoire)
 
-**Given** la conformité avec le PoC local-first (ADD-2)
+**Given** la conformité avec le PoC local-first (ADD-2 + NFR-M1)
 **When** un dev installe le projet
-**Then** le service IA tourne en local avec ses propres dépendances (scikit-learn, sentence-transformers, pandas)
-**And** aucune dépendance cloud n'est requise pour le développement
+**Then** le service IA tourne en local avec ses dépendances Python (scikit-learn, sentence-transformers, pandas, Pydantic v2)
+**And** aucune dépendance cloud n'est requise pour le développement (modèles HuggingFace téléchargés au build, Mistral 7B via Ollama local)
 
-**Given** le scaling indépendant
+**Given** le scaling indépendant en growth
 **When** la charge augmente sur le service IA (pics saisonniers janvier-mars)
-**Then** le service peut scaler horizontalement (Docker Swarm / Kubernetes) sans toucher au back applicatif
+**Then** le service peut scaler horizontalement (Docker Swarm / Kubernetes / Scaleway Functions) sans toucher au back Django applicatif
+**And** un ADR documente la séparation Django (app) vs FastAPI (IA) et leur protocole de communication interne
 
 ### Story 3.2 : Référentiel professions MVP (50 métiers curés)
 
