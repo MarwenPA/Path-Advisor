@@ -1,143 +1,143 @@
 # Path-Advisor
 
-> Plateforme d'orientation continue pour les jeunes francophones, de la 3ème aux premières années post-bac.
+> Continuous career-orientation platform for youth, from middle school through the first years of higher education.
 
-Path-Advisor transforme l'angoisse du choix Parcoursup en récit décisionnel défendable. Là où les outils existants (Onisep, Diagoriente) livrent de l'information générique ou (Diplomeo, L'Étudiant) une incitation commerciale biaisée, Path-Advisor articule **deux moments de vérité** — *qui je peux devenir* et *comment y arriver avec mes chances réelles* — dans une expérience continue, neutre commercialement, et fondée sur des données scolaires objectives.
+Path-Advisor turns the anxiety of post-baccalaureate decisions into a defensible decision-making narrative. Where existing tools either deliver generic information (Onisep, Diagoriente) or commercially biased recommendations (Diplomeo, L'Étudiant), Path-Advisor articulates **two moments of truth** — *who I can become* and *how to get there with my real chances* — into a continuous experience, commercially neutral, and grounded in objective school data.
 
-**Statut** : Planification complète, démarrage du développement (MVP cible 9 mois, solo founder + dev assisté IA).
+**Status**: Planning complete, development starting (MVP target: 9 months, solo founder + AI-assisted dev).
 
 ---
 
-## Le problème
+## The problem
 
-Chaque année, près d'un million de lycéens français arrivent à un carrefour décisif — le choix de leur orientation post-bac — sans outil adapté pour les y préparer vraiment. Les plateformes publiques (Onisep, Diagoriente) délivrent de l'information générale mais aucune recommandation personnalisée. Parcoursup gère les candidatures mais pas le conseil. Les comparateurs privés sont structurellement biaisés (leur modèle repose sur la revente de leads aux écoles). Et le ratio conseillers d'orientation / élèves en France (1 pour 1 400) rend l'accompagnement humain inaccessible à l'échelle.
+Each year, nearly one million French high-schoolers arrive at a critical fork — choosing what to do after the baccalaureate — without a tool designed to truly prepare them. Public platforms (Onisep, Diagoriente) deliver general information but no personalized recommendation. Parcoursup handles applications but not advice. Private comparison sites are structurally biased (their business model is based on reselling leads to schools). And the French ratio of guidance counselors to students (1 per 1,400) makes human support inaccessible at scale.
 
-Conséquence : 20 % des étudiants se réorientent en cours de licence.
+The consequence: 20% of students change course during their first year of university.
 
-## La solution — double moteur articulé
+## The solution — articulated dual engine
 
-1. **Moteur vocationnel** : croisement de signaux déclaratifs (passions, valeurs, intérêts) et de données scolaires objectives (notes + appréciations enseignants) pour produire une liste de métiers scorés avec **explicabilité IA native** (RGPD art. 22).
-2. **Moteur de parcours** : pour chaque métier sélectionné, un **graphe-récit interactif** affiche les trajectoires scolaires concrètes avec **statistiques d'admission personnalisées par école**.
+1. **Vocational engine**: cross-referencing declarative signals (passions, values, interests) with objective school data (grades + teacher comments) to produce a list of scored careers with **native AI explainability** (GDPR Art. 22).
+2. **Pathway engine**: for each selected career, an **interactive narrative graph** shows concrete academic trajectories with **personalized admission probabilities per school**.
 
-Différenciateurs structurels :
-- **Données scolaires objectives** comme moteur principal de personnalisation (vs déclaratif pur)
-- **Neutralité commerciale** : aucune revente de leads aux écoles
-- **Continuité temporelle** 3ème → bac+2/3 (vs snapshot ponctuel)
-- **Envoi anticipé biface** : feature premium qui crée un nouveau moment d'orientation
-- **Architecture IA hybride** : statistique explicable + deep learning (pour growth)
+Structural differentiators:
+- **Objective school data** as the primary personalization driver (vs. purely declarative)
+- **Commercial neutrality**: no reselling of leads to schools
+- **Temporal continuity** from middle school through 2 years post-baccalaureate (vs. one-off snapshots)
+- **Two-sided early-send**: a premium feature that creates a new orientation moment
+- **Hybrid AI architecture**: explainable statistical scoring + deep learning (for growth phase)
 
-## À qui ça s'adresse
+## Who it's for
 
-| Persona | Type | Statut MVP |
+| Persona | Type | MVP status |
 |---|---|---|
-| **Sarah, Terminale** (Parcoursup imminent) | Protagoniste B2C | 🎬 North Star design |
-| Mehdi, 3ème bac pro | Témoin B2C | 🧪 Garde-fou anti-stigma |
-| Léa, sans bulletins | Témoin B2C | 🧪 Garde-fou dignité |
-| Mme Dupont, conseillère B2B | Témoin B2B | 🧪 5 pilotes MVP |
-| M. Martin, parent prescripteur | Promesse | 📦 V2 |
-| Mme Garcia, école partenaire | Promesse | 📦 V2 (mais flow MVP minimal) |
+| **Sarah, Terminale** (Parcoursup imminent) | B2C Protagonist | 🎬 Design North Star |
+| Mehdi, 3ème vocational track | B2C Witness | 🧪 Anti-stigma safeguard |
+| Léa, no transcripts available | B2C Witness | 🧪 Dignity safeguard |
+| Mme Dupont, B2B guidance counselor | B2B Witness | 🧪 5 MVP pilots |
+| M. Martin, prescriber parent | Promise | 📦 V2 |
+| Mme Garcia, partner school admissions | Promise | 📦 V2 (with minimal MVP flow) |
 
-## Stack technique
+## Tech stack
 
-| Couche | Choix |
+| Layer | Choice |
 |---|---|
-| **Front** | Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui + Radix UI |
-| **Back** | Monolithe modulaire Node.js + Service IA séparé Python/FastAPI |
-| **Données** | PostgreSQL (transactionnel + pgvector) + Redis (cache, queue, sessions) + S3-compatible chiffré (bulletins) |
-| **Job queue** | BullMQ / Sidekiq / Celery (selon stack équipe) — OCR async, notifications, envois anticipés |
-| **OCR** | Tesseract (PoC local) → AWS Textract / Mindee (production) |
-| **Paiement** | Stripe (B2C premium 10,99 €/mois) |
-| **Email** | Mailpit (PoC local) → Postmark / SendGrid (production) |
-| **Analytics** | PostHog (self-hosted ou Cloud EU) |
-| **Hébergement** | UE obligatoire (Scaleway / OVH / AWS Paris-Frankfurt), cible SecNumCloud en growth |
-| **CI/CD** | GitHub Actions + axe-core (RGAA AA en CI) + Lighthouse (Core Web Vitals) |
+| **Frontend** | Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui + Radix UI |
+| **Backend** | Modular monolith (Node.js) + separate Python/FastAPI AI service |
+| **Data** | PostgreSQL (transactional + pgvector) + Redis (cache, queue, sessions) + encrypted S3-compatible storage (transcripts) |
+| **Job queue** | BullMQ / Sidekiq / Celery (team stack-dependent) — async OCR, notifications, early-send workflows |
+| **OCR** | Tesseract (local PoC) → AWS Textract / Mindee (production) |
+| **Payments** | Stripe (B2C premium €10.99/month) |
+| **Email** | Mailpit (local PoC) → Postmark / SendGrid (production) |
+| **Analytics** | PostHog (self-hosted or Cloud EU) |
+| **Hosting** | EU-mandatory (Scaleway / OVH / AWS Paris-Frankfurt), targeting SecNumCloud certification in growth phase |
+| **CI/CD** | GitHub Actions + axe-core (RGAA AA in CI) + Lighthouse (Core Web Vitals) |
 
-**Principe directeur** : *PoC local-first* — toute la stack lance en `docker-compose up < 5 min` avec données de seed.
+**Guiding principle**: *PoC local-first* — the entire stack runs via `docker-compose up` in under 5 minutes with seeded data.
 
-## Conformité
+## Compliance
 
-- **RGPD** + Loi Informatique et Libertés (CNIL) — consentement parental email opt-in < 15 ans, DPIA documentée, droits accès/portabilité/suppression
-- **RGPD art. 22** (décisions automatisées) — explicabilité IA + revue humaine + opt-out
-- **RGAA 4.1 niveau AA** dès le MVP sur parcours critiques (NFR-A1), full RGAA AA en growth (prérequis B2B Éducation Nationale)
-- **Hébergement UE obligatoire** + chiffrement AES-256 at-rest + TLS 1.3 in-transit
+- **GDPR** + French Data Protection Act (CNIL) — parental email opt-in consent for users under 15, documented DPIA, rights of access/portability/deletion
+- **GDPR Art. 22** (automated decisions) — AI explainability + human review + opt-out
+- **RGAA 4.1 Level AA** from MVP on critical user flows (NFR-A1), full RGAA AA in growth (required for B2B Education Nationale market)
+- **EU-mandatory hosting** + AES-256 encryption at rest + TLS 1.3 in transit
 
-## État de la planification
+## Planning status
 
-✅ **Product Brief**, **PRD complet** (52 FRs MVP + 5 Fast-Follow + 35 NFRs), **Architecture Decision Document**, **Spécification UX** (14 étapes), **97 stories en 10 épics** avec coverage 100 %.
+✅ **Product Brief**, **complete PRD** (52 MVP FRs + 5 Fast-Follow + 35 NFRs), **Architecture Decision Document**, **UX Specification** (14 steps), **97 stories across 10 epics** with 100% coverage.
 
-Estimation globale MVP : ~240-325 jours soit ~13 sprints (solo founder + dev assisté IA intensif).
+Overall MVP estimate: ~240-325 days, or ~13 sprints (solo founder + intensive AI-assisted development).
 
-## Structure du repo
+## Repo structure
 
 ```
 Path-Advisor/
-├── README.md                                       # Ce fichier
-├── _bmad/                                          # Configuration BMAD-METHOD
+├── README.md                                       # This file
+├── _bmad/                                          # BMAD-METHOD configuration
 ├── _bmad-output/
 │   └── planning-artifacts/
-│       ├── product-brief-Path-Advisor.md          # Vision produit (executive summary)
-│       ├── prd.md                                  # PRD complet (FRs + NFRs)
-│       ├── architecture.md                         # Décisions architecturales
-│       ├── ux-design-specification.md              # Spec UX 14 étapes
-│       ├── epics.md                                # 10 épics × 97 stories
-│       └── product-ideas-backlog.md                # Idées différées (post-MVP)
-└── docs/                                           # Documentation projet (vide pour l'instant)
+│       ├── product-brief-Path-Advisor.md          # Product vision (executive summary)
+│       ├── prd.md                                  # Complete PRD (FRs + NFRs)
+│       ├── architecture.md                         # Architectural decisions
+│       ├── ux-design-specification.md              # 14-step UX spec
+│       ├── epics.md                                # 10 epics × 97 stories
+│       └── product-ideas-backlog.md                # Deferred ideas (post-MVP)
+└── docs/                                           # Project documentation (currently empty)
 ```
 
-## Documentation par étape de réflexion
+## Documentation by question
 
 | Question | Document |
 |---|---|
-| *Pourquoi ce produit ?* | [product-brief-Path-Advisor.md](_bmad-output/planning-artifacts/product-brief-Path-Advisor.md) |
-| *Qu'est-ce qu'on construit ?* | [prd.md](_bmad-output/planning-artifacts/prd.md) |
-| *Comment c'est architecturé techniquement ?* | [architecture.md](_bmad-output/planning-artifacts/architecture.md) |
-| *Comment ça se design ?* | [ux-design-specification.md](_bmad-output/planning-artifacts/ux-design-specification.md) |
-| *Comment c'est découpé en stories de dev ?* | [epics.md](_bmad-output/planning-artifacts/epics.md) |
-| *Quelles idées différées à reprendre plus tard ?* | [product-ideas-backlog.md](_bmad-output/planning-artifacts/product-ideas-backlog.md) |
+| *Why this product?* | [product-brief-Path-Advisor.md](_bmad-output/planning-artifacts/product-brief-Path-Advisor.md) |
+| *What are we building?* | [prd.md](_bmad-output/planning-artifacts/prd.md) |
+| *How is it architected technically?* | [architecture.md](_bmad-output/planning-artifacts/architecture.md) |
+| *How is it designed?* | [ux-design-specification.md](_bmad-output/planning-artifacts/ux-design-specification.md) |
+| *How is it broken down into dev stories?* | [epics.md](_bmad-output/planning-artifacts/epics.md) |
+| *What deferred ideas should we revisit later?* | [product-ideas-backlog.md](_bmad-output/planning-artifacts/product-ideas-backlog.md) |
 
-## Roadmap MVP (13 sprints sur 9 mois)
+## MVP roadmap (13 sprints over 9 months)
 
-| Sprints | Epic | Livrable |
+| Sprints | Epic | Deliverable |
 |---|---|---|
-| 1-2 | **Epic 1 — Foundation** | Auth multi-rôle + RBAC + RGPD + Docker Compose + tokens design |
-| 3-4 | **Epic 2 — Profil & Onboarding** | Inscription + bulletins OCR + 4 chemins onboarding (3ème / lycée général / lycée pro / sans bulletins) |
-| 5-6 | **Epic 3 — Reco Vocationnelle (1er aha)** | 50 métiers MVP curés + service IA scoring + 8 métiers scorés avec phrase recopiable |
-| 6-8 | **Epic 4 — Graphe & Stats (2e aha)** | 100+ formations MVP + `GraphParcours` interactif + stats admission personnalisées |
-| 8-9 | **Epic 5 — Premium & Envoi Anticipé** | Stripe + envoi anticipé biface + espace école + 3 actions de réponse |
-| 9-10 | **Epic 6 — Espaces Tiers** | Compte parent lié + dashboard cohorte conseillère B2B |
-| 10 | **Epic 7 — SEO** | Pages publiques SSR + sitemap + Schema.org + Core Web Vitals |
-| 10-11 | **Epic 8 — Continuité & Notifications** | `DeltaRecap` retour J+30 + notifications calendrier Parcoursup |
-| 11-12 | **Epic 9 — Back-office Admin** | CRUD référentiel + modération motivations + versioning modèles IA |
-| 12-13 | **Epic 10 — Fast-Follow** | Profils à risque + push web + parrainage + RDV visio intégré |
+| 1-2 | **Epic 1 — Foundation** | Multi-role auth + RBAC + GDPR + Docker Compose + design tokens |
+| 3-4 | **Epic 2 — Profile & Onboarding** | Sign-up + transcript OCR + 4 onboarding paths (3ème / general high school / vocational high school / no transcripts) |
+| 5-6 | **Epic 3 — Vocational Recommendation (1st aha)** | 50 curated MVP careers + scoring AI service + 8 scored careers with shareable phrase |
+| 6-8 | **Epic 4 — Graph & Stats (2nd aha)** | 100+ MVP programs + interactive `GraphParcours` + personalized admission stats |
+| 8-9 | **Epic 5 — Premium & Early-Send** | Stripe + two-sided early-send + school workspace + 3 response actions |
+| 9-10 | **Epic 6 — Third-Party Spaces** | Linked parent account + B2B counselor cohort dashboard |
+| 10 | **Epic 7 — SEO** | Public SSR pages + sitemap + Schema.org + Core Web Vitals |
+| 10-11 | **Epic 8 — Continuity & Notifications** | `DeltaRecap` return-on-day-30 + Parcoursup calendar notifications |
+| 11-12 | **Epic 9 — Back-office Admin** | Reference data CRUD + motivation moderation + AI model versioning |
+| 12-13 | **Epic 10 — Fast-Follow** | At-risk profile detection + web push + referrals + integrated video meetings |
 
-## Démarrage
+## Getting started
 
-⚠️ **Le projet est en phase de planification — le code n'a pas encore commencé.** La première story à exécuter est `Story 1.1 — Initialisation du projet Next.js avec stack technique cible` (voir [epics.md](_bmad-output/planning-artifacts/epics.md)).
+⚠️ **The project is in the planning phase — coding has not yet started.** The first story to execute is `Story 1.1 — Initialize the Next.js project with the target tech stack` (see [epics.md](_bmad-output/planning-artifacts/epics.md)).
 
-Une fois le projet initialisé, la commande de démarrage local sera :
+Once the project is initialized, the local startup command will be:
 
 ```bash
 docker-compose up
 ```
 
-L'app sera accessible sur `http://localhost:3000` en moins de 5 minutes (NFR-M1).
+The app will be accessible at `http://localhost:3000` in under 5 minutes (NFR-M1).
 
-## Méthodologie
+## Methodology
 
-Le projet utilise [BMAD-METHOD v6](https://github.com/bmad-code-org/BMAD-METHOD) pour structurer la phase de planification (Product Brief → PRD → Architecture → UX Spec → Epics & Stories) et orchestrer le développement (story-by-story implementation avec agents IA).
+The project uses [BMAD-METHOD v6](https://github.com/bmad-code-org/BMAD-METHOD) to structure the planning phase (Product Brief → PRD → Architecture → UX Spec → Epics & Stories) and orchestrate development (story-by-story implementation with AI agents).
 
-## Compliance & Léga­l
+## Compliance & Legal
 
-- **DPO** mutualisé externalisé (prestataire à temps partagé prévu)
-- **DPIA** à produire avant déploiement production (Epic 1 Story 1.3 / 1.4)
-- **Souveraineté** : hébergement France ou UE strict (Scaleway / OVH / AWS Paris-Frankfurt)
-- **Audit RGAA AA** : axe-core en CI dès sprint 4 + audit trimestriel manuel VoiceOver + NVDA
+- **DPO** mutualized externally (part-time provider planned)
+- **DPIA** to be produced before production deployment (Epic 1 Stories 1.3 / 1.4)
+- **Data sovereignty**: strict France or EU hosting (Scaleway / OVH / AWS Paris-Frankfurt)
+- **RGAA AA audit**: axe-core in CI from sprint 4 + quarterly manual audits with VoiceOver + NVDA
 
-## Auteur
+## Author
 
 **Marwen Ben Dhahbia** — solo founder
 *marwen.bendhahbia@doctolib.com*
 
-## Licence
+## License
 
-À définir (projet en phase de démarrage).
+To be defined (project in early-stage planning).
