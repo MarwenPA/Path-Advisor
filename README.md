@@ -158,7 +158,6 @@ The project uses [BMAD-METHOD v6](https://github.com/bmad-code-org/BMAD-METHOD) 
 ## Author
 
 **Marwen Ben Dhahbia** — solo founder
-*marwen.bendhahbia@doctolib.com*
 
 ## License
 
