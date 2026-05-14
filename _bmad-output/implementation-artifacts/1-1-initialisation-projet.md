@@ -770,6 +770,7 @@ claude-opus-4-7 (1M context) — Claude Code interactive session, 2026-05-14.
 
 - 2026-05-14 — Story 1.1 implémentée et validée localement (Marwen + Claude Opus 4.7). Stack up + smoke checks OK. Status → `review`.
 - 2026-05-14 — Code review multi-LLM (Opus Blind Hunter + Sonnet Edge Case Hunter + Haiku Acceptance Auditor). Findings consolidés ci-dessous.
+- 2026-05-14 — Code review actions complete: 5 decisions résolues + 17 patches appliqués + 15 deferred + 7 dismissed. `make lint` + `make test` verts. Status → `done`.
 
 ---
 
