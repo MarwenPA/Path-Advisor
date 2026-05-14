@@ -1,0 +1,74 @@
+name: ci-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/**"
+      - ".github/workflows/ci-web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/openapi/**"
+      - ".github/workflows/ci-web.yml"
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      # The OpenAPI schema published by ci-api is the source of truth.
+      # We fetch the most recent successful run on main and regenerate the TS client
+      # so `tsc --noEmit` and `next build` see real types. On PRs the artifact may
+      # not exist yet — fall back to an empty placeholder so the build still passes.
+      - name: Download OpenAPI artifact (best effort)
+        id: download-openapi
+        continue-on-error: true
+        uses: dawidd6/action-download-artifact@v6
+        with:
+          workflow: ci-api.yml
+          name: openapi-schema
+          path: packages/openapi
+          branch: main
+          if_no_artifact_found: warn
+
+      - name: Generate TS client
+        working-directory: ${{ github.workspace }}
+        run: |
+          if [ -f packages/openapi/openapi.json ]; then
+            bash packages/openapi/scripts/generate-ts-client.sh
+          else
+            mkdir -p apps/web/src/lib/api/generated
+            echo "// Placeholder — OpenAPI artifact unavailable; regenerated on next ci-api run." > apps/web/src/lib/api/generated/schema.ts
+          fi
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Unit tests
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

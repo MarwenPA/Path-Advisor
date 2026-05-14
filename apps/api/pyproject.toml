@@ -1,0 +1,81 @@
+[project]
+name = "path-advisor-api"
+version = "0.1.0"
+description = "Path-Advisor — Django + DRF backend"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "django>=5.1,<5.2",
+    "djangorestframework>=3.15,<3.16",
+    "drf-spectacular>=0.27,<1.0",
+    "django-cors-headers>=4.6,<5.0",
+    "django-allauth>=65.0,<66.0",
+    "dj-rest-auth>=7.0,<8.0",
+    "django-otp>=1.5,<2.0",
+    "celery>=5.4,<6.0",
+    "redis>=5.2,<6.0",
+    "django-celery-beat>=2.7,<3.0",
+    "django-storages>=1.14,<2.0",
+    "boto3>=1.35,<2.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "pgvector>=0.3,<1.0",
+    "pillow>=11.0,<12.0",
+    "structlog>=24.4,<25.0",
+    "sentry-sdk[django]>=2.18,<3.0",
+    "python-dotenv>=1.0,<2.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-django>=4.9,<5.0",
+    "factory-boy>=3.3,<4.0",
+    "ruff>=0.8,<1.0",
+    "mypy>=1.13,<2.0",
+    "django-stubs[compatible-mypy]>=5.1,<6.0",
+    "djangorestframework-stubs[compatible-mypy]>=3.15,<4.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["path_advisor"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+exclude = ["migrations", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",       # pycodestyle + pyflakes
+    "I",                 # isort
+    "B",                 # bugbear
+    "UP",                # pyupgrade
+    "SIM",               # simplify
+    "DJ",                # django-specific
+    "RUF",               # ruff-specific
+]
+ignore = [
+    "E501",              # line length handled by formatter
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "path_advisor.settings.test"
+python_files = ["test_*.py", "*_test.py"]
+testpaths = ["apps"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+plugins = ["mypy_django_plugin.main", "mypy_drf_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "path_advisor.settings.local"

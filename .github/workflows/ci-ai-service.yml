@@ -1,0 +1,37 @@
+name: ci-ai-service
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/ai-service/**"
+      - ".github/workflows/ci-ai-service.yml"
+  pull_request:
+    paths:
+      - "apps/ai-service/**"
+      - ".github/workflows/ci-ai-service.yml"
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/ai-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Python + dependencies
+        run: uv sync
+
+      - name: Ruff lint
+        run: uv run ruff check .
+
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+      - name: Pytest
+        run: uv run pytest -q

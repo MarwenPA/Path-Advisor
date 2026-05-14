@@ -1,0 +1,26 @@
+# Lefthook pre-commit configuration
+# Install via the apps/web `prepare` script (npm install) or `brew install lefthook && lefthook install`
+# Each job runs only on modified files matching its glob to keep commits fast.
+
+pre-commit:
+  parallel: true
+  commands:
+    lint-ts:
+      glob: "apps/web/**/*.{ts,tsx,js,jsx}"
+      run: cd apps/web && npx eslint --fix {staged_files}
+      stage_fixed: true
+
+    format-ts:
+      glob: "apps/web/**/*.{ts,tsx,js,jsx,json,css,md}"
+      run: cd apps/web && npx prettier --write {staged_files}
+      stage_fixed: true
+
+    lint-py-api:
+      glob: "apps/api/**/*.py"
+      run: cd apps/api && uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      stage_fixed: true
+
+    lint-py-ai:
+      glob: "apps/ai-service/**/*.py"
+      run: cd apps/ai-service && uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      stage_fixed: true

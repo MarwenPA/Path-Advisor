@@ -1,0 +1,6 @@
+# Root Compose file — re-exports the canonical stack defined under `infra/`.
+# Using `include` (Compose v2.20+) keeps a single source of truth in `infra/`
+# while letting contributors run `docker compose up` from the repo root.
+# Decision rationale: Story 1.1 §4.10 (cross-platform, no symlink).
+include:
+  - path: infra/docker-compose.yml

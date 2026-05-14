@@ -1,0 +1,11 @@
+# Production override skeleton — intentionally empty for now.
+#
+# Story 1.1 originally shipped a stub that referenced non-existent `Dockerfile`
+# images, which would break `docker compose -f base -f prod up` immediately.
+# Removed during code review (2026-05-14). A future deploy-track story will
+# (re)introduce this file with multi-stage prod Dockerfiles, Caddy reverse
+# proxy, secrets via Doppler, and Scaleway-specific volumes.
+#
+# Until then, this file is intentionally a no-op to keep the path reserved.
+
+services: {}

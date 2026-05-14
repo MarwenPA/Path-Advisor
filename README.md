@@ -4,7 +4,7 @@
 
 Path-Advisor turns the anxiety of post-baccalaureate decisions into a defensible decision-making narrative. Where existing tools either deliver generic information (Onisep, Diagoriente) or commercially biased recommendations (Diplomeo, L'Étudiant), Path-Advisor articulates **two moments of truth** — *who I can become* and *how to get there with my real chances* — into a continuous experience, commercially neutral, and grounded in objective school data.
 
-**Status**: Planning complete, development starting (MVP target: 9 months, solo founder + AI-assisted dev).
+**Status**: Foundation seeded (Story 1.1 done). Sprint 1 in progress — see `_bmad-output/implementation-artifacts/sprint-status.yaml`.
 
 ---
 
@@ -41,7 +41,7 @@ Structural differentiators:
 
 | Layer | Choice |
 |---|---|
-| **Frontend** | Next.js 15 + TypeScript + Tailwind v4 + shadcn/ui + Radix UI |
+| **Frontend** | Next.js 16 + TypeScript + Tailwind v3 + shadcn/ui + Radix UI |
 | **Backend** | Modular monolith in **Django 5 + DRF + drf-spectacular** (Python 3.12+) for main app API + separate **FastAPI** AI service for ML scaling independence |
 | **Data** | PostgreSQL (transactional + pgvector) + Redis (cache, queue, sessions) + encrypted S3-compatible storage (transcripts) |
 | **Job queue** | Celery (Python-native) — async OCR, notifications, early-send workflows |
@@ -112,15 +112,37 @@ Path-Advisor/
 
 ## Getting started
 
-⚠️ **The project is in the planning phase — coding has not yet started.** The first story to execute is `Story 1.1 — Initialize the Next.js project with the target tech stack` (see [epics.md](_bmad-output/planning-artifacts/epics.md)).
-
-Once the project is initialized, the local startup command will be:
+Story 1.1 (foundation) is implemented. Quick start:
 
 ```bash
-docker-compose up
+git clone <repo-url> path-advisor
+cd path-advisor
+cp .env.example .env
+docker compose up -d
+make seed
 ```
 
-The app will be accessible at `http://localhost:3000` in under 5 minutes (NFR-M1).
+Then open `http://localhost:3000` (web), `http://localhost:8000/admin` (Django), `http://localhost:8001/health` (ai-service).
+
+Full walkthrough, troubleshooting, and `make` reference: [docs/onboarding.md](docs/onboarding.md).
+Architecture decision: [docs/adr/0001-stack-django-nextjs-fastapi-docker.md](docs/adr/0001-stack-django-nextjs-fastapi-docker.md).
+
+### Repo layout (post Story 1.1)
+
+```
+path-advisor/
+├── apps/
+│   ├── web/                    # Next.js 16 + TS + Tailwind v3 + shadcn
+│   ├── api/                    # Django 5 + DRF + drf-spectacular (uv)
+│   └── ai-service/             # FastAPI + Pydantic v2 (uv)
+├── packages/openapi/           # auto-generated schema + TS client script
+├── infra/                      # docker-compose.yml + postgres init + Caddy (later)
+├── docs/                       # ADRs, onboarding, runbooks, patterns
+├── _bmad-output/               # planning artifacts + implementation tracking
+├── Makefile                    # make help
+├── docker-compose.yml          # includes infra/docker-compose.yml
+└── lefthook.yml                # pre-commit hooks
+```
 
 ## Methodology
 
