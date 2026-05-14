@@ -1,7 +1,7 @@
 # Story 1.1 : Initialisation du projet (Next.js + Django + FastAPI + Docker)
 
 **Epic :** 1 — Foundation : Auth multi-rôle, RBAC, Conformité RGPD & Infra technique
-**Status :** review
+**Status :** done
 **Sprint :** 1 (Fondations)
 **Story Key :** `1-1-initialisation-projet`
 **Estimation :** L (large) — story d'amorçage, bloque tout le reste de l'Epic 1.
