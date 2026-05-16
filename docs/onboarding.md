@@ -78,7 +78,29 @@ make seed        # idempotent dev seed
 make clean       # remove generated artifacts and caches
 ```
 
-## 7. Troubleshooting
+## 7. Design system tokens
+
+All colors, type scale, spacing, and motion live in
+[`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css) (CSS variables) and
+[`apps/web/tailwind.config.ts`](../apps/web/tailwind.config.ts) (Tailwind theme mapping).
+Custom utilities (e.g. `font-tabular`) live in
+[`apps/web/src/lib/design-system/tailwind-plugin.ts`](../apps/web/src/lib/design-system/tailwind-plugin.ts).
+
+**Rules of the road:**
+
+- Never hardcode a `#hex` colour in a component — always use a Tailwind class that
+  references the tokens (`bg-brand`, `text-text-muted`, `border-border`, etc.).
+- Type scale is mobile-first: pair `text-h1` with `md:text-h1-desktop` for the
+  desktop variant where the spec differs.
+- Animations must use one of the four duration tokens: `duration-instant`,
+  `duration-quick`, `duration-standard`, `duration-narrative` (the last is
+  reserved for the journey graph in Epic 4).
+- A 5-pair WCAG contrast audit runs as a Vitest test
+  ([`contrast.test.ts`](../apps/web/src/lib/design-system/contrast.test.ts)) — keep it green.
+
+If a new colour or utility is needed, extend the tokens; don't add one-off CSS.
+
+## 8. Troubleshooting
 
 **Ports already in use** (3000 / 8000 / 8001 / 5432 / 6379 / 1025 / 8025 / 9000 / 9001) — stop
 whatever owns them or change the host-side port in `infra/docker-compose.yml`.
@@ -99,7 +121,7 @@ support. See [ADR-0001](./adr/0001-stack-django-nextjs-fastapi-docker.md#tooling
 **uv can't find Python 3.12** — uv installs it on first sync; ensure network access. The pinned
 version sits in `apps/api/.python-version` and `apps/ai-service/.python-version`.
 
-## 8. What's next
+## 9. What's next
 
 After the foundation is up, the next stories live in
 [`_bmad-output/implementation-artifacts/sprint-status.yaml`](../_bmad-output/implementation-artifacts/sprint-status.yaml).

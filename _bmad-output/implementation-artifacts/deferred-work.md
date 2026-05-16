@@ -19,3 +19,12 @@ Items flagged during code reviews but consciously deferred. Each has a target st
 - **No SAST / CodeQL / `pip-audit` / `npm audit`** — Sprint 3+.
 - **Ruff `select` lists drift between api and ai-service** — when Python patterns converge (Sprint 3+, create root `ruff.toml`).
 - **Mixed FR / EN policy for docs and code** — write style guide in `docs/patterns/` (Sprint 2+).
+
+## Deferred from: code review of 1-2-design-system-tokens (2026-05-16)
+
+- **Rename `bg-bg` / `bg-bg-2` → `surface` / `surface-raised`** — clearer semantics; rename will touch every future component, defer to a harmonisation story (Sprint 3+).
+- **`forced-colors: active` (Windows High Contrast Mode)** — accessibility hardening, Sprint 4+.
+- **`letterSpacing` missing on h1/h2/h3 fontSize tokens** — browser default is fine for short headings; revisit if typographic regressions appear.
+- **Pin exact `wcag-contrast@3.0.0`** — caret OK while no surprise minor; revisit if a release breaks the tests.
+- **Tighten contrast test for `brand on bg` to ≥ 5.0:1** — current threshold is the WCAG AA minimum (4.5); measured value is 5.2. Tightening would catch silent regressions earlier.
+- **Mixed FR / EN comments in `tokens.css` / `tailwind-plugin.ts` / `tailwind.config.ts`** — resolved during code review (converted to EN); tracking item closed.

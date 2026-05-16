@@ -1,4 +1,102 @@
-/* Path-Advisor design tokens — Story 1.2 will populate this file with the
- * R1 Vermillon palette, Inter type scale, spacing, and motion presets.
- * Keeping the file present now so consumers can import it without breaking.
+/* ============================================================================
+ * Path-Advisor — Design System Tokens (Story 1.2)
+ *
+ * Single source of truth. Every color / type / spacing / motion MUST go through
+ * one of these tokens. No `#hex` hardcoded in components. If a need is not
+ * covered, extend the tokens here rather than working around them.
+ *
+ * Light mode only in MVP — dark mode deferred post-MVP (UX spec § Accessibility).
+ * Source: _bmad-output/planning-artifacts/ux-design-specification.md (Step 8).
+ *
+ * Color tokens are stored as HSL "space-separated" channels so that Tailwind
+ * opacity modifiers (`bg-brand/50`, `text-text-muted/80`) work uniformly across
+ * the whole palette. The hex equivalent is kept in the inline comment.
+ *
+ * Tailwind reads these via `hsl(var(--color-*))` mappings defined in
+ * `tailwind.config.ts` — keep both files in sync when adding new tokens.
+ * ============================================================================
  */
+
+:root {
+  /* ---------- Path-Advisor R1 Vermillon palette ---------- */
+  /* Contrast ratios vs --color-bg documented for the 5 critical pairs (AC6). */
+
+  --color-brand: 2 63% 48%;                /* #C8312D — 5.2:1 vs bg (AA normal) */
+  --color-brand-hover: 2 69% 39%;          /* #A6231F                          */
+  --color-bg: 60 23% 97%;                  /* #FAFAF7                          */
+  --color-bg-2: 34 24% 94%;                /* #F4F1ED                          */
+  --color-bg-3: 36 20% 90%;                /* #EBE7E1                          */
+  --color-text: 0 0% 10%;                  /* #1A1A1A — 16.8:1 vs bg (AAA)     */
+  --color-text-muted: 60 3% 39%;           /* #666660 — 5.6:1 vs bg (AA)       */
+  --color-text-subtle: 60 3% 54%;          /* #8C8C86                          */
+  --color-border: 38 11% 86%;              /* #E0DDD8                          */
+  --color-border-strong: 38 9% 77%;        /* #C9C5BE                          */
+  --color-semantic-audacieux: 21 62% 41%;  /* #A85428 — "pari audacieux"       */
+  --color-semantic-realiste: 152 39% 30%;  /* #2F6B4F — "pari réaliste"        */
+  --color-semantic-sur: 203 48% 44%;       /* #3A7CA5 — "pari sûr"             */
+  --color-success: 152 39% 30%;            /* #2F6B4F                          */
+  --color-warning: 37 76% 44%;             /* #C7841B                          */
+  --color-danger: 3 63% 38%;               /* #9E2A24 — ~6.8:1 vs bg (AA)      */
+  --color-focus-ring: var(--color-brand);
+
+  /* ---------- shadcn semantic palette (aliases to the base palette above) ---------- */
+  /* Tailwind utilities (bg-primary, bg-destructive, …) read these. Aliasing keeps  */
+  /* shadcn and the custom palette in lockstep — fix a hex once, propagate twice.   */
+
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
+  --card: var(--color-bg-2);
+  --card-foreground: var(--color-text);
+  --popover: var(--color-bg);
+  --popover-foreground: var(--color-text);
+  --primary: var(--color-brand);
+  --primary-foreground: var(--color-bg);
+  --secondary: var(--color-bg-2);
+  --secondary-foreground: var(--color-text);
+  --muted: var(--color-bg-2);
+  --muted-foreground: var(--color-text-muted);
+  --accent: var(--color-bg-2);
+  --accent-foreground: var(--color-text);
+  --destructive: var(--color-danger);
+  --destructive-foreground: var(--color-bg);
+  --border: var(--color-border);
+  --input: var(--color-border);
+  --ring: var(--color-brand);
+  --radius: 0.5rem;
+
+  /* ---------- Motion (durations + easing) ---------- */
+  /* Anti-cirque rule: motion-narrative never replays on the same content twice. */
+  /* Reserved for the journey graph (Epic 4).                                    */
+
+  --motion-instant: 100ms;
+  --motion-quick: 200ms;
+  --motion-standard: 300ms;
+  --motion-narrative: 720ms;
+  --motion-ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---------- Global focus indicator ---------- */
+/* WCAG 2.4.7. shadcn primitives ship their own ring; this catches every other
+ * focusable element (links, custom components, native form controls). */
+:focus-visible {
+  outline: 2px solid hsl(var(--color-focus-ring));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ---------- Reduced motion fallback ---------- */
+/* WCAG 2.3.3 — motion should be effectively disabled, not merely shortened.
+ * Use 0.01ms so transitions complete instantly while staying observable to
+ * JS that may listen for `transitionend`. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
