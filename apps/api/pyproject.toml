@@ -22,6 +22,10 @@ dependencies = [
     "structlog>=24.4,<25.0",
     "sentry-sdk[django]>=2.18,<3.0",
     "python-dotenv>=1.0,<2.0",
+    "django-ratelimit>=4.1.0",
+    "python-ulid>=3.1.0",
+    "python-dateutil>=2.9.0.post0",
+    "requests>=2.34.2",
 ]
 
 [dependency-groups]
@@ -68,6 +72,10 @@ quote-style = "double"
 DJANGO_SETTINGS_MODULE = "path_advisor.settings.test"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["apps"]
+markers = [
+    "postgresql_only: tests requiring PostgreSQL backend (e.g. audit_logs trigger). Skipped on SQLite.",
+    "slow: tests that exercise rate-limits or long timing loops. Opt-in via -m slow.",
+]
 
 [tool.mypy]
 python_version = "3.12"
