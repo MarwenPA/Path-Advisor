@@ -40,8 +40,8 @@ def _ensure_admin() -> None:
         print("Super-user admin@path-advisor.local already present (skip)")
         return
 
+    # Custom User model (Story 1.3) — `username` field removed, email is the identifier.
     user_model.objects.create_superuser(
-        username="admin",
         email="admin@path-advisor.local",
         password="admin-local-dev",  # documented in README, never used in prod
     )

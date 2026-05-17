@@ -1,0 +1,20 @@
+{% load i18n %}{% load account %}Salut,
+
+Tu viens de créer un compte sur Path-Advisor — bienvenue.
+
+Pour activer ton compte, clique sur ce lien dans les 3 jours :
+{{ activate_url }}
+
+Une fois ton email vérifié, tu pourras finaliser ton profil et découvrir
+des métiers qui pourraient te correspondre, avec une transparence
+totale sur la manière dont on te les recommande.
+
+Tu as une question sur tes données ? Écris à dpo@path-advisor.fr.
+
+À bientôt,
+L'équipe Path-Advisor
+
+---
+Tu reçois cet email parce que quelqu'un a utilisé ton adresse pour
+créer un compte sur Path-Advisor. Si ce n'est pas toi, ignore ce
+message — le lien de vérification expirera dans 3 jours.

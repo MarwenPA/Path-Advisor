@@ -100,7 +100,38 @@ Custom utilities (e.g. `font-tabular`) live in
 
 If a new colour or utility is needed, extend the tokens; don't add one-off CSS.
 
-## 8. Troubleshooting
+## 8. Audit log — when to use `@audit_action`
+
+Story 1.13 ships an append-only journal (`audit_logs`) that records every access to a
+student's personal data by a third party. Anytime your service code reads, mutates, or
+**refuses** access to sensitive data, decorate it:
+
+```python
+from apps.audit.decorators import audit_action
+
+@audit_action(
+    "outreach.profile_sent",
+    subject_from=lambda kwargs, ret: kwargs["student"].id,
+    metadata_from=lambda kwargs, ret: {"school_id": kwargs["school"].id},
+)
+def send_profile_to_school(*, student, school, motivation): ...
+```
+
+Then add your event name to [`docs/patterns/audit-events.md`](./patterns/audit-events.md)
+in the same PR. The catalog is the source of truth — silent additions break compliance
+review.
+
+Refusal paths (DRF `has_permission` returning `False`, RBAC blocks, etc.) call
+`record_audit(action="…", result="denied", actor=…, metadata={…})` directly — see
+`apps/audit/permissions.py::IsPathAdmin` for the canonical pattern.
+
+The audit log itself is read by the DPO via `GET /api/v1/audit/logs/` (path_admin role)
+or in Django admin (read-only listing).
+
+See [ADR 0009](./adr/0009-audit-log-immutable-trigger.md) for the immutability /
+hash-chain rationale.
+
+## 9. Troubleshooting
 
 **Ports already in use** (3000 / 8000 / 8001 / 5432 / 6379 / 1025 / 8025 / 9000 / 9001) — stop
 whatever owns them or change the host-side port in `infra/docker-compose.yml`.
@@ -121,7 +152,21 @@ support. See [ADR-0001](./adr/0001-stack-django-nextjs-fastapi-docker.md#tooling
 **uv can't find Python 3.12** — uv installs it on first sync; ensure network access. The pinned
 version sits in `apps/api/.python-version` and `apps/ai-service/.python-version`.
 
-## 9. What's next
+**`AUTH_USER_MODEL` migration error** — switching to a custom User model (Story 1.3) after
+the DB has already run `auth.0001_initial` against the built-in `auth.User` is a breaking
+change in Django. If you see migration errors mentioning `accounts.User` or `auth.User`,
+reset the local database:
+
+```bash
+docker compose down -v       # wipe postgres_data volume
+docker compose up -d
+docker compose exec api uv run python manage.py migrate
+make seed                    # recreate admin@path-advisor.local
+```
+
+See [ADR-0002](./adr/0002-auth-allauth-dj-rest-auth.md) for the full auth-stack rationale.
+
+## 10. What's next
 
 After the foundation is up, the next stories live in
 [`_bmad-output/implementation-artifacts/sprint-status.yaml`](../_bmad-output/implementation-artifacts/sprint-status.yaml).
