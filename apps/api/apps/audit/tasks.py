@@ -84,7 +84,9 @@ def export_csv_to_s3(filters: dict, requested_by: str) -> dict[str, Any]:
     must be parsed here too (the view-side `parse_datetime` does not carry
     over into the Celery serialisation boundary).
     """
-    from django.utils.dateparse import parse_datetime  # local import — avoids settings dep at module load
+    from django.utils.dateparse import (
+        parse_datetime,  # local import — avoids settings dep at module load
+    )
 
     qs = AuditLog.objects.all().order_by("created_at")
     for key in ("subject_id", "actor_id", "result"):
@@ -147,9 +149,7 @@ def export_csv_to_s3(filters: dict, requested_by: str) -> dict[str, Any]:
         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         region_name=settings.AWS_S3_REGION_NAME,
-        config=BotoConfig(
-            connect_timeout=5, read_timeout=30, retries={"max_attempts": 3}
-        ),
+        config=BotoConfig(connect_timeout=5, read_timeout=30, retries={"max_attempts": 3}),
     )
     # Prepend UTF-8 BOM so Excel correctly displays accented French / Arabic
     # characters in `metadata_json`. Without it, Excel mojibakes on open.

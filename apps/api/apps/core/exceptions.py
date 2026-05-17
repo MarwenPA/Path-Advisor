@@ -142,7 +142,9 @@ def path_advisor_exception_handler(exc: Exception, context: dict) -> Response | 
             "detail": typed.detail,
             "instance": request_path,
         }
-        response = Response(problem, status=typed.status_code, content_type="application/problem+json")
+        response = Response(
+            problem, status=typed.status_code, content_type="application/problem+json"
+        )
         response["Content-Type"] = "application/problem+json"
         return response
 

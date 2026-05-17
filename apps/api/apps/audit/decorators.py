@@ -195,6 +195,8 @@ def _resolve_subject(spec: SubjectResolver, kwargs: dict, ret: Any) -> str | Non
 def _resolve_actor(override: Any | None) -> tuple[str | None, str]:
     if override is not None:
         actor_id = getattr(override, "id", None)
-        return (str(actor_id) if actor_id is not None else None), (getattr(override, "role", "") or "")
+        return (str(actor_id) if actor_id is not None else None), (
+            getattr(override, "role", "") or ""
+        )
     actor_id = request_context.get_actor_id()
     return (str(actor_id) if actor_id is not None else None), request_context.get_actor_role() or ""

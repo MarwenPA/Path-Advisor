@@ -173,7 +173,9 @@ def _flatten_params(query_params: Any) -> dict[str, str]:
             type=str,
             description="Exact match, or prefix match if value ends with `.` (e.g. `outreach.`)",
         ),
-        OpenApiParameter(name="result", required=False, type=str, enum=["success", "failure", "denied"]),
+        OpenApiParameter(
+            name="result", required=False, type=str, enum=["success", "failure", "denied"]
+        ),
         OpenApiParameter(name="tenant_id", required=False, type=str),
         OpenApiParameter(name="from", required=False, type=str, description="ISO 8601 lower bound"),
         OpenApiParameter(name="to", required=False, type=str, description="ISO 8601 upper bound"),

@@ -15,7 +15,7 @@ import hashlib
 import io
 import json
 from dataclasses import asdict, dataclass
-from datetime import timedelta, timezone as dt_timezone
+from datetime import UTC, timedelta
 from typing import Any
 
 import boto3
@@ -53,7 +53,7 @@ def archive_logs_older_than(days: int) -> ArchiveManifest | None:
     """Stream entries older than `days` to S3 as one gzipped JSONL + manifest."""
     # Single clock read for both the cutoff and the S3 key path so a midnight
     # UTC crossing during the task body can't desynchronise them.
-    now = timezone.now().astimezone(dt_timezone.utc)
+    now = timezone.now().astimezone(UTC)
     cutoff = now - timedelta(days=days)
     qs = AuditLog.objects.filter(created_at__lt=cutoff).order_by("created_at")
     if not qs.exists():
