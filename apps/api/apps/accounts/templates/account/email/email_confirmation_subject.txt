@@ -1,0 +1,1 @@
+{% load i18n %}Vérifie ton adresse email pour démarrer sur Path-Advisor
