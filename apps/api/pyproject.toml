@@ -65,6 +65,12 @@ ignore = [
     "E501",              # line length handled by formatter
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# AuditLog deliberately uses nullable CharFields for the "system actor" / non-subject
+# cases (login_failed, anonymous events) where NULL and "" carry different meaning.
+# Meta's `indexes` / `ordering` are the Django convention and not actually mutable defaults.
+"apps/audit/models.py" = ["DJ001", "RUF012"]
+
 [tool.ruff.format]
 quote-style = "double"
 

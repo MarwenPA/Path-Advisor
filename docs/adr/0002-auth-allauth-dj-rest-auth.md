@@ -1,0 +1,112 @@
+# ADR 0002 — Authentication stack: `django-allauth` + `dj-rest-auth`
+
+- **Status:** Accepted
+- **Date:** 2026-05-16
+- **Story:** [Story 1.3 — Inscription élève ≥ 15 ans avec consentement RGPD direct](../../_bmad-output/implementation-artifacts/1-3-inscription-eleve-15-ans-rgpd.md)
+- **Supersedes / Builds on:** [ADR-0001](./0001-stack-django-nextjs-fastapi-docker.md) (stack)
+
+## Context
+
+Story 1.3 introduces the first real applicative endpoint: student signup. The
+auth stack picked here is reused by Stories 1.4 (parental consent), 1.5 (login),
+1.6 (MFA), 1.7 (RBAC), 1.8 (multi-tenant RLS) and every authenticated feature
+afterwards.
+
+Constraints we cared about:
+
+- Session cookies + CSRF (ADR-0001 §Auth) — no JWT for browser clients.
+- Email-only login (no `username`).
+- Mandatory email verification at signup (RGPD: explicit consent + traceable
+  email ownership).
+- MFA (TOTP) on top of the same auth backend in Story 1.6.
+- AI-assisted dev: stable, popular, well-typed Python libraries with high
+  signal-to-noise in their documentation.
+
+## Decision
+
+We use **`django-allauth`** for the underlying authentication backend
+(account lifecycle, email confirmation, MFA), and **`dj-rest-auth`** to expose
+the REST endpoints that the Next.js frontend calls.
+
+The wiring lives in `apps/api/path_advisor/settings/base.py`:
+
+- `AUTH_USER_MODEL = "accounts.User"` — custom model with `role`, `birth_date`,
+  `status`, `consent_rgpd_at`, `consent_cgu_version`, `tenant_id`.
+- `INSTALLED_APPS += ["allauth", "allauth.account", "allauth.socialaccount",
+  "dj_rest_auth", "dj_rest_auth.registration"]` (plus the inevitable
+  `django.contrib.sites` + `SITE_ID = 1`).
+- `MIDDLEWARE += ["allauth.account.middleware.AccountMiddleware"]` (required
+  since allauth 0.55).
+- `REST_AUTH = {"REGISTER_SERIALIZER": "apps.accounts.serializers.SignupSerializer",
+  "SESSION_LOGIN": True, "USE_JWT": False, "TOKEN_MODEL": None}`.
+- `ACCOUNT_LOGIN_METHODS = {"email"}`, `ACCOUNT_EMAIL_VERIFICATION = "mandatory"`,
+  `ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3`.
+
+The signup serializer extends `dj_rest_auth.registration.serializers.RegisterSerializer`
+and adds:
+
+- `birth_date` (validated ≥ 15 years old — Story 1.3 §AC2).
+- `consent_rgpd_accepted` (must be `True`).
+- `consent_cgu_version` (the version string accepted).
+- Defensive `validate_email` that rejects duplicates regardless of verification
+  status (dj-rest-auth's default only blocks verified duplicates, which leaks
+  unverified-email existence via DB `IntegrityError` — see §Tooling notes).
+
+The custom `PathAdvisorAccountAdapter` writes `role`, `birth_date`, `consent_*`
+on the User during `save_user(commit=False)`, and builds the email-confirmation
+URL pointing at the Next.js front (`/auth/verify-email?key=<token>`).
+
+## Tooling notes
+
+- **`TOKEN_MODEL: None` is mandatory.** dj-rest-auth otherwise imports
+  `rest_framework.authtoken.Token` at module load time and crashes Django boot
+  when that app is not installed. We never issue tokens (session cookies only),
+  so disabling the token model is the correct fix — not adding `authtoken` to
+  `INSTALLED_APPS`.
+- **Template precedence trap.** allauth ships its own French templates that win
+  over app-local templates because allauth is loaded before `apps.accounts` in
+  `INSTALLED_APPS`. To override (e.g. our `Vérifie ton adresse…` subject), add
+  the absolute path to `TEMPLATES.DIRS` rather than reordering apps — keeps the
+  override explicit and survives future app reshuffles.
+- **`validate_email` tightening.** dj-rest-auth's default uses
+  `EmailAddress.objects.is_verified(email)`, which only blocks already-verified
+  duplicates. Unverified duplicates pass validation and crash at the DB unique
+  constraint, leaking existence via 500. We override `validate_email` in our
+  `SignupSerializer` to reject ANY duplicate while keeping the public detail
+  message generic (CWE-203).
+- **Rate-limit cache.** `django-ratelimit` reads `RATELIMIT_USE_CACHE` and
+  routes counters through Django's cache framework. In `settings/test.py` we
+  swap the Redis backend for `LocMemCache`, and our test fixture calls
+  `cache.clear()` between tests to keep counters isolated.
+
+## Alternatives considered
+
+- **Roll our own DRF auth views.** Rejected: ~200 LOC of glue with corner cases
+  (email verification race conditions, password validators, signal wiring) that
+  allauth has already mature-ified.
+- **`djoser`.** Lighter than dj-rest-auth, but no built-in email-verification
+  flow integrated with allauth's MFA/social — would have to be re-wired in
+  Story 1.6. Picked dj-rest-auth for ecosystem cohesion.
+- **JWT via `simplejwt`.** Conflicts with ADR-0001 §Auth (session cookies).
+  Revisit only if/when we expose first-party mobile apps.
+
+## Consequences
+
+**Positive**
+
+- Email verification flow is "free" — adapter + signal wiring fits in ~30 lines.
+- MFA (Story 1.6) can plug into allauth's `MFA` module without changing the
+  session-cookie story.
+- OpenAPI schema generated by `drf-spectacular` already documents the registration
+  endpoint, no extra glue needed.
+
+**Negative / accepted**
+
+- We depend on two upstream projects with overlapping concerns. Pin tightly
+  (`django-allauth>=65,<66`, `dj-rest-auth>=7,<8`) and watch for breaking
+  changes in their shared interfaces.
+- `dj-rest-auth.registration` is the most surface-area-heavy of the two and the
+  primary risk of upstream churn — see Tooling notes for the gotchas we already
+  papered over.
+- Allauth ships opinionated French copy by default; every email/template we
+  expose to users is overridden under `apps/accounts/templates/account/`.

@@ -59,15 +59,10 @@ def get_last_row_hash(using: str = "default") -> str | None:
         if connection.vendor == "postgresql":
             # hashtext() turns the chain name into a stable int4 key.
             cur.execute("SELECT pg_advisory_xact_lock(hashtext('audit_logs_chain'))")
-            cur.execute(
-                "SELECT row_hash FROM audit_logs "
-                "ORDER BY created_at DESC, id DESC LIMIT 1"
-            )
+            cur.execute("SELECT row_hash FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1")
         else:
             # SQLite test path — no row-level locking; pytest serialises tests.
-            cur.execute(
-                "SELECT row_hash FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1"
-            )
+            cur.execute("SELECT row_hash FROM audit_logs ORDER BY created_at DESC, id DESC LIMIT 1")
         row = cur.fetchone()
     return row[0] if row else None
 

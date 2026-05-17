@@ -13,7 +13,7 @@ See Story 1.13 §4.4 for the model design rationale.
 
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import Any
 
 from django.db import models
 

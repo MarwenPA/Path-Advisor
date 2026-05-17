@@ -13,9 +13,7 @@ from apps.audit.tests.factories import UserFactory
 
 @pytest.mark.django_db
 def test_signup_persists_audit_log_via_decorator():
-    user = UserFactory(
-        status=UserStatus.EMAIL_UNVERIFIED, consent_cgu_version="2026-05-15"
-    )
+    user = UserFactory(status=UserStatus.EMAIL_UNVERIFIED, consent_cgu_version="2026-05-15")
 
     record_signup_event(user=user)
 

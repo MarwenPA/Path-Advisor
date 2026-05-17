@@ -9,7 +9,14 @@ from apps.audit.models import AuditLog
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display: ClassVar[tuple] = ("created_at", "actor_id", "actor_role", "action", "subject_id", "result")
+    list_display: ClassVar[tuple] = (
+        "created_at",
+        "actor_id",
+        "actor_role",
+        "action",
+        "subject_id",
+        "result",
+    )
     list_filter: ClassVar[tuple] = ("result", "actor_role", "action")
     search_fields: ClassVar[tuple] = ("actor_id", "subject_id", "action", "request_id")
     readonly_fields: ClassVar[tuple] = (
