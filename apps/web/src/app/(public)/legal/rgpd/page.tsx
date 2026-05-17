@@ -15,44 +15,82 @@ const Placeholder = ({ children }: { children: React.ReactNode }) => (
 
 export default function RgpdPolicyPage() {
   return (
-    <main className="bg-bg flex flex-1 flex-col items-center px-4 py-12">
+    <main className="flex flex-1 flex-col items-center bg-bg px-4 py-12">
       <article className="prose-tokens flex w-full max-w-3xl flex-col gap-6">
         <p
           role="note"
-          className="border-warning bg-warning/10 text-text border-l-4 p-4 text-body-sm"
+          className="border-l-4 border-warning bg-warning/10 p-4 text-body-sm text-text"
         >
-          ⚠️ Cette page contient des sections marquées <Placeholder>[À DÉFINIR avant production]</Placeholder>.
-          Ne pas déployer en l’état dans un environnement non-local — les mentions légales définitives
-          doivent être validées par un juriste / DPO avant mise en production.
+          ⚠️ Cette page contient des sections marquées{" "}
+          <Placeholder>[À DÉFINIR avant production]</Placeholder>. Ne pas déployer en l’état dans un
+          environnement non-local — les mentions légales définitives doivent être validées par un
+          juriste / DPO avant mise en production.
         </p>
 
         <header className="flex flex-col gap-2">
-          <h1 className="text-display-2 md:text-display-2-desktop text-text font-semibold">
+          <h1 className="text-display-2 font-semibold text-text md:text-display-2-desktop">
             Politique de confidentialité
           </h1>
           <p className="text-body text-text-muted">
             Cette politique décrit comment Path-Advisor collecte, traite et protège tes données
-            personnelles, et comment tu peux exercer tes droits. Version applicable : <strong>2026-05-15</strong>.
+            personnelles, et comment tu peux exercer tes droits. Version applicable :{" "}
+            <strong>2026-05-15</strong>.
           </p>
         </header>
 
-        <nav aria-label="Sommaire" className="border-border rounded-md border p-4">
-          <h2 className="text-h3 md:text-h3-desktop text-text mb-2 font-semibold">Sommaire</h2>
-          <ol className="text-body-sm flex flex-col gap-1">
-            <li><a className="text-brand underline" href="#responsable">1. Responsable du traitement</a></li>
-            <li><a className="text-brand underline" href="#finalites">2. Finalités du traitement</a></li>
-            <li><a className="text-brand underline" href="#base-legale">3. Base légale</a></li>
-            <li><a className="text-brand underline" href="#donnees">4. Données collectées</a></li>
-            <li><a className="text-brand underline" href="#conservation">5. Durées de conservation</a></li>
-            <li><a className="text-brand underline" href="#droits">6. Tes droits RGPD</a></li>
-            <li><a className="text-brand underline" href="#dpo">7. Contact DPO</a></li>
-            <li><a className="text-brand underline" href="#cnil">8. Autorité de contrôle (CNIL)</a></li>
-            <li><a className="text-brand underline" href="#mineurs">9. Inscription des moins de 15 ans</a></li>
+        <nav aria-label="Sommaire" className="rounded-md border border-border p-4">
+          <h2 className="mb-2 text-h3 font-semibold text-text md:text-h3-desktop">Sommaire</h2>
+          <ol className="flex flex-col gap-1 text-body-sm">
+            <li>
+              <a className="text-brand underline" href="#responsable">
+                1. Responsable du traitement
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#finalites">
+                2. Finalités du traitement
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#base-legale">
+                3. Base légale
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#donnees">
+                4. Données collectées
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#conservation">
+                5. Durées de conservation
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#droits">
+                6. Tes droits RGPD
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#dpo">
+                7. Contact DPO
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#cnil">
+                8. Autorité de contrôle (CNIL)
+              </a>
+            </li>
+            <li>
+              <a className="text-brand underline" href="#mineurs">
+                9. Inscription des moins de 15 ans
+              </a>
+            </li>
           </ol>
         </nav>
 
         <section id="responsable" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             1. Responsable du traitement
           </h2>
           <p className="text-body">
@@ -64,18 +102,18 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="finalites" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             2. Finalités du traitement
           </h2>
           <p className="text-body">Nous traitons tes données pour :</p>
-          <ul className="text-body list-inside list-disc">
+          <ul className="list-inside list-disc text-body">
             <li>
               <strong>Fournir le service d’orientation</strong> — recommandations vocationnelles
               personnalisées, graphes de parcours, statistiques d’admission.
             </li>
             <li>
-              <strong>Communication transactionnelle</strong> — vérification d’email, réinitialisation
-              de mot de passe, notifications produit que tu choisis d’activer.
+              <strong>Communication transactionnelle</strong> — vérification d’email,
+              réinitialisation de mot de passe, notifications produit que tu choisis d’activer.
             </li>
             <li>
               <strong>Amélioration produit</strong> — analytics anonymisé (PostHog) pour comprendre
@@ -85,8 +123,8 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="base-legale" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">3. Base légale</h2>
-          <ul className="text-body list-inside list-disc">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">3. Base légale</h2>
+          <ul className="list-inside list-disc text-body">
             <li>
               <strong>Ton consentement explicite</strong>, recueilli lors de l’inscription via une
               case à cocher dédiée (preuve d’horodatage conservée).
@@ -99,10 +137,10 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="donnees" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             4. Catégories de données collectées
           </h2>
-          <ul className="text-body list-inside list-disc">
+          <ul className="list-inside list-disc text-body">
             <li>
               <strong>Données d’identité</strong> : email, date de naissance, mot de passe (haché —
               jamais stocké en clair).
@@ -123,10 +161,10 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="conservation" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             5. Durées de conservation
           </h2>
-          <ul className="text-body list-inside list-disc">
+          <ul className="list-inside list-disc text-body">
             <li>
               <strong>Compte actif</strong> : tant que tu utilises le service. Aucune limite de
               durée tant que ton compte est actif.
@@ -148,13 +186,14 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="droits" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">6. Tes droits RGPD</h2>
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">6. Tes droits RGPD</h2>
           <p className="text-body">
             Conformément aux articles 15 à 22 du RGPD, tu disposes des droits suivants :
           </p>
-          <ul className="text-body list-inside list-disc">
+          <ul className="list-inside list-disc text-body">
             <li>
-              <strong>Droit d’accès</strong> : consulter toutes les données que nous détenons sur toi.
+              <strong>Droit d’accès</strong> : consulter toutes les données que nous détenons sur
+              toi.
             </li>
             <li>
               <strong>Droit de rectification</strong> : corriger les informations inexactes.
@@ -175,7 +214,9 @@ export default function RgpdPolicyPage() {
               <strong>Droit à la limitation du traitement</strong>.
             </li>
             <li>
-              <strong>Droit de ne pas faire l’objet d’une décision exclusivement automatisée</strong>{" "}
+              <strong>
+                Droit de ne pas faire l’objet d’une décision exclusivement automatisée
+              </strong>{" "}
               (RGPD art. 22) : tu peux demander une revue humaine de toute recommandation IA.
             </li>
           </ul>
@@ -186,17 +227,18 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="dpo" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             7. Contact du Délégué à la Protection des Données (DPO)
           </h2>
           <p className="text-body">
             Pour toute question relative à tes données personnelles ou pour exercer tes droits RGPD,
-            contacte notre DPO : <Placeholder>[Adresse DPO à définir — placeholder : dpo@path-advisor.fr]</Placeholder>.
+            contacte notre DPO :{" "}
+            <Placeholder>[Adresse DPO à définir — placeholder : dpo@path-advisor.fr]</Placeholder>.
           </p>
         </section>
 
         <section id="cnil" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             8. Autorité de contrôle
           </h2>
           <p className="text-body">
@@ -222,7 +264,7 @@ export default function RgpdPolicyPage() {
         </section>
 
         <section id="mineurs" className="flex flex-col gap-2">
-          <h2 className="text-h2 md:text-h2-desktop text-text font-semibold">
+          <h2 className="text-h2 font-semibold text-text md:text-h2-desktop">
             9. Inscription des moins de 15 ans
           </h2>
           <p className="text-body">
@@ -231,8 +273,8 @@ export default function RgpdPolicyPage() {
             leurs représentants légaux pour s’inscrire.
           </p>
           <p className="text-body">
-            Le flow d’inscription parental (validation par email du parent) arrive prochainement avec
-            la Story 1.4. Pour l’instant, l’inscription est réservée aux utilisateurs ≥ 15 ans.
+            Le flow d’inscription parental (validation par email du parent) arrive prochainement
+            avec la Story 1.4. Pour l’instant, l’inscription est réservée aux utilisateurs ≥ 15 ans.
           </p>
           <p className="text-body">
             Si tu as moins de 15 ans, demande à un parent ou tuteur de te recontacter via{" "}
@@ -240,7 +282,7 @@ export default function RgpdPolicyPage() {
           </p>
         </section>
 
-        <footer className="text-body-sm text-text-muted border-border border-t pt-4">
+        <footer className="border-t border-border pt-4 text-body-sm text-text-muted">
           Version : 2026-05-15 — Cette politique peut être mise à jour. Nous t’informerons par email
           de toute modification substantielle, et te demanderons de re-confirmer ton consentement si
           nécessaire.

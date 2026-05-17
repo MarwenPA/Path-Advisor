@@ -10,11 +10,11 @@ export const metadata: Metadata = {
  */
 export default function OnboardingPage() {
   return (
-    <main className="bg-bg flex flex-1 flex-col items-center justify-center gap-4 px-4 py-12 text-center">
-      <h1 className="text-h1 md:text-h1-desktop text-text font-semibold">
+    <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-bg px-4 py-12 text-center">
+      <h1 className="text-h1 font-semibold text-text md:text-h1-desktop">
         Bienvenue sur Path-Advisor
       </h1>
-      <p className="text-body text-text-muted max-w-md">
+      <p className="max-w-md text-body text-text-muted">
         Ton email est vérifié. L’onboarding (passions, intérêts, bulletins…) arrive avec Story 2.1
         (Epic 2). Reviens vite !
       </p>

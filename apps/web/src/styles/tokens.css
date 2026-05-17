@@ -21,22 +21,22 @@
   /* ---------- Path-Advisor R1 Vermillon palette ---------- */
   /* Contrast ratios vs --color-bg documented for the 5 critical pairs (AC6). */
 
-  --color-brand: 2 63% 48%;                /* #C8312D — 5.2:1 vs bg (AA normal) */
-  --color-brand-hover: 2 69% 39%;          /* #A6231F                          */
-  --color-bg: 60 23% 97%;                  /* #FAFAF7                          */
-  --color-bg-2: 34 24% 94%;                /* #F4F1ED                          */
-  --color-bg-3: 36 20% 90%;                /* #EBE7E1                          */
-  --color-text: 0 0% 10%;                  /* #1A1A1A — 16.8:1 vs bg (AAA)     */
-  --color-text-muted: 60 3% 39%;           /* #666660 — 5.6:1 vs bg (AA)       */
-  --color-text-subtle: 60 3% 54%;          /* #8C8C86                          */
-  --color-border: 38 11% 86%;              /* #E0DDD8                          */
-  --color-border-strong: 38 9% 77%;        /* #C9C5BE                          */
-  --color-semantic-audacieux: 21 62% 41%;  /* #A85428 — "pari audacieux"       */
-  --color-semantic-realiste: 152 39% 30%;  /* #2F6B4F — "pari réaliste"        */
-  --color-semantic-sur: 203 48% 44%;       /* #3A7CA5 — "pari sûr"             */
-  --color-success: 152 39% 30%;            /* #2F6B4F                          */
-  --color-warning: 37 76% 44%;             /* #C7841B                          */
-  --color-danger: 3 63% 38%;               /* #9E2A24 — ~6.8:1 vs bg (AA)      */
+  --color-brand: 2 63% 48%; /* #C8312D — 5.2:1 vs bg (AA normal) */
+  --color-brand-hover: 2 69% 39%; /* #A6231F                          */
+  --color-bg: 60 23% 97%; /* #FAFAF7                          */
+  --color-bg-2: 34 24% 94%; /* #F4F1ED                          */
+  --color-bg-3: 36 20% 90%; /* #EBE7E1                          */
+  --color-text: 0 0% 10%; /* #1A1A1A — 16.8:1 vs bg (AAA)     */
+  --color-text-muted: 60 3% 39%; /* #666660 — 5.6:1 vs bg (AA)       */
+  --color-text-subtle: 60 3% 54%; /* #8C8C86                          */
+  --color-border: 38 11% 86%; /* #E0DDD8                          */
+  --color-border-strong: 38 9% 77%; /* #C9C5BE                          */
+  --color-semantic-audacieux: 21 62% 41%; /* #A85428 — "pari audacieux"       */
+  --color-semantic-realiste: 152 39% 30%; /* #2F6B4F — "pari réaliste"        */
+  --color-semantic-sur: 203 48% 44%; /* #3A7CA5 — "pari sûr"             */
+  --color-success: 152 39% 30%; /* #2F6B4F                          */
+  --color-warning: 37 76% 44%; /* #C7841B                          */
+  --color-danger: 3 63% 38%; /* #9E2A24 — ~6.8:1 vs bg (AA)      */
   --color-focus-ring: var(--color-brand);
 
   /* ---------- shadcn semantic palette (aliases to the base palette above) ---------- */

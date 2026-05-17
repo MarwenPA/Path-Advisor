@@ -19,7 +19,8 @@ const COPY = {
   errorBody:
     "Ce lien de vérification n’est plus valide. Demande-en un nouveau et vérifie ta boîte mail (regarde aussi les spams).",
   resendCta: "Renvoyer un email",
-  missingKey: "Lien incomplet — ouvre l’email reçu et clique directement sur le bouton qu’il contient.",
+  missingKey:
+    "Lien incomplet — ouvre l’email reçu et clique directement sur le bouton qu’il contient.",
 };
 
 export default function VerifyEmailPage() {
@@ -33,14 +34,12 @@ export default function VerifyEmailPage() {
 
 function VerifyEmailFallback() {
   return (
-    <main className="bg-bg flex flex-1 flex-col items-center justify-center px-4 py-12">
+    <main className="flex flex-1 flex-col items-center justify-center bg-bg px-4 py-12">
       <section
         aria-live="polite"
-        className="bg-bg-2 border-border flex w-full max-w-md flex-col gap-3 rounded-md border p-6"
+        className="flex w-full max-w-md flex-col gap-3 rounded-md border border-border bg-bg-2 p-6"
       >
-        <h1 className="text-h2 md:text-h2-desktop text-text font-semibold">
-          {COPY.loadingTitle}
-        </h1>
+        <h1 className="text-h2 font-semibold text-text md:text-h2-desktop">{COPY.loadingTitle}</h1>
         <p className="text-body text-text-muted">{COPY.loadingBody}</p>
       </section>
     </main>
@@ -82,14 +81,14 @@ function VerifyEmailContent() {
   }, [key, router]);
 
   return (
-    <main className="bg-bg flex flex-1 flex-col items-center justify-center px-4 py-12">
+    <main className="flex flex-1 flex-col items-center justify-center bg-bg px-4 py-12">
       <section
         aria-live="polite"
-        className="bg-bg-2 border-border flex w-full max-w-md flex-col gap-3 rounded-md border p-6"
+        className="flex w-full max-w-md flex-col gap-3 rounded-md border border-border bg-bg-2 p-6"
       >
         {phase === "loading" && (
           <>
-            <h1 className="text-h2 md:text-h2-desktop text-text font-semibold">
+            <h1 className="text-h2 font-semibold text-text md:text-h2-desktop">
               {COPY.loadingTitle}
             </h1>
             <p className="text-body text-text-muted">{COPY.loadingBody}</p>
@@ -97,7 +96,7 @@ function VerifyEmailContent() {
         )}
         {phase === "success" && (
           <>
-            <h1 className="text-h2 md:text-h2-desktop text-text font-semibold">
+            <h1 className="text-h2 font-semibold text-text md:text-h2-desktop">
               {COPY.successTitle}
             </h1>
             <p className="text-body text-text-muted">{COPY.successBody}</p>
@@ -105,7 +104,7 @@ function VerifyEmailContent() {
         )}
         {phase === "error" && (
           <>
-            <h1 className="text-h2 md:text-h2-desktop text-text font-semibold">
+            <h1 className="text-h2 font-semibold text-text md:text-h2-desktop">
               {COPY.errorTitle}
             </h1>
             <p className="text-body text-text-muted">{errorDetail}</p>

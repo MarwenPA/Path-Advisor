@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <main className="bg-bg flex flex-1 flex-col items-center justify-center px-4 py-12">
+    <main className="flex flex-1 flex-col items-center justify-center bg-bg px-4 py-12">
       <SignupForm />
     </main>
   );

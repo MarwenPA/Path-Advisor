@@ -63,7 +63,10 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
   if (!response.ok) {
     const contentType = response.headers.get("Content-Type") ?? "";
     let problem: ProblemDetails | null = null;
-    if (contentType.includes("application/problem+json") || contentType.includes("application/json")) {
+    if (
+      contentType.includes("application/problem+json") ||
+      contentType.includes("application/json")
+    ) {
       try {
         problem = (await response.json()) as ProblemDetails;
       } catch {

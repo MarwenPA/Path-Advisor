@@ -15,14 +15,14 @@ import { CGU_RGPD_VERSION, signupStudent } from "@/lib/api/auth";
 
 const COPY = {
   title: "Créer ton compte",
-  subtitle:
-    "Inscription en moins d'une minute. On t'enverra un email pour confirmer ton adresse.",
+  subtitle: "Inscription en moins d'une minute. On t'enverra un email pour confirmer ton adresse.",
   emailLabel: "Adresse email",
   emailPlaceholder: "ex. sarah@example.com",
   passwordLabel: "Mot de passe",
   passwordHelp: "12 caractères minimum. Évite les mots de passe courants ou seulement numériques.",
   birthDateLabel: "Date de naissance",
-  birthDateHelp: "L'inscription des moins de 15 ans nécessite un consentement parental (arrive prochainement).",
+  birthDateHelp:
+    "L'inscription des moins de 15 ans nécessite un consentement parental (arrive prochainement).",
   consentLabel: "J'accepte les CGU et la",
   consentLink: "politique RGPD",
   submit: "Créer mon compte",
@@ -38,14 +38,9 @@ const COPY = {
 const SignupSchema = z
   .object({
     email: z.string().email("Adresse email invalide"),
-    password: z
-      .string()
-      .min(12, "12 caractères minimum")
-      .max(128, "Mot de passe trop long"),
+    password: z.string().min(12, "12 caractères minimum").max(128, "Mot de passe trop long"),
     passwordConfirm: z.string(),
-    birth_date: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, "Format attendu : AAAA-MM-JJ"),
+    birth_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format attendu : AAAA-MM-JJ"),
     consent_rgpd_accepted: z.literal(true, {
       errorMap: () => ({ message: "Tu dois accepter les CGU et la politique RGPD." }),
     }),
@@ -97,11 +92,11 @@ export function SignupForm() {
     return (
       <section
         aria-labelledby="signup-success-title"
-        className="bg-bg-2 border-border flex flex-col gap-3 rounded-md border p-6"
+        className="flex flex-col gap-3 rounded-md border border-border bg-bg-2 p-6"
       >
         <h2
           id="signup-success-title"
-          className="text-h2 md:text-h2-desktop text-text font-semibold"
+          className="text-h2 font-semibold text-text md:text-h2-desktop"
         >
           {COPY.successTitle}
         </h2>
@@ -119,7 +114,7 @@ export function SignupForm() {
       className="flex w-full max-w-md flex-col gap-5"
     >
       <header className="flex flex-col gap-2">
-        <h1 className="text-h1 md:text-h1-desktop text-text font-semibold">{COPY.title}</h1>
+        <h1 className="text-h1 font-semibold text-text md:text-h1-desktop">{COPY.title}</h1>
         <p className="text-body text-text-muted">{COPY.subtitle}</p>
       </header>
 
@@ -220,7 +215,7 @@ export function SignupForm() {
             />
           )}
         />
-        <Label htmlFor="signup-consent" className="text-body-sm text-text leading-relaxed">
+        <Label htmlFor="signup-consent" className="text-body-sm leading-relaxed text-text">
           {COPY.consentLabel}{" "}
           <Link href="/legal/rgpd" className="text-brand underline">
             {COPY.consentLink}
@@ -229,7 +224,7 @@ export function SignupForm() {
         </Label>
       </div>
       {errors.consent_rgpd_accepted && (
-        <p id="signup-consent-error" className="text-body-sm text-danger -mt-3">
+        <p id="signup-consent-error" className="-mt-3 text-body-sm text-danger">
           {errors.consent_rgpd_accepted.message}
         </p>
       )}
@@ -237,7 +232,7 @@ export function SignupForm() {
       {serverError && (
         <div
           role="alert"
-          className="border-danger/40 bg-danger/10 text-danger flex flex-col gap-1 rounded-md border p-4 text-body-sm"
+          className="flex flex-col gap-1 rounded-md border border-danger/40 bg-danger/10 p-4 text-body-sm text-danger"
         >
           <strong className="font-semibold">{COPY.errorTitle}</strong>
           <span>{serverError}</span>
