@@ -236,6 +236,10 @@ class ParentalConsent(models.Model):
     # Backfilled when Epic 6 ships parent self-service accounts; null otherwise.
     # NULL vs "" carries meaning here: NULL = anonymous parent (no PA account).
     parent_user_id = models.CharField(max_length=32, null=True, blank=True, db_index=True)  # noqa: DJ001
+    # Denormalized from `student.tenant_id` so the RLS policy on `parental_consents`
+    # can filter without joining (Story 1.8). Auto-synced on first save (see `save()`
+    # below). NULL for B2C students.
+    tenant_id = models.UUIDField(null=True, blank=True, db_index=True)
     # `secrets.token_urlsafe(32)` → 43 base64 chars; 64 max leaves room for future schemes.
     token = models.CharField(max_length=64, unique=True, db_index=True)
     requested_at = models.DateTimeField(default=timezone.now)
@@ -283,6 +287,17 @@ class ParentalConsent(models.Model):
 
     def __str__(self) -> str:
         return f"ParentalConsent(student={self.student_id} decision={self.decision or 'pending'})"
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        # Story 1.8: keep `tenant_id` consistent with the student's tenant so
+        # the RLS policy can filter without joining. Only auto-fill on first
+        # save / when missing — explicit caller overrides win.
+        if self.tenant_id is None and self.student_id:
+            student_tenant = type(self).student.field.related_model.objects.filter(
+                pk=self.student_id,
+            ).values_list("tenant_id", flat=True).first()
+            self.tenant_id = student_tenant
+        super().save(*args, **kwargs)  # type: ignore[misc]
 
     @property
     def is_pending(self) -> bool:

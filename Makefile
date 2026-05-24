@@ -1,4 +1,4 @@
-.PHONY: help dev down logs test test-web test-api test-ai lint lint-web lint-api lint-ai seed openapi clean
+.PHONY: help dev down logs test test-web test-api test-ai test-rls lint lint-web lint-api lint-ai seed openapi clean
 
 DEFAULT_GOAL := help
 
@@ -21,8 +21,11 @@ test: test-web test-api test-ai ## Run all test suites
 test-web: ## Vitest (apps/web)
 	cd apps/web && npm test -- --run
 
-test-api: ## pytest-django (apps/api)
+test-api: ## pytest-django (apps/api, SQLite fast path)
 	cd apps/api && uv run pytest
+
+test-rls: ## RLS + postgresql_only suite against a real Postgres (Story 1.8)
+	cd apps/api && uv run pytest -m "rls or postgresql_only" --ds=path_advisor.settings.test_postgres
 
 test-ai: ## pytest (apps/ai-service)
 	cd apps/ai-service && uv run pytest

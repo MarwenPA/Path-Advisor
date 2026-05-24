@@ -63,10 +63,10 @@ from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 from apps.core.exceptions import (
     EmailAlreadyRegistered,
-    ParentalConsentAlreadyDecided,
     ParentalConsentNotFound,
     RateLimited,
 )
+from apps.core.rls import bypass_rls
 from apps.core.text import mask_email
 
 
@@ -305,16 +305,26 @@ def _status_label(consent: ParentalConsent) -> str:
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def parental_consent_status(request: Request, token: str) -> Response:
-    consent = ParentalConsent.objects.filter(token=token).select_related("student").first()
-    if consent is None:
-        raise ParentalConsentNotFound()
-    payload = {
-        "student_email_masked": mask_email(consent.student.email),
-        "child_age": _age_today(consent.student.birth_date),
-        "requested_at": consent.requested_at,
-        "expires_at": consent.expires_at,
-        "status": _status_label(consent),
-    }
+    # The parent is authenticated by URL token, not by `request.user` — so RLS
+    # sees an anonymous session and denies the SELECT on both `parental_consents`
+    # and `users` (via select_related). Open the audited bypass for the duration
+    # of this read-only lookup (Story 1.8 D3).
+    with bypass_rls(
+        reason="parental_consent.status_read",
+        metadata={"token_prefix": token[:8] if token else ""},
+    ):
+        consent = (
+            ParentalConsent.objects.filter(token=token).select_related("student").first()
+        )
+        if consent is None:
+            raise ParentalConsentNotFound()
+        payload = {
+            "student_email_masked": mask_email(consent.student.email),
+            "child_age": _age_today(consent.student.birth_date),
+            "requested_at": consent.requested_at,
+            "expires_at": consent.expires_at,
+            "status": _status_label(consent),
+        }
     return Response(ParentalConsentStatusSerializer(payload).data)
 
 
@@ -351,11 +361,23 @@ def parental_consent_decide(request: Request, token: str) -> Response:
     serializer = ParentalConsentDecisionSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    consent = ParentalConsent.objects.filter(token=token).select_related("student").first()
-    if consent is None:
-        raise ParentalConsentNotFound()
+    # The parent is authenticated by URL token (Story 1.4 ADR-0003), not by
+    # `request.user`. RLS sees an anonymous session and would deny every
+    # SELECT/UPDATE on `parental_consents` + `users`. The audited bypass
+    # opens for the duration of this endpoint (Story 1.8 D3).
+    with bypass_rls(
+        reason="parental_consent.decide",
+        metadata={
+            "token_prefix": token[:8] if token else "",
+            "decision": serializer.validated_data["decision"],
+        },
+    ):
+        consent = (
+            ParentalConsent.objects.filter(token=token).select_related("student").first()
+        )
+        if consent is None:
+            raise ParentalConsentNotFound()
 
-    try:
         consent = record_decision(
             consent=consent,
             decision=serializer.validated_data["decision"],
@@ -367,26 +389,21 @@ def parental_consent_decide(request: Request, token: str) -> Response:
             ip=_client_ip_from_request(request),
             user_agent=request.headers.get("user-agent"),
         )
-    except ParentalConsentAlreadyDecided:
-        # Already-decided or expired — surface the standard 409 Problem Details.
-        raise
 
-    # Idempotent: only send the "granted" mail on the actual state change. If a
-    # double-click squeezes past `select_for_update` (different worker / proc),
-    # `record_decision` would raise AlreadyDecided and we'd never reach here.
-    # Story 1.4 review §P14: stamp `notification_sent_at` only on success so the
-    # reconciliation Celery task `notify_unconfirmed_granted_consents` retries
-    # rows where SMTP failed at this point.
-    if consent.decision == "granted" and send_granted_to_child(consent.student):
-        consent.notification_sent_at = timezone.now()
-        consent.save(update_fields=["notification_sent_at", "updated_at"])
+        # Idempotent: only send the "granted" mail on the actual state change. If a
+        # double-click squeezes past `select_for_update` (different worker / proc),
+        # `record_decision` would raise AlreadyDecided and we'd never reach here.
+        # Story 1.4 review §P14: stamp `notification_sent_at` only on success so the
+        # reconciliation Celery task `notify_unconfirmed_granted_consents` retries
+        # rows where SMTP failed at this point.
+        if consent.decision == "granted" and send_granted_to_child(consent.student):
+            consent.notification_sent_at = timezone.now()
+            consent.save(update_fields=["notification_sent_at", "updated_at"])
 
-    return Response(
-        {
-            "decision": consent.decision,
-            "child_status": consent.student.status,
-        }
-    )
+        decision = consent.decision
+        child_status = consent.student.status
+
+    return Response({"decision": decision, "child_status": child_status})
 
 
 @extend_schema(

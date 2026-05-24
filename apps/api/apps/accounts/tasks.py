@@ -60,6 +60,7 @@ from apps.accounts.services.parental_consent_email import (
 )
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
+from apps.core.rls import with_system_actor
 
 log = structlog.get_logger(__name__)
 
@@ -85,23 +86,28 @@ def send_parental_consent_reminders() -> int:
     if mail dispatch raises, `reminder_sent_at` stays NULL and the next run retries.
     """
     cutoff = timezone.now() - timedelta(days=_REMINDER_AFTER_DAYS)
-    pending = ParentalConsent.objects.filter(
-        decision__isnull=True,
-        reminder_sent_at__isnull=True,
-        requested_at__lte=cutoff,
-        expires_at__gt=timezone.now(),
-    ).select_related("student")
 
-    sent = 0
-    for consent in pending:
-        try:
-            if send_reminder_to_parent(consent):
-                consent.reminder_sent_at = timezone.now()
-                consent.save(update_fields=["reminder_sent_at", "updated_at"])
-                sent += 1
-        except Exception:
-            log.exception("parental_consent.reminder_failed", consent_id=consent.id)
-            continue
+    # Story 1.8 D4: Celery has no `request.user`; without the audited bypass,
+    # the RLS policies deny every SELECT / UPDATE on `parental_consents` and
+    # the join with `users` via `select_related`.
+    with with_system_actor(reason="parental_consent.send_reminders"):
+        pending = ParentalConsent.objects.filter(
+            decision__isnull=True,
+            reminder_sent_at__isnull=True,
+            requested_at__lte=cutoff,
+            expires_at__gt=timezone.now(),
+        ).select_related("student")
+
+        sent = 0
+        for consent in pending:
+            try:
+                if send_reminder_to_parent(consent):
+                    consent.reminder_sent_at = timezone.now()
+                    consent.save(update_fields=["reminder_sent_at", "updated_at"])
+                    sent += 1
+            except Exception:
+                log.exception("parental_consent.reminder_failed", consent_id=consent.id)
+                continue
 
     log.info("parental_consent.reminders_sent", count=sent)
     return sent
@@ -115,27 +121,33 @@ def suspend_unresolved_parental_consents() -> int:
     user accounts flipped — important for the Celery beat structlog summary.
     """
     now = timezone.now()
-    expired = ParentalConsent.objects.filter(
-        decision__isnull=True,
-        expires_at__lte=now,
-    ).select_related("student")
 
-    suspended_count = 0
-    for consent in expired:
-        student = consent.student
-        if student.status == UserStatus.SUSPENDED:
-            continue
-        try:
-            suspend_for_unresolved_consent(consent=consent)
-            send_expired_to_child(student)
-            suspended_count += 1
-        except Exception:
-            log.exception(
-                "parental_consent.suspend_failed",
-                consent_id=consent.id,
-                user_id=student.id,
-            )
-            continue
+    # Story 1.8 D4: requires the audited system actor — touches both
+    # `parental_consents` (SELECT) and `users` (UPDATE via the suspend service +
+    # role-change which is also gated by the anti-escalation trigger; the
+    # `actor_role='system'` GUC lets the trigger through).
+    with with_system_actor(reason="parental_consent.suspend_unresolved"):
+        expired = ParentalConsent.objects.filter(
+            decision__isnull=True,
+            expires_at__lte=now,
+        ).select_related("student")
+
+        suspended_count = 0
+        for consent in expired:
+            student = consent.student
+            if student.status == UserStatus.SUSPENDED:
+                continue
+            try:
+                suspend_for_unresolved_consent(consent=consent)
+                send_expired_to_child(student)
+                suspended_count += 1
+            except Exception:
+                log.exception(
+                    "parental_consent.suspend_failed",
+                    consent_id=consent.id,
+                    user_id=student.id,
+                )
+                continue
 
     log.info("parental_consent.suspended", count=suspended_count)
     return suspended_count
@@ -149,21 +161,22 @@ def notify_unconfirmed_granted_consents() -> int:
     successful SMTP send. This hourly reconciliation closes the gap when the
     parent has clicked "Autoriser" but the child never got the confirmation.
     """
-    rows = ParentalConsent.objects.filter(
-        decision=ParentalConsentDecision.GRANTED,
-        notification_sent_at__isnull=True,
-    ).select_related("student")
+    with with_system_actor(reason="parental_consent.notify_unconfirmed_granted"):
+        rows = ParentalConsent.objects.filter(
+            decision=ParentalConsentDecision.GRANTED,
+            notification_sent_at__isnull=True,
+        ).select_related("student")
 
-    sent = 0
-    for consent in rows:
-        try:
-            if send_granted_to_child(consent.student):
-                consent.notification_sent_at = timezone.now()
-                consent.save(update_fields=["notification_sent_at", "updated_at"])
-                sent += 1
-        except Exception:
-            log.exception("parental_consent.grant_notify_failed", consent_id=consent.id)
-            continue
+        sent = 0
+        for consent in rows:
+            try:
+                if send_granted_to_child(consent.student):
+                    consent.notification_sent_at = timezone.now()
+                    consent.save(update_fields=["notification_sent_at", "updated_at"])
+                    sent += 1
+            except Exception:
+                log.exception("parental_consent.grant_notify_failed", consent_id=consent.id)
+                continue
 
     log.info("parental_consent.grant_notifications_sent", count=sent)
     return sent
@@ -216,6 +229,19 @@ Pour toute question : dpo@path-advisor.fr
 )
 def build_export(self, export_id: str) -> dict[str, Any]:
     """Assemble the encrypted ZIP, upload to S3, transition `pending → ready`."""
+    # Story 1.8 D4: Celery has no request actor — wrap the whole body in the
+    # audited system bypass so `User.objects.get(pk=user_id)` and exporters
+    # that read `users` (e.g., audit-log exporter) pass through RLS.
+    # `gdpr_export_requests` is itself NOT under RLS (no FORCE), but the
+    # exporters touch protected tables.
+    with with_system_actor(
+        reason="gdpr.build_export",
+        metadata={"export_id": export_id},
+    ):
+        return _build_export_impl(export_id)
+
+
+def _build_export_impl(export_id: str) -> dict[str, Any]:
     try:
         export = GdprExportRequest.objects.get(pk=export_id)
     except GdprExportRequest.DoesNotExist:
@@ -507,6 +533,15 @@ def notify_export_ready(*, export_id: str, password: str) -> dict[str, Any]:
     discarded on ACK. Retries on the narrow `_EMAIL_RETRY_EXC` keep that
     window bounded.
     """
+    # Story 1.8 D4: needs system actor to SELECT `users` for the email lookup.
+    with with_system_actor(
+        reason="gdpr.notify_export_ready",
+        metadata={"export_id": export_id},
+    ):
+        return _notify_export_ready_impl(export_id, password)
+
+
+def _notify_export_ready_impl(export_id: str, password: str) -> dict[str, Any]:
     try:
         export = GdprExportRequest.objects.get(pk=export_id)
     except GdprExportRequest.DoesNotExist:
@@ -585,21 +620,26 @@ def notify_export_ready(*, export_id: str, password: str) -> dict[str, Any]:
     retry_backoff=True,
 )
 def send_gdpr_export_failed_email(*, export_id: str) -> dict[str, Any]:
-    try:
-        export = GdprExportRequest.objects.get(pk=export_id)
-    except GdprExportRequest.DoesNotExist:
-        return {"skipped": "missing"}
+    # Story 1.8 D4: SELECT on `users` requires system actor bypass.
+    with with_system_actor(
+        reason="gdpr.send_failed_email",
+        metadata={"export_id": export_id},
+    ):
+        try:
+            export = GdprExportRequest.objects.get(pk=export_id)
+        except GdprExportRequest.DoesNotExist:
+            return {"skipped": "missing"}
 
-    user = User.objects.filter(pk=export.user_id).only("email").first()
-    if user is None or not user.email:
-        return {"skipped": "no_email"}
+        user = User.objects.filter(pk=export.user_id).only("email").first()
+        if user is None or not user.email:
+            return {"skipped": "no_email"}
 
-    _send_gdpr_email(
-        subject="[Path-Advisor] Ton export RGPD a échoué",
-        template="accounts/email/gdpr_export_failed",
-        to=user.email,
-        context={"export": export},
-    )
+        _send_gdpr_email(
+            subject="[Path-Advisor] Ton export RGPD a échoué",
+            template="accounts/email/gdpr_export_failed",
+            to=user.email,
+            context={"export": export},
+        )
     return {"sent": "failed"}
 
 
