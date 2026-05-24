@@ -27,4 +27,28 @@ urlpatterns = [
         views.parental_consent_decide,
         name="parental-consent-decide",
     ),
+    # Story 1.12 — Account deletion (GDPR Article 17). The `/me/...` namespace is for
+    # the authenticated user's own request/status; the top-level `account-deletion/<token>/`
+    # mounts the public cancel flow (no auth — the token IS the authentication, same
+    # contract as the parental-consent landing).
+    path(
+        "me/account-deletion/",
+        views.account_deletion_request,
+        name="account-deletion-request",
+    ),
+    path(
+        "me/account-deletion/status/",
+        views.account_deletion_status_authenticated,
+        name="account-deletion-status-self",
+    ),
+    path(
+        "account-deletion/<str:token>/",
+        views.account_deletion_status_public,
+        name="account-deletion-status-public",
+    ),
+    path(
+        "account-deletion/<str:token>/cancel/",
+        views.account_deletion_cancel,
+        name="account-deletion-cancel",
+    ),
 ]

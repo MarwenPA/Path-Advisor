@@ -1,11 +1,11 @@
-# GDPR Article 20 — Data Portability Export
+# GDPR Articles 17 & 20 — Erasure + Portability Runbook
 
 **Owners:** DPO / Engineering on-call
-**Stories:** 1.11 (build), 1.13 (audit), future 1.12 (account deletion).
+**Stories:** 1.11 (portability), 1.12 (erasure), 1.13 (audit log).
 
-This runbook describes how a Path-Advisor GDPR export works end-to-end, how to
-help users in trouble, and how to issue a manual export when the self-service
-flow is not usable (e.g. account lockout).
+Two related but distinct flows are documented here:
+- **Article 20** (portability — data export) — §1-3 below. Story 1.11.
+- **Article 17** (right to erasure — account deletion) — §7-9 below. Story 1.12.
 
 ---
 
@@ -201,3 +201,117 @@ Story 1.13). For a single user, append `&subject_id=usr_...`.
   when the i18n surface is needed (Epic 7+).
 - Password recovery / re-issuance for an already-built ZIP — explicitly out of
   scope. We re-issue a new export rather than the old password (security).
+
+---
+
+## 7. Article 17 — Account deletion lifecycle (Story 1.12)
+
+The right-to-erasure pipeline runs in **two phases** with a 30-day grace
+window separating them:
+
+1. **Soft-delete (instant on user click)** — `User.status = DELETED`,
+   `User.is_active = False`, Django sessions terminated, confirmation email
+   with a cancel link sent synchronously. The user receives the cancel link
+   valid 30 days; the audit row `gdpr.account_deletion_requested` is written
+   inside the same transaction.
+2. **Hard-delete (Celery beat, daily at 03:45 Paris)** — for every row where
+   `cancelled_at IS NULL AND hard_deleted_at IS NULL AND hard_delete_after <= now()`:
+   purge S3 prefixes registered in `GDPR_USER_OWNED_S3_PREFIXES`, write the
+   audit row `gdpr.account_hard_deleted`, then `user.delete()` which cascades
+   `parental_consents` (and any other FK with `on_delete=CASCADE`). The
+   `AccountDeletionRequest` row itself survives via `SET_NULL` — it is part
+   of the audit story (3-year retention per NFR-S4).
+
+State machine on the request row:
+
+```
+   pending  ──── user/DPO cancel ────►  cancelled (terminal)
+      │
+      ▼
+   pending past grace ────► sweep ────► hard_deleted (terminal)
+                                │
+                                └─── failed (attempt < 7) ──► retried next day
+                                └─── attempt == 7 ──► giving_up audit row, row frozen
+```
+
+---
+
+## 8. Helping a user who can't find the cancel email
+
+The 30-day grace window is meant exactly for this. The recovery paths, in order
+of preference:
+
+1. **Re-fetch the cancel link** from the Mailpit / Postmark inbox-events
+   (Mailpit UI at `:8025` in dev; Postmark dashboard in prod). The link has the
+   form `https://path-advisor.fr/auth/cancel-deletion/<token>`.
+2. **DPO override via Django admin** — covered in §9 below. Requires the
+   `accounts.cancel_deletion_request` permission.
+3. **If the 30 days are up**, the row is `hard_deleted`. Data is gone. Inform
+   the user politely that the deletion is irreversible past day 30 and they can
+   create a new account if they wish. **DO NOT promise restoration** —
+   there is nothing to restore.
+
+---
+
+## 9. DPO override cancel (admin action)
+
+When a user contacts support claiming they did not request the deletion or
+cannot find the cancel email:
+
+1. Verify the user's identity through the support callback procedure
+   (out-of-band; the support team owns the playbook). At minimum: cross-check
+   email + birth-date + a piece of profile data only the legitimate user
+   would know.
+2. Open Django admin → "Account deletion requests" → click the row → click
+   **"Cancel (DPO)"** in the action column. The action is only visible on
+   rows still in the grace window.
+3. Fill the **mandatory** `cancel_reason` text — be specific:
+   - `"support callback 2026-05-30 — verified identity via birth-date + last login IP"`
+   - `"user reported phishing on 2026-05-29; account hijack ruled out — see incident PA-2026-031"`
+4. Submit. The action:
+   - Writes `cancel_reason = "dpo_override:<your_user_id>:<your_text>"`.
+   - Restores the user (`status=ACTIVE`, `is_active=True`, `deleted_at=NULL`).
+   - Sends the "Suppression annulée" email.
+   - Writes `gdpr.account_deletion_cancelled` with `actor_id=<your_user_id>`
+     and `metadata.via = "dpo_override"`.
+
+**Permission gate:** without the explicit `accounts.cancel_deletion_request`
+permission, the action returns an error. Grant the perm to DPO users via Django
+admin → Users → user → "User permissions" — DO NOT add the user to
+`is_superuser` solely for this purpose.
+
+---
+
+## 10. Frozen rows (max-attempts cap fired)
+
+If you see `gdpr.account_hard_delete_giving_up` audit rows, the sweep has
+given up on a particular deletion (default cap: 7 daily attempts). The row
+stays in `account_deletion_requests` with `hard_deleted_at IS NULL` and
+`hard_delete_attempt_count >= 7`. To recover:
+
+1. Identify the blocker via `last_failure_code` on the row (typically
+   `BotoCoreError` or `ClientError` — an S3 issue).
+2. Fix the upstream issue (bucket policy, network ACL, credentials, …).
+3. **Manually reset the attempt counter via Django shell**:
+   ```python
+   from apps.accounts.models import AccountDeletionRequest
+   AccountDeletionRequest.objects.filter(pk="adr_…").update(hard_delete_attempt_count=0)
+   ```
+4. The next sweep run (or manual trigger via `python manage.py shell -c
+   "from apps.accounts.tasks import sweep_account_deletions; sweep_account_deletions.delay()"`)
+   will retry.
+
+---
+
+## 11. Article 17 / Article 20 interaction
+
+When a user requests **both** an Article 20 export AND an Article 17 deletion:
+
+- The export legally precedes the deletion (the user is asking for *their copy*
+  before we wipe ours). Let the export finish and deliver before the sweep
+  fires.
+- The sweep purges the entire `gdpr-exports/<user_id>/` prefix, so any
+  pending/in-flight export ZIPs are cleaned up alongside the user data.
+- The user's confirmation email mentions the still-valid export link (up to 7
+  days even after the user account is gone — by design, see Story 1.11's
+  comment on `GdprExportRequest.user_id` being a logical FK).

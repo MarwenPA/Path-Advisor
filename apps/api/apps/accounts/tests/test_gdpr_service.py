@@ -85,9 +85,10 @@ def test_partial_unique_index_translates_race_into_in_progress_409():
     # returned False (we patch the check to lie about the absence).
     GdprExportRequest.objects.create(user_id=user.id, status=GdprExportStatus.PENDING)
 
-    with patch(
-        "apps.accounts.services.gdpr_service._has_active_export", return_value=False
-    ), pytest.raises(GdprExportInProgress):
+    with (
+        patch("apps.accounts.services.gdpr_service._has_active_export", return_value=False),
+        pytest.raises(GdprExportInProgress),
+    ):
         GdprExportService.request_export(user=user)
 
 

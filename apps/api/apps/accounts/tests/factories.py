@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import date, timedelta
 
 import factory
+from django.contrib.auth.hashers import make_password
 from django.utils import timezone
 
 from apps.accounts.models import (
+    AccountDeletionRequest,
     GdprExportRequest,
     GdprExportStatus,
     User,
@@ -71,9 +74,44 @@ class ReadyGdprExportFactory(GdprExportRequestFactory):
     status = GdprExportStatus.READY
     ready_at = factory.LazyFunction(timezone.now)
     expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(days=7))
-    archive_s3_key = factory.LazyAttribute(
-        lambda obj: f"gdpr-exports/{obj.user_id}/{obj.id}.zip"
-    )
+    archive_s3_key = factory.LazyAttribute(lambda obj: f"gdpr-exports/{obj.user_id}/{obj.id}.zip")
     archive_size_bytes = 1024
     archive_sha256 = "0" * 64
     password_hash = "argon2$dummy$hash"
+
+
+class DeletedUserFactory(UserFactory):
+    """Post-soft-delete state — status=DELETED, is_active=False."""
+
+    status = UserStatus.DELETED
+    is_active = False
+    deleted_at = factory.LazyFunction(timezone.now)
+
+
+class PendingDeletionRequestFactory(factory.django.DjangoModelFactory):
+    """Default: in-flight deletion request (cancelled_at IS NULL, hard_deleted_at IS NULL).
+
+    Useful for testing both the cancel endpoint (still in grace window) and the
+    sweep (when `hard_delete_after` is overridden to a past timestamp).
+    """
+
+    class Meta:
+        model = AccountDeletionRequest
+
+    user = factory.SubFactory(UserFactory)
+    user_id_snapshot = factory.LazyAttribute(lambda obj: str(obj.user.id))
+    cancel_token = factory.LazyFunction(lambda: secrets.token_urlsafe(32))
+    requested_at = factory.LazyFunction(timezone.now)
+    hard_delete_after = factory.LazyFunction(
+        lambda: timezone.now() + timedelta(days=30),
+    )
+    password_hash_at_request = factory.LazyFunction(
+        lambda: make_password("Path-Advisor-2026!"),
+    )
+
+
+class HardDeletedDeletionRequestFactory(PendingDeletionRequestFactory):
+    """Terminal-state row used to assert idempotency of the sweep."""
+
+    hard_deleted_at = factory.LazyFunction(timezone.now)
+    user = None  # post-cascade row — FK is SET_NULL

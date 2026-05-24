@@ -1,0 +1,16 @@
+Salut,
+
+Ton compte Path-Advisor et l'ensemble de tes données personnelles ont
+été supprimés définitivement, conformément à ta demande et à l'article
+17 du RGPD (droit à l'effacement).
+
+Seul le journal d'audit pseudonymisé est conservé 3 ans, comme l'exige
+la loi pour permettre une éventuelle réponse à une enquête CNIL. Il ne
+contient plus aucune donnée permettant de te ré-identifier.
+
+Si tu souhaites créer un nouveau compte Path-Advisor un jour, tu peux
+le faire à tout moment — avec la même adresse email si tu le veux.
+
+Pour toute question : dpo@path-advisor.fr
+
+L'équipe Path-Advisor

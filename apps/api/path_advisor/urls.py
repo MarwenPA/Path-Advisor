@@ -8,7 +8,11 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
 )
 
-from apps.accounts.views import ThrottledRegisterView, ThrottledResendEmailView
+from apps.accounts.views import (
+    ThrottledLoginView,
+    ThrottledRegisterView,
+    ThrottledResendEmailView,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -23,6 +27,10 @@ urlpatterns = [
         ThrottledResendEmailView.as_view(),
         name="rest_resend_email",
     ),
+    # Story 1.12 — override the default login endpoint with a per-IP throttle
+    # to cap enumeration via the DELETED-state 403 leak. Must come BEFORE the
+    # dj_rest_auth.urls include below so `name="rest_login"` resolves here.
+    path("api/v1/auth/login/", ThrottledLoginView.as_view(), name="rest_login"),
     path("api/v1/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/auth/", include("dj_rest_auth.urls")),
     path("api/v1/", include("apps.core.urls")),

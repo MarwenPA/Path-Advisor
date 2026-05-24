@@ -48,9 +48,12 @@ def _on_user_signed_up(sender, request, user, **kwargs) -> None:
         # the consent row INSERT. The `ParentalConsent.save()` override
         # also reads the student's `tenant_id` from `users`, which is RLS-
         # protected. Audited via `rls.bypass_used` so every entry is grepable.
-        with transaction.atomic(), bypass_rls(
-            reason="parental_consent.signup_signal",
-            metadata={"student_id": user.id},
+        with (
+            transaction.atomic(),
+            bypass_rls(
+                reason="parental_consent.signup_signal",
+                metadata={"student_id": user.id},
+            ),
         ):
             consent = create_parental_consent_request(
                 student=user,

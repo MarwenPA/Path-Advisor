@@ -49,9 +49,7 @@ def test_build_export_happy_path(fake_s3, settings):
 @pytest.mark.django_db
 def test_build_export_is_idempotent_on_replay(fake_s3):
     user = UserFactory()
-    export = GdprExportRequest.objects.create(
-        user_id=user.id, status=GdprExportStatus.READY
-    )
+    export = GdprExportRequest.objects.create(user_id=user.id, status=GdprExportStatus.READY)
     result = build_export(export_id=export.id)
     assert result == {"skipped": "ready"}
 

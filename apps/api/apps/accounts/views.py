@@ -20,6 +20,7 @@ from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView
+from dj_rest_auth.views import LoginView
 from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import F
@@ -40,16 +41,28 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from apps.accounts.gdpr_exceptions import (
+    AccountDeletionNoPending,
+    AccountDeletionNotFound,
     GdprExportDownloadCap,
     GdprExportExpired,
     GdprExportNotReady,
 )
-from apps.accounts.models import GdprExportRequest, GdprExportStatus, ParentalConsent
+from apps.accounts.models import (
+    AccountDeletionRequest,
+    GdprExportRequest,
+    GdprExportStatus,
+    ParentalConsent,
+)
 from apps.accounts.serializers import (
+    AccountDeletionCancelPayloadSerializer,
+    AccountDeletionPublicStatusSerializer,
+    AccountDeletionRequestPayloadSerializer,
+    AccountDeletionRequestSerializer,
     GdprExportRequestSerializer,
     ParentalConsentDecisionSerializer,
     ParentalConsentStatusSerializer,
 )
+from apps.accounts.services import account_deletion as account_deletion_service
 from apps.accounts.services.gdpr_service import (
     GdprExportService,
     gdpr_s3_client,
@@ -107,6 +120,28 @@ class ThrottledRegisterView(RegisterView):
             # serializer level, so the public response is uniform regardless of which
             # branch caught the duplicate.
             raise EmailAlreadyRegistered() from exc
+
+
+@method_decorator(ratelimit(key="ip", rate="5/m", block=False), name="dispatch")
+class ThrottledLoginView(LoginView):
+    """Login endpoint with a per-IP throttle (Story 1.12 code review §D5).
+
+    The custom `PathAdvisorLoginSerializer` deliberately leaks the DELETED
+    user state via a typed 403 (so the front can route to the cancel-flow
+    info page). To keep that leak from being exploited as an enumeration
+    oracle, this view caps login attempts at 5/min/IP. A legitimate user
+    rarely needs more than a few attempts; a CGNAT-shared IP that hits the
+    cap retries in a minute.
+
+    Story 1.5 is the canonical home for login UX hardening; this
+    pre-emptive throttle ships with 1.12 because the leak is introduced
+    here. Revisit when 1.5 lands.
+    """
+
+    def post(self, request, *args, **kwargs):
+        if getattr(request, "limited", False):
+            raise RateLimited(retry_after_seconds=60)
+        return super().post(request, *args, **kwargs)
 
 
 @method_decorator(ratelimit(key="ip", rate="5/h", block=False), name="dispatch")
@@ -313,9 +348,7 @@ def parental_consent_status(request: Request, token: str) -> Response:
         reason="parental_consent.status_read",
         metadata={"token_prefix": token[:8] if token else ""},
     ):
-        consent = (
-            ParentalConsent.objects.filter(token=token).select_related("student").first()
-        )
+        consent = ParentalConsent.objects.filter(token=token).select_related("student").first()
         if consent is None:
             raise ParentalConsentNotFound()
         payload = {
@@ -372,9 +405,7 @@ def parental_consent_decide(request: Request, token: str) -> Response:
             "decision": serializer.validated_data["decision"],
         },
     ):
-        consent = (
-            ParentalConsent.objects.filter(token=token).select_related("student").first()
-        )
+        consent = ParentalConsent.objects.filter(token=token).select_related("student").first()
         if consent is None:
             raise ParentalConsentNotFound()
 
@@ -460,3 +491,175 @@ def _client_ip_from_request(request: Request) -> str | None:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.META.get("REMOTE_ADDR")
+
+
+# --- Story 1.12 — Account deletion (GDPR Article 17, right to erasure) --------
+
+
+def _ratelimit_key_by_deletion_token(group, request) -> str:
+    """Per-token rate-limit key for the public cancel endpoint.
+
+    Same defensive shape as `_ratelimit_key_by_consent_token` — `resolver_match`
+    can be None in some middleware paths (test RequestFactory, early 404).
+    """
+    if request.resolver_match is None:
+        return ""
+    return request.resolver_match.kwargs.get("token", "")
+
+
+def _deletion_public_status_label(deletion: AccountDeletionRequest) -> str:
+    """Map the (cancelled_at, hard_deleted_at, hard_delete_after) tuple to the
+    4-state label the public landing consumes.
+    """
+    if deletion.hard_deleted_at is not None:
+        return "hard_deleted"
+    if deletion.cancelled_at is not None:
+        return "cancelled"
+    if deletion.is_past_grace_window:
+        return "expired"
+    return "pending_hard_delete"
+
+
+@extend_schema(
+    summary="Request account deletion (GDPR Article 17)",
+    description=(
+        "Soft-deletes the authenticated user, killing all their active sessions and "
+        "scheduling a hard-delete cascade 30 days later. Returns 202 with the request "
+        "metadata + cancel deadline. The cancel link is delivered via email only."
+    ),
+    request=AccountDeletionRequestPayloadSerializer,
+    responses={202: AccountDeletionRequestSerializer},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+# Per-IP throttle: legitimate users may make 2-3 attempts (wrong password
+# typos); above 3/24h is suspicious activity worth slowing down.
+@ratelimit(key="ip", rate="3/24h", block=False)
+def account_deletion_request(request: Request) -> Response:
+    if getattr(request, "limited", False):
+        raise RateLimited(retry_after_seconds=86400)
+
+    payload = AccountDeletionRequestPayloadSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+
+    deletion = account_deletion_service.request_deletion(
+        user=request.user,
+        password=payload.validated_data["password"],
+        content_hash=payload.validated_data["content_hash"],
+        accepted_at=payload.validated_data["accepted_at"],
+        ip=_client_ip_from_request(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+
+    serialized = AccountDeletionRequestSerializer(deletion).data
+    return Response(serialized, status=drf_status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(
+    summary="Get my pending account-deletion request",
+    description=(
+        "Returns the authenticated user's in-flight account-deletion request (404 if "
+        "none). The front uses this to disable the delete button + show the grace-"
+        "window deadline when a request is already in flight."
+    ),
+    responses={200: AccountDeletionRequestSerializer, 404: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def account_deletion_status_authenticated(request: Request) -> Response:
+    deletion = account_deletion_service.lookup_active_request_for_user(request.user)
+    if deletion is None:
+        # Story 1.12 code review §P17: differentiate the "no in-flight request"
+        # 404 from the public token endpoint's "unknown token" 404 by using a
+        # dedicated Problem URI so the front can switch on `type`.
+        raise AccountDeletionNoPending()
+    return Response(AccountDeletionRequestSerializer(deletion).data)
+
+
+@extend_schema(
+    summary="Public lookup of an account-deletion request by token",
+    description=(
+        "Used by the public cancel landing page. Returns the masked email and the "
+        "deadline so the user can recognise their account before re-authenticating."
+    ),
+    responses={200: AccountDeletionPublicStatusSerializer, 404: None},
+    auth=[],
+)
+@api_view(["GET"])
+@permission_classes([AllowAny])
+# Per-IP rate-limit: someone enumerating tokens won't get far at this rate (256-bit
+# entropy makes brute force impractical anyway), but we slow noise down in the logs.
+@ratelimit(key="ip", rate="30/h", block=False)
+def account_deletion_status_public(request: Request, token: str) -> Response:
+    if getattr(request, "limited", False):
+        raise RateLimited(retry_after_seconds=3600)
+
+    deletion = account_deletion_service.lookup_request_by_token(token)
+    # Story 1.12 code review §D3: anti-enumeration on terminal states. A
+    # token whose row is cancelled / hard_deleted / past the grace window
+    # leaks "yes Alice's account was deleted on date X" to anyone holding
+    # the token (e.g. a leaked email forward). Return 404 instead of an
+    # informative payload — the legitimate user opens an old cancel link and
+    # sees the "lien invalide ou expiré" copy on the public landing, which
+    # is the right UX for a window that's already closed.
+    label = _deletion_public_status_label(deletion)
+    if label in ("cancelled", "hard_deleted", "expired"):
+        raise AccountDeletionNotFound()
+
+    # Story 1.12 code review §P11: a row with `user=NULL` but no
+    # `hard_deleted_at` is an invariant violation (cascade hasn't fired).
+    # Refuse it instead of leaking a `***@***` placeholder to whoever held
+    # the token.
+    user_ref = deletion.user
+    if user_ref is None:
+        raise AccountDeletionNotFound()
+
+    payload = {
+        "user_email_masked": mask_email(user_ref.email),
+        "requested_at": deletion.requested_at,
+        "hard_delete_after": deletion.hard_delete_after,
+        "status": label,
+    }
+    return Response(AccountDeletionPublicStatusSerializer(payload).data)
+
+
+@extend_schema(
+    summary="Cancel an account-deletion request (public, token-based)",
+    description=(
+        "Public endpoint used by the cancel-link landing. Re-authenticates the user "
+        "against the CURRENT password hash and restores the account if the grace "
+        "window has not expired. Single-use semantics — after the row is cancelled, "
+        "subsequent calls return 409."
+    ),
+    request=AccountDeletionCancelPayloadSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {"detail": {"type": "string"}},
+        }
+    },
+    auth=[],
+)
+@api_view(["POST"])
+@permission_classes([AllowAny])
+# Stacked rate-limit — Story 1.12 code review §P2 / AC5: 5/h per IP + 5/h per
+# token. Tight enough to throttle a leaked-token replay attempt without
+# locking out a legitimate user who typo'd their password twice. The 256-bit
+# token entropy is the primary defence; these caps just slow log noise.
+@ratelimit(key="ip", rate="5/h", block=False)
+@ratelimit(key=_ratelimit_key_by_deletion_token, rate="5/h", block=False)
+def account_deletion_cancel(request: Request, token: str) -> Response:
+    if getattr(request, "limited", False):
+        raise RateLimited(retry_after_seconds=3600)
+
+    payload = AccountDeletionCancelPayloadSerializer(data=request.data)
+    payload.is_valid(raise_exception=True)
+
+    deletion = account_deletion_service.lookup_request_by_token(token)
+    account_deletion_service.cancel_deletion(
+        request=deletion,
+        password=payload.validated_data["password"],
+        cancel_reason="user_self_service",
+    )
+
+    return Response({"detail": "Ton compte est restauré. Tu peux te reconnecter."})

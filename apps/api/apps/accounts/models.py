@@ -1,4 +1,5 @@
-"""Path-Advisor accounts models — User (Story 1.3) + GdprExportRequest (Story 1.11)."""
+"""Path-Advisor accounts models — User (Story 1.3) + GdprExportRequest (Story 1.11) +
+AccountDeletionRequest (Story 1.12 — right to erasure)."""
 
 from __future__ import annotations
 
@@ -28,6 +29,19 @@ def _default_parental_consent_id() -> str:
 def _default_parental_consent_expires_at() -> timezone.datetime:
     # 60-day window — matches the AC6 suspension job (Story 1.4 §AC1).
     return timezone.now() + timedelta(days=60)
+
+
+def _default_account_deletion_id() -> str:
+    return generate_id("adr")
+
+
+def _default_account_deletion_hard_delete_after() -> timezone.datetime:
+    # 30-day grace window (Story 1.12 §AC1). Imported lazily to avoid circular
+    # import at module load — `settings` may need apps.accounts to be ready.
+    from django.conf import settings
+
+    days = getattr(settings, "GDPR_ACCOUNT_DELETION_GRACE_DAYS", 30)
+    return timezone.now() + timedelta(days=days)
 
 
 class UserRole(models.TextChoices):
@@ -208,6 +222,127 @@ class GdprExportRequest(models.Model):
         return self.status == GdprExportStatus.READY
 
 
+class AccountDeletionRequest(models.Model):
+    """User-initiated account deletion request — GDPR Article 17 (right to erasure).
+
+    Lifecycle (Story 1.12):
+        soft-delete (User.status = DELETED, is_active = False) at create time
+        ───────── 30-day grace window ─────────
+        cancel via /cancel/ endpoint OR DPO admin override ──► status restored
+                              OR
+        hard-delete sweep (`accounts.sweep_account_deletions`) ──► User.delete()
+            cascades parental_consents, S3 prefixes purged, audit row written.
+
+    The `user` FK uses `on_delete=models.SET_NULL` so the row survives the
+    User cascade — it is itself an audit artifact (NFR-S4, 3-year retention).
+    `user_id_snapshot` carries the original id past the SET_NULL so post-delete
+    rows still answer "which user did this concern" without a join.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        default=_default_account_deletion_id,
+        editable=False,
+    )
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        related_name="deletion_requests",
+        null=True,
+        blank=True,
+    )
+    # Frozen at create time so the row survives the SET_NULL when hard-delete fires.
+    # Indexed because the in-flight check (AC2) queries by this column when `user_id` may be NULL.
+    user_id_snapshot = models.CharField(max_length=32, db_index=True)
+
+    # `secrets.token_urlsafe(32)` → 43 base64 chars (256 bits of entropy); the
+    # column is sized at 64 chars to leave room for future token schemes.
+    cancel_token = models.CharField(max_length=64, unique=True, db_index=True)
+
+    requested_at = models.DateTimeField(default=timezone.now, db_index=True)
+    # Denormalised `requested_at + GDPR_ACCOUNT_DELETION_GRACE_DAYS` — keeps the
+    # sweep query fast and immune to clock skew on the worker.
+    hard_delete_after = models.DateTimeField(default=_default_account_deletion_hard_delete_after)
+
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    # Free-form, prefixed by source: `user_self_service:<reason?>` /
+    # `dpo_override:<dpo_user_id>:<reason>` / `system:<reason>`. The DPO filter
+    # in the audit playbook keys on the prefix.
+    cancel_reason = models.CharField(max_length=200, null=True, blank=True)  # noqa: DJ001
+
+    hard_deleted_at = models.DateTimeField(null=True, blank=True)
+    # Cap on retry storms when the hard-delete step keeps failing (e.g. S3
+    # outage). After GDPR_ACCOUNT_DELETION_MAX_HARD_DELETE_ATTEMPTS, the sweep
+    # writes `gdpr.account_hard_delete_giving_up` and skips the row.
+    hard_delete_attempt_count = models.PositiveSmallIntegerField(default=0)
+    # Last failure surface for the DPO incident playbook — only the exception
+    # CLASS NAME is stored (matches the Story 1.11 sanitisation pattern).
+    last_failure_code = models.CharField(max_length=50, null=True, blank=True)  # noqa: DJ001
+
+    # Forensic context — same shape as ParentalConsent's decision_* columns.
+    requested_ip_truncated = models.CharField(max_length=45, null=True, blank=True)  # noqa: DJ001
+    requested_user_agent = models.CharField(max_length=200, null=True, blank=True)  # noqa: DJ001
+
+    # `make_password(submitted_password)` from the moment of request. Stored
+    # for forensic continuity ("the user proved they knew this hash on this
+    # date") — NEVER consulted as the cancel-time auth check (that one calls
+    # `user.check_password` against the CURRENT hash; cf. story §4.5 #4).
+    password_hash_at_request = models.CharField(max_length=128)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "account_deletion_requests"
+        ordering: ClassVar[list[str]] = ["-requested_at"]
+        indexes: ClassVar[list[models.Index]] = [
+            # Sweep query: `cancelled_at IS NULL AND hard_deleted_at IS NULL AND hard_delete_after <= now`.
+            models.Index(
+                fields=["hard_delete_after", "cancelled_at", "hard_deleted_at"],
+                name="idx_acct_del_sweep",
+            ),
+            # AC2 in-flight lookup by user (post-cascade rows have user=NULL so this
+            # index complements the FK index without overlapping).
+            models.Index(
+                fields=["user_id_snapshot", "-requested_at"],
+                name="idx_acct_del_user_req",
+            ),
+        ]
+        # Partial unique index — only one in-flight deletion per user (mirrors
+        # the GdprExportRequest pattern from Story 1.11). Two concurrent POSTs
+        # both passing the application-level check fail-fast on this constraint.
+        constraints: ClassVar[list] = [
+            models.UniqueConstraint(
+                fields=["user_id_snapshot"],
+                condition=models.Q(cancelled_at__isnull=True, hard_deleted_at__isnull=True),
+                name="uniq_acct_del_active_per_user",
+            ),
+        ]
+        # Custom permission for the DPO override action (Story 1.12 §AC9). Grant
+        # this on a per-user basis instead of relying on `is_superuser` so the
+        # auditable identity stays sharp.
+        permissions: ClassVar[list[tuple[str, str]]] = [
+            ("cancel_deletion_request", "Can cancel an in-flight account-deletion request (DPO)"),
+        ]
+
+    def __str__(self) -> str:
+        state = "pending"
+        if self.hard_deleted_at:
+            state = "hard_deleted"
+        elif self.cancelled_at:
+            state = "cancelled"
+        return f"AccountDeletionRequest({self.id}, user={self.user_id_snapshot}, state={state})"
+
+    @property
+    def is_pending(self) -> bool:
+        return self.cancelled_at is None and self.hard_deleted_at is None
+
+    @property
+    def is_past_grace_window(self) -> bool:
+        return self.hard_delete_after <= timezone.now()
+
+
 class ParentalConsentDecision(models.TextChoices):
     GRANTED = "granted", "Autorisé"
     REFUSED = "refused", "Refusé"
@@ -293,9 +428,14 @@ class ParentalConsent(models.Model):
         # the RLS policy can filter without joining. Only auto-fill on first
         # save / when missing — explicit caller overrides win.
         if self.tenant_id is None and self.student_id:
-            student_tenant = type(self).student.field.related_model.objects.filter(
-                pk=self.student_id,
-            ).values_list("tenant_id", flat=True).first()
+            student_tenant = (
+                type(self)
+                .student.field.related_model.objects.filter(
+                    pk=self.student_id,
+                )
+                .values_list("tenant_id", flat=True)
+                .first()
+            )
             self.tenant_id = student_tenant
         super().save(*args, **kwargs)  # type: ignore[misc]
 

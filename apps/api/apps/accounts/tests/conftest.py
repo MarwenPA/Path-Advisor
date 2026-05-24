@@ -44,10 +44,7 @@ class FakeS3:
 
     def generate_presigned_url(self, op, *, Params, ExpiresIn):
         self.presign_calls.append({"op": op, "params": Params, "ttl": ExpiresIn})
-        return (
-            f"https://fake-s3.test/{Params['Bucket']}/{Params['Key']}"
-            f"?X-Amz-Expires={ExpiresIn}"
-        )
+        return f"https://fake-s3.test/{Params['Bucket']}/{Params['Key']}?X-Amz-Expires={ExpiresIn}"
 
 
 @pytest.fixture

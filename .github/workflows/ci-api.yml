@@ -40,6 +40,11 @@ jobs:
       - name: Pytest
         run: uv run pytest -q
 
+      - name: Assert user-cascade contract (Story 1.12)
+        # Refuses any FK to User with on_delete other than CASCADE / SET_NULL —
+        # would break the right-to-erasure cascade pipeline.
+        run: uv run python scripts/assert_user_cascade.py
+
       - name: Export OpenAPI schema
         run: uv run python scripts/export_openapi.py
 

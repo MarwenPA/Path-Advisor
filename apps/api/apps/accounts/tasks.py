@@ -368,9 +368,7 @@ def _build_export_impl(export_id: str) -> dict[str, Any]:
         return {"failed": code}
 
 
-def _build_zip(
-    *, user: User, password: str
-) -> tuple[bytes, dict[str, Any], dict[str, str]]:
+def _build_zip(*, user: User, password: str) -> tuple[bytes, dict[str, Any], dict[str, str]]:
     """Build the in-memory AES-256 encrypted ZIP and return (bytes, manifest, errors).
 
     Streaming-to-disk is deferred until Story 2.3 ships an exporter heavy enough
@@ -421,9 +419,7 @@ def _build_zip(
                         }
                     )
                     entries_count += 1
-                domains_summary.append(
-                    {"name": domain, "entries": entries_count, "errors": 0}
-                )
+                domains_summary.append({"name": domain, "entries": entries_count, "errors": 0})
             except Exception as exc:
                 # One exporter failing does not abort the whole export — the
                 # remaining domains keep their data. The error is recorded both
@@ -441,27 +437,22 @@ def _build_zip(
                         "sha256": hashlib.sha256(err_bytes).hexdigest(),
                     }
                 )
-                domains_summary.append(
-                    {"name": domain, "entries": entries_count, "errors": 1}
-                )
+                domains_summary.append({"name": domain, "entries": entries_count, "errors": 1})
                 log.warning("gdpr.exporter_failed", domain=domain, error=str(exc))
 
         # Manifest is written LAST so its `files` list reflects every other
         # entry above (excluding itself).
         manifest = {
             "schema_version": SCHEMA_VERSION,
-            "format": (
-                "ISO Article 20 RGPD — structured, machine-readable, "
-                "commonly used"
-            ),
+            "format": ("ISO Article 20 RGPD — structured, machine-readable, commonly used"),
             "user_id": user.id,
             "generated_at": timezone.now().isoformat(),
             "domains": domains_summary,
             "files": files,
         }
-        manifest_bytes = json.dumps(
-            manifest, indent=2, ensure_ascii=False, sort_keys=True
-        ).encode("utf-8")
+        manifest_bytes = json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True).encode(
+            "utf-8"
+        )
         zf.writestr("manifest.json", manifest_bytes)
 
     return buf.getvalue(), manifest, errors_per_domain
@@ -748,3 +739,164 @@ def expire_old_exports() -> dict[str, Any]:
 
     log.info("gdpr.expire_old_exports.completed", expired_count=expired_count)
     return {"expired": expired_count}
+
+
+# ============================================================================
+#  Story 1.12 — Account deletion sweep (GDPR Article 17, right to erasure)
+# ============================================================================
+
+
+@shared_task(
+    name="accounts.sweep_account_deletions",
+    soft_time_limit=600,
+    time_limit=900,
+)
+def sweep_account_deletions() -> dict[str, Any]:
+    """Daily beat sweep — hard-deletes accounts past their 30-day grace window.
+
+    Idempotent: a second run on the same day picks up zero new rows because
+    `hard_deleted_at` becomes non-null after each successful row. The
+    `hard_delete_attempt_count` cap (default 7) guards against retry storms
+    on permanently broken S3 buckets — after the cap fires, the row is
+    surfaced via a `gdpr.account_hard_delete_giving_up` audit row and skipped
+    in subsequent sweeps.
+
+    Cf. Story 1.12 §AC6 for the per-row state machine.
+    """
+    # Local imports — keep the module load light, the model + service are
+    # heavy at import (Django model registry + boto3).
+    from django.conf import settings
+
+    from apps.accounts.models import AccountDeletionRequest
+    from apps.accounts.services import account_deletion as deletion_service
+
+    now = timezone.now()
+    max_attempts = getattr(settings, "GDPR_ACCOUNT_DELETION_MAX_HARD_DELETE_ATTEMPTS", 7)
+
+    # Materialise the id list up-front so server-side cursor semantics don't
+    # interact with the per-row commits inside the loop. Same pattern as
+    # `expire_old_exports` (Story 1.11 review patch — `iterator()` while
+    # mutating the same queryset was risky).
+    candidate_ids = list(
+        AccountDeletionRequest.objects.filter(
+            cancelled_at__isnull=True,
+            hard_deleted_at__isnull=True,
+            hard_delete_after__lte=now,
+            hard_delete_attempt_count__lt=max_attempts,
+        )
+        .order_by("hard_delete_after")
+        .values_list("pk", flat=True)
+    )
+
+    log.info(
+        "accounts.sweep_started",
+        candidate_count=len(candidate_ids),
+        max_attempts=max_attempts,
+    )
+
+    processed = 0
+    failed = 0
+    gave_up = 0
+
+    for request_id in candidate_ids:
+        # Re-fetch outside the service's atomic block — the service does its
+        # own SELECT FOR UPDATE. We just need the latest snapshot to decide
+        # whether to even call it.
+        request = AccountDeletionRequest.objects.filter(pk=request_id).first()
+        if request is None:
+            continue
+        if request.cancelled_at is not None or request.hard_deleted_at is not None:
+            # Cancelled or hard-deleted between candidate-selection and now.
+            continue
+
+        try:
+            result = deletion_service.hard_delete(request)
+            processed += 1
+            log.info(
+                "accounts.hard_delete_completed",
+                deletion_request_id=request_id,
+                result=result,
+            )
+        except Exception as exc:
+            # Sanitise — only the exception class name persists on disk; raw
+            # `str(exc)` can carry boto endpoints / paths (Story 1.11 review
+            # patch §319-342).
+            error_code = exc.__class__.__name__
+            log.error(
+                "accounts.hard_delete_failed",
+                deletion_request_id=request_id,
+                error_type=error_code,
+                exc_info=True,
+            )
+            failed += 1
+
+            # Increment the attempt counter outside the service's transaction
+            # (it rolled back). Story 1.12 code review §P9: use an atomic
+            # F-expression so two concurrent sweep workers can't both read
+            # the same `original+0` and both write `original+1` (silently
+            # undercounting toward the cap). The defensive `refresh_from_db`
+            # captures the post-update value for the subsequent comparison.
+            from django.db.models import F
+
+            AccountDeletionRequest.objects.filter(pk=request.pk).update(
+                hard_delete_attempt_count=F("hard_delete_attempt_count") + 1,
+                last_failure_code=error_code[:50],
+            )
+            try:
+                request.refresh_from_db()
+            except AccountDeletionRequest.DoesNotExist:
+                # Manual DB intervention removed the row mid-sweep; benign.
+                continue
+
+            # Failure audit row OUTSIDE the rolled-back transaction so it
+            # actually persists (Story 1.11 _mark_failed pattern).
+            record_audit(
+                action="gdpr.account_hard_delete_failed",
+                result=AuditResult.FAILURE,
+                actor=_SYSTEM_ACTOR,
+                subject_id=request.user_id_snapshot,
+                metadata={
+                    "deletion_request_id": request.id,
+                    "error_code": error_code,
+                    "attempt": request.hard_delete_attempt_count,
+                },
+            )
+
+            # If we just crossed the cap, write a separate giving-up row so
+            # the DPO inbox surfaces frozen rows during the next inspection.
+            # Story 1.12 code review §P9: use `==` instead of `>=` so a
+            # concurrent second sweep that pushed the counter past the cap
+            # does NOT also write a duplicate `_giving_up` row. The sweep's
+            # candidate filter `__lt=max_attempts` then naturally excludes
+            # the row from subsequent runs.
+            if request.hard_delete_attempt_count == max_attempts:
+                gave_up += 1
+                record_audit(
+                    action="gdpr.account_hard_delete_giving_up",
+                    result=AuditResult.FAILURE,
+                    actor=_SYSTEM_ACTOR,
+                    subject_id=request.user_id_snapshot,
+                    metadata={
+                        "deletion_request_id": request.id,
+                        "max_attempts": max_attempts,
+                        "last_failure_code": error_code,
+                    },
+                )
+                log.error(
+                    "accounts.hard_delete_giving_up",
+                    deletion_request_id=request.id,
+                    max_attempts=max_attempts,
+                )
+
+    log.info(
+        "accounts.sweep_completed",
+        processed_count=processed,
+        failed_count=failed,
+        gave_up_count=gave_up,
+    )
+    return {
+        "candidates": len(candidate_ids),
+        "processed": processed,
+        "failed": failed,
+        "gave_up": gave_up,
+    }

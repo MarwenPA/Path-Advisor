@@ -1,0 +1,21 @@
+Salut,
+
+On a bien reçu ta demande de suppression de compte. Ton compte est
+désactivé dès maintenant.
+
+Tu as 30 jours pour changer d'avis : passé le {{ hard_delete_after|date:"j F Y à H:i" }},
+toutes tes données seront effacées définitivement (sauf le journal d'audit
+pseudonymisé, conservé 3 ans pour des raisons légales).
+
+Si tu veux annuler maintenant, clique sur le lien ci-dessous (valable 30 jours) :
+{{ cancel_url }}
+
+Tu auras besoin de ton mot de passe actuel pour confirmer l'annulation.
+
+Tu n'as pas demandé cette suppression ? C'est important : clique sur le
+même lien et annule immédiatement, puis change ton mot de passe depuis
+ton espace.
+
+Pour toute question : dpo@path-advisor.fr
+
+L'équipe Path-Advisor

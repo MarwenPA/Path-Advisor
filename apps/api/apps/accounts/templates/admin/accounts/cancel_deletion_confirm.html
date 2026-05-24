@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+  Tu es sur le point d'annuler la demande de suppression du compte
+  <strong>{{ user_id_snapshot }}</strong>
+  (id: <code>{{ deletion.id }}</code>).
+</p>
+
+<p style="background: #fff8c5; padding: 12px 16px; border-radius: 4px; margin: 16px 0;">
+  Cette action restaure le compte et écrit une ligne dans le journal d'audit
+  avec ton identifiant DPO comme acteur. Elle n'est pas réversible (mais
+  l'utilisateur pourra re-demander la suppression).
+</p>
+
+{% if errors %}
+<ul class="messagelist">
+  {% for e in errors %}<li class="error">{{ e }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <fieldset class="module aligned">
+    <div class="form-row">
+      <label for="cancel_reason"><strong>Raison de l'annulation (obligatoire)</strong></label>
+      <p>
+        Exemple : "utilisateur a contacté le support 2026-05-30, identité
+        vérifiée par callback, email bounce".
+      </p>
+      <textarea name="cancel_reason" id="cancel_reason" rows="4" cols="60" required></textarea>
+    </div>
+  </fieldset>
+  <div class="submit-row">
+    <input type="submit" value="Annuler la suppression" class="default" />
+    <a href="{% url 'admin:accounts_accountdeletionrequest_changelist' %}" class="button cancel-link">Retour</a>
+  </div>
+</form>
+{% endblock %}

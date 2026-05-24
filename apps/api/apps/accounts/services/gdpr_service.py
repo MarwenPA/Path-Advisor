@@ -97,10 +97,7 @@ class GdprExportService:
             # PostgreSQL reports the constraint name; SQLite (tests) reports the
             # column name. Match either to keep the test backend SQLite-friendly.
             message = str(exc)
-            if (
-                "uniq_gdpr_active_per_user" in message
-                or "gdpr_export_requests.user_id" in message
-            ):
+            if "uniq_gdpr_active_per_user" in message or "gdpr_export_requests.user_id" in message:
                 raise GdprExportInProgress() from exc
             raise
 

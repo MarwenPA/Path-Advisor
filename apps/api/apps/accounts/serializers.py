@@ -27,7 +27,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.accounts.models import GdprExportRequest
+from apps.accounts.models import AccountDeletionRequest, GdprExportRequest
 from apps.core.exceptions import (
     ConsentRgpdRequired,
     EmailAlreadyRegistered,
@@ -172,6 +172,123 @@ class ParentalConsentStatusSerializer(serializers.Serializer):
     requested_at = serializers.DateTimeField()
     expires_at = serializers.DateTimeField()
     status = serializers.ChoiceField(choices=["pending", "granted", "refused", "expired"])
+
+
+class AccountDeletionRequestPayloadSerializer(serializers.Serializer):
+    """Body of `POST /api/v1/auth/me/account-deletion/`.
+
+    The password is the user's CURRENT password — re-asked for sensitive
+    operation re-authentication (Story 1.12 §AC1, NIST 800-63B SP). Never
+    persisted in cleartext; the service hashes it via `make_password()` into
+    `password_hash_at_request` for forensic continuity.
+
+    Story 1.12 §D2 follow-up: `content_hash` (SHA-256 hex from the ConsentDialog,
+    Story 1.14 §AC5) + `accepted_at` (ISO 8601 from the client clock) prove
+    what copy the user saw at decision time. Stored in the audit metadata
+    alongside the deletion request — FR12 immutability evidence.
+    """
+
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={"input_type": "password"},
+        min_length=1,
+        max_length=128,
+        trim_whitespace=False,
+    )
+    content_hash = serializers.RegexField(
+        regex=r"^[0-9a-f]{64}$",
+        required=True,
+        help_text="Lowercase SHA-256 hex from the ConsentDialog payload.",
+    )
+    accepted_at = serializers.DateTimeField(required=True)
+
+
+class AccountDeletionCancelPayloadSerializer(serializers.Serializer):
+    """Body of `POST /api/v1/auth/account-deletion/<token>/cancel/`.
+
+    Same password contract as the request payload — checked against the user's
+    CURRENT hash (not `password_hash_at_request`), so a user who rotated the
+    password via support during the grace window can still cancel (Story 1.12
+    §4.5 #4).
+    """
+
+    password = serializers.CharField(
+        required=True,
+        write_only=True,
+        style={"input_type": "password"},
+        min_length=1,
+        max_length=128,
+        trim_whitespace=False,
+    )
+
+
+class AccountDeletionRequestSerializer(serializers.ModelSerializer):
+    """Authenticated read-shape — used by `POST` 202 response + `GET /me/account-deletion/`.
+
+    Carries the deadline so the front can render the grace-window countdown.
+    Excludes the cancel_token and password hashes — those NEVER cross an API
+    surface (cancel link goes via email; the hash is forensics-only).
+
+    Story 1.12 code review §P18 / AC1 example response shape: also exposes a
+    derived `status` label (the same 4-state machine the public endpoint uses)
+    and a static `detail` string that the front can show without computing
+    state itself.
+    """
+
+    status = serializers.SerializerMethodField()
+    detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AccountDeletionRequest
+        fields = (
+            "id",
+            "status",
+            "requested_at",
+            "hard_delete_after",
+            "cancelled_at",
+            "hard_deleted_at",
+            "detail",
+        )
+        read_only_fields = fields
+
+    def get_status(self, obj: AccountDeletionRequest) -> str:
+        if obj.hard_deleted_at:
+            return "hard_deleted"
+        if obj.cancelled_at:
+            return "cancelled"
+        if obj.is_past_grace_window:
+            return "expired"
+        return "pending_hard_delete"
+
+    def get_detail(self, obj: AccountDeletionRequest) -> str:
+        state = self.get_status(obj)
+        if state == "pending_hard_delete":
+            return (
+                "Ton compte est désactivé. Tu as 30 jours pour annuler via "
+                "le lien envoyé par email avant suppression définitive."
+            )
+        if state == "cancelled":
+            return "Ta demande de suppression a été annulée."
+        if state == "hard_deleted":
+            return "Ton compte et tes données ont été supprimés définitivement."
+        return "Le délai de 30 jours pour annuler est dépassé."
+
+
+class AccountDeletionPublicStatusSerializer(serializers.Serializer):
+    """Public read-shape returned by `GET /api/v1/auth/account-deletion/<token>/`.
+
+    Carries the masked email so the user can recognise the account from the
+    cancel-landing page without the endpoint leaking the full address (matches
+    the parental-consent public-status pattern from Story 1.4).
+    """
+
+    user_email_masked = serializers.CharField()
+    requested_at = serializers.DateTimeField()
+    hard_delete_after = serializers.DateTimeField()
+    status = serializers.ChoiceField(
+        choices=["pending_hard_delete", "cancelled", "hard_deleted", "expired"]
+    )
 
 
 class ParentalConsentDecisionSerializer(serializers.Serializer):

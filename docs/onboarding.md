@@ -201,6 +201,20 @@ the same plumbing is what enforces tenant isolation at the DB layer.
   use the audited bypasses `apps.core.rls.bypass_rls()` / `with_system_actor()` —
   see the docstring whitelist before adding a new call site.
 
+## 9b. Cascade contract — every FK to User MUST be CASCADE or SET_NULL
+
+If your story adds a model holding personal data, the FK to `accounts.User`
+must use `on_delete=models.CASCADE` (data dies with the user) or
+`on_delete=models.SET_NULL` (audit row, FK cleared but row survives the
+3-year retention window). Anything else (`PROTECT`, `RESTRICT`,
+`DO_NOTHING`) breaks the right-to-erasure pipeline (Story 1.12) and is
+refused by `scripts/assert_user_cascade.py` in CI.
+
+If your model owns a per-user S3 prefix, register it in
+`settings.GDPR_USER_OWNED_S3_PREFIXES` so the hard-delete sweep purges it.
+
+Full details: [docs/patterns/account-deletion.md](./patterns/account-deletion.md).
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in
