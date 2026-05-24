@@ -10,6 +10,7 @@ from apps.accounts.models import UserStatus
 from apps.accounts.services.auth_service import mark_email_verified, record_signup_event
 from apps.accounts.services.parental_consent import create_parental_consent_request
 from apps.accounts.services.parental_consent_email import send_request_to_parent
+from apps.core.rls import bypass_rls
 
 
 @receiver(user_signed_up)
@@ -42,7 +43,15 @@ def _on_user_signed_up(sender, request, user, **kwargs) -> None:
         # signal); the consent insert is the only DB write here, but using a clean
         # transaction boundary keeps the @audit_action row aligned with the consent
         # row if either fails.
-        with transaction.atomic():
+        # `bypass_rls` (Story 1.8 D3): the signup signal runs anonymously,
+        # so the `users` + `parental_consents` modify policies would deny
+        # the consent row INSERT. The `ParentalConsent.save()` override
+        # also reads the student's `tenant_id` from `users`, which is RLS-
+        # protected. Audited via `rls.bypass_used` so every entry is grepable.
+        with transaction.atomic(), bypass_rls(
+            reason="parental_consent.signup_signal",
+            metadata={"student_id": user.id},
+        ):
             consent = create_parental_consent_request(
                 student=user,
                 parent_email=parent_email,

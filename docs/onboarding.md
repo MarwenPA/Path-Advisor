@@ -185,6 +185,22 @@ so the `<LimitedModeBanner />` shows at the top of every authenticated page. A f
 
 See [ADR-0003](./adr/0003-parental-consent-tokenized.md) for the tokenised-parent design rationale.
 
+## 9bis. Multi-tenant isolation (Story 1.8 — load-bearing)
+
+Any new model that stores personal data MUST inherit from
+[`apps.core.models.TenantScopedModel`](../apps/api/apps/core/models.py) — the
+PostgreSQL Row-Level Security policies on `users` + `parental_consents` rely
+on session GUCs that `TenantSessionMiddleware` populates per request, and
+the same plumbing is what enforces tenant isolation at the DB layer.
+
+- **If `make test-rls` fails after your change, your model likely needs `TenantScopedModel`** —
+  read [`docs/patterns/multi-tenant.md`](./patterns/multi-tenant.md) for the 5-line recipe +
+  decision tree, then [ADR-0010](./adr/0010-multi-tenant-rls.md) for the rationale.
+- Audit logs are deliberately RLS-exempt (cross-tenant by DPO design — ADR-0009 §7).
+- Anonymous endpoints (parental-consent `/decide/`, signup signal) + Celery tasks
+  use the audited bypasses `apps.core.rls.bypass_rls()` / `with_system_actor()` —
+  see the docstring whitelist before adding a new call site.
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in

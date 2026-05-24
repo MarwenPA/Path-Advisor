@@ -12,6 +12,36 @@ from django.db import connection
 from apps.core import request_context
 
 
+def _safe_reset_pg_session() -> None:
+    """`RESET ALL` on PostgreSQL with rollback recovery.
+
+    `@pytest.mark.django_db(transaction=True)` tests that abort mid-test leave
+    the connection in an `aborted-transaction` state — every subsequent
+    statement on that connection raises `current transaction is aborted,
+    commands ignored until end of transaction block` until a ROLLBACK clears
+    it. We try once, then rollback + retry, so the autouse cleanup never
+    masks the original test failure (Story 1.8 post-review patch).
+
+    SQLite has no equivalent; this is a no-op there.
+    """
+    if connection.vendor != "postgresql":
+        return
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("RESET ALL")
+    except Exception:  # noqa: BLE001
+        # Connection might be in an aborted-tx state — rollback + retry once.
+        try:
+            connection.rollback()
+            with connection.cursor() as cursor:
+                cursor.execute("RESET ALL")
+        except Exception:  # noqa: BLE001
+            # Connection is broken; Django's `close_old_connections` will
+            # discard it at request boundary. Silent here so the autouse
+            # cleanup doesn't mask the original test failure.
+            pass
+
+
 @pytest.fixture(autouse=True)
 def _audit_request_context_isolation():
     """Reset the audit thread-local + Postgres session GUCs around every test.
@@ -27,16 +57,10 @@ def _audit_request_context_isolation():
     test's GUCs satisfy the next test's policy check.
     """
     request_context.clear()
-    if connection.vendor == "postgresql":
-        # `RESET ALL` clears every SET in the current session, including
-        # custom `app.*` GUCs the middleware writes. Cheap operation.
-        with connection.cursor() as cursor:
-            cursor.execute("RESET ALL")
+    _safe_reset_pg_session()
     yield
     request_context.clear()
-    if connection.vendor == "postgresql":
-        with connection.cursor() as cursor:
-            cursor.execute("RESET ALL")
+    _safe_reset_pg_session()
 
 
 @pytest.fixture

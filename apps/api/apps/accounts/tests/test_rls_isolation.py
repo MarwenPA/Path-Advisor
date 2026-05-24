@@ -127,10 +127,19 @@ def test_users_select_path_admin_bypasses_rls(skip_if_sqlite):
 
 @pytest.mark.django_db(transaction=True)
 def test_users_select_same_tenant_counselor_sees_cohort(skip_if_sqlite):
-    """Counselor in tenant T1 sees other students in T1 — Epic 6 prerequisite."""
+    """Counselor in tenant T1 sees other students in T1 — Epic 6 prerequisite.
+
+    Post-review patch: the SELECT is unfiltered (`SELECT id FROM users`) so
+    we genuinely test that RLS scopes to same-tenant. The previous version
+    had `WHERE tenant_id = %s` which would pass even with RLS disabled —
+    classic false-green.
+    """
     tenant = uuid.uuid4()
+    tenant_other = uuid.uuid4()
     counselor = _make_user(email="c@example.test", tenant_id=tenant, role=UserRole.COUNSELOR)
     student = _make_user(email="s@example.test", tenant_id=tenant, role=UserRole.STUDENT)
+    # Outsider must NOT appear in the counselor's unfiltered SELECT.
+    outsider = _make_user(email="o@example.test", tenant_id=tenant_other, role=UserRole.STUDENT)
 
     with transaction.atomic(), connection.cursor() as cur:
         _set_gucs(
@@ -139,10 +148,17 @@ def test_users_select_same_tenant_counselor_sees_cohort(skip_if_sqlite):
             tenant_id=str(tenant),
             actor_role=UserRole.COUNSELOR,
         )
-        cur.execute("SELECT id FROM users WHERE tenant_id = %s", [str(tenant)])
+        # Unfiltered SELECT — RLS is the ONLY thing scoping the result.
+        cur.execute("SELECT id FROM users")
         visible_ids = {row[0] for row in cur.fetchall()}
 
-    assert visible_ids == {counselor.id, student.id}
+    assert {counselor.id, student.id}.issubset(visible_ids), (
+        "Counselor must see self + same-tenant students."
+    )
+    assert outsider.id not in visible_ids, (
+        "RLS users_isolation_select must hide cross-tenant rows even on an "
+        "unfiltered SELECT (false-green guard)."
+    )
 
 
 @pytest.mark.django_db(transaction=True)
@@ -213,21 +229,31 @@ def test_parental_consents_insert_respects_user(skip_if_sqlite):
             tenant_id=str(tenant),
             actor_role=UserRole.STUDENT,
         )
+        # Post-review patch: include `tenant_id` so a NOT NULL violation
+        # cannot masquerade as the RLS rejection — without it the test
+        # could pass `pytest.raises(Exception)` but fail the substring
+        # assertion below for the wrong reason.
         with pytest.raises(Exception) as exc_info:
             cur.execute(
-                "INSERT INTO parental_consents (id, student_id, parent_email, token, "
-                "requested_at, expires_at, created_at, updated_at) "
-                "VALUES (%s, %s, %s, %s, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW())",
+                "INSERT INTO parental_consents ("
+                "id, student_id, parent_email, token, tenant_id, "
+                "requested_at, expires_at, created_at, updated_at"
+                ") VALUES ("
+                "%s, %s, %s, %s, %s, NOW(), NOW() + INTERVAL '60 days', NOW(), NOW()"
+                ")",
                 [
                     f"pcn_test_{uuid.uuid4().hex[:8]}",
                     student_b.id,  # impersonation attempt!
                     "evil@example.test",
                     f"evil-{uuid.uuid4().hex}",
+                    str(tenant),
                 ],
             )
         # The exception is a `psycopg.errors.RaiseException` or similar — its
         # message includes "row-level security policy" verbatim.
-        assert "row-level security" in str(exc_info.value).lower()
+        assert "row-level security" in str(exc_info.value).lower(), (
+            f"Expected RLS rejection, got: {exc_info.value!r}"
+        )
 
 
 # ---------------------------------------------------------------------------

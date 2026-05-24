@@ -1,7 +1,7 @@
 # Story 1.8: Multi-tenant Row-Level Security PostgreSQL + cross-tenant / cross-user isolation tests
 
 **Epic:** 1 — Foundation: Multi-role Auth, RBAC, GDPR Compliance & Technical Infrastructure
-**Status:** review
+**Status:** done
 **Sprint:** 1 (Foundations)
 **Story Key:** `1-8-multi-tenant-rls-postgresql`
 **Estimation:** L (large) — introduces a cross-cutting data isolation layer that every future story relies on. Touches DB schema (RLS policies on `users` and `parental_consents`), Django middleware (PG session GUCs), `apps/core/models.py` (new `TenantScopedModel` base class), test infrastructure (real PostgreSQL CI job, not just SQLite), and ships `docs/adr/0010-multi-tenant-rls.md`. The story is the DB-level safety net that complements Story 1.7's app-level RBAC.
@@ -465,6 +465,44 @@ claude-opus-4-7 (1M context)
 - Did NOT touch `audit_logs` (cross-tenant by design — ADR-0009 §7).
 - Did NOT separate DB roles for app/migration (deferred to deploy-track).
 - Did NOT remove the redundant `set_actor_from_request` calls in `apps/audit/views.py` (defensive duplication — follow-up cleanup story).
+
+### Review Findings
+
+**🚨 Decision-needed (4) — architectural choices required before patches can proceed:**
+
+- [x] [Review][Decision] **D1 — `set_config(is_local=true)` est un no-op en autocommit Django (défaut).** Le middleware ouvre `connection.cursor()` HORS d'une `transaction.atomic()` → l'autocommit-txn implicite commit, le GUC `is_local=true` est effacé avant que la vue exécute la moindre query. Conséquence : **toutes les requêtes en prod voient GUCs vides → RLS deny → app cassée**. Confirmé par 2 reviewers indépendamment ; les tests passent uniquement parce qu'ils wrappent set_config+SELECT dans le même `transaction.atomic()`. Options : (a) wrapper `__call__` dans `transaction.atomic()` (lourd : transaction par requête), (b) basculer en `SET SESSION` + `RESET ALL` explicite dans `finally` (déroge à la spec qui exige SET LOCAL mais robuste), (c) `ATOMIC_REQUESTS=True` global (cher en perf, change le contrat existant).
+
+- [x] [Review][Decision] **D2 — Self-role escalation via `users_isolation_modify`.** La policy permet UPDATE quand `id = current_user_id` sans contrainte sur les colonnes. Un student peut `UPDATE users SET role='path_admin' WHERE id=<self>` → bypass cross-tenant. RLS devient vecteur d'escalation. Options : (a) restreindre la policy à exclure la colonne `role` (PG : `WITH CHECK (id = current_user_id AND role = OLD.role)` — pas trivial), (b) trigger BEFORE UPDATE qui rejette les changements de `role` sauf si actor_role='path_admin', (c) interdire toute mutation directe sur User via RLS (`FOR SELECT` only) et passer par services back-office uniquement.
+
+- [x] [Review][Decision] **D3 — Flows anonymes (signup minor + parental /decide/) bloqués par RLS.** Le signal signup crée le User + ParentalConsent en contexte anonyme (GUCs vides) → WITH CHECK fail → 500. La vue `/decide/<token>` parent fait UPDATE silently 0 rows. La spec ADR §3 parle de "out-of-band GUC write" mais n'est pas implémenté. Options : (a) ces vues set explicitement `app.actor_role = 'system_signup'` via un context manager qui matche une policy permissive sur INSERT, (b) déclarer un `app.bypass_rls = 'true'` GUC scoped (seules les vues anonymes whitelistées le set), (c) faire INSERT/UPDATE via raw SQL avec `SET LOCAL role TO ...` qui bypass via DB role (nécessite role separation, deferred dans la spec).
+
+- [x] [Review][Decision] **D4 — Celery tasks (parental reminders/suspend, GDPR build/expire/notify, audit archive) tournent sans request_context.** Tasks save() leurs models sans GUCs → UPDATE silently 0 rows. Options : (a) chaque task qui touche RLS-protected tables doit `request_context.set_actor(system_user)` + `_apply_session_context(...)` au démarrage (helper à factoriser dans `apps/core/tasks_base.py`), (b) provisionner un Postgres role `path_advisor_celery` avec `BYPASSRLS` que Celery utilise (deploy-track), (c) marquer ces tasks pour passer par un service qui set les GUCs explicitement avant chaque save.
+
+**🟠 Patch (12) — à appliquer après D1-D4 résolues :**
+
+- [x] [Review][Patch] Test false-green : `test_users_select_same_tenant_counselor_sees_cohort` filtre `WHERE tenant_id = %s` → passe sans RLS [apps/api/apps/accounts/tests/test_rls_isolation.py:142]
+- [x] [Review][Patch] `ParentalConsent.save()` backfill lookup sur `users` est lui-même bloqué par RLS sur le flow anonyme signup → `tenant_id` reste NULL silencieusement [apps/api/apps/accounts/models.py:287-296]
+- [x] [Review][Patch] AC2.6 violated — `_apply_session_context` swallow le GUC failure avec `except Exception: log.warning`, contredit §4.9 #4 "MUST raise loudly" [apps/api/path_advisor/middleware/tenant.py:101-111]
+- [x] [Review][Patch] AC1 — `TenantScopedManager` class manquante (spec explicit "a custom manager `TenantScopedManager` exposes the default queryset unchanged") [apps/api/apps/core/models.py:30]
+- [x] [Review][Patch] T8 incomplete — `docs/onboarding.md` doit linker vers `docs/patterns/multi-tenant.md` + mention "if `make test-rls` fails after your change, your model likely needs `TenantScopedModel`"
+- [x] [Review][Patch] Migration `CREATE POLICY` non-idempotent — partial apply + replay → "duplicate policy". Wrapper en `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` [apps/api/apps/accounts/migrations/0007_enable_rls.py:CREATE_POLICIES_SQL]
+- [x] [Review][Patch] `test_parental_consents_insert_respects_user` — INSERT raw omet `tenant_id` (colonne ajoutée par la migration courante) → si NOT NULL, fail avec `NotNullViolation` ≠ "row-level security" → assertion mensongère [apps/api/apps/accounts/tests/test_rls_isolation.py:1082-1096]
+- [x] [Review][Patch] `_TYPING_GUARD: Any = None` dead code — supprimer [apps/api/path_advisor/middleware/tenant.py:121-123]
+- [x] [Review][Patch] `RESET ALL` autouse sans `connection.rollback()` préalable → fail avec "current transaction is aborted" si test précédent a laissé txn errored [apps/api/conftest.py:23-26]
+- [x] [Review][Patch] `_create_dummy_table` fixture sans DROP-IF-EXISTS → "relation already exists" sur DBs `--keepdb` ou crash mid-test [apps/api/apps/core/tests/test_tenant_scoped_model.py:31-37]
+- [x] [Review][Patch] CI role provisioning non-idempotent (`CREATE ROLE` sans guard) — bloque self-hosted runners ou workflow rerun [.github/workflows/ci-api.yml:57-63]
+- [x] [Review][Patch] Middleware silent fail si `is_authenticated=True` AND `user.id == ''` — pas d'assert/warn, l'utilisateur authentifié devient invisible RLS [apps/api/path_advisor/middleware/tenant.py:82]
+
+**🟡 Defer (3) — pré-existants ou trop hors-scope :**
+
+- [x] [Review][Defer] Migration cross-app dependency vs `audit_logs` non déclarée — false alarm : la migration audit (0002_audit_trigger) ne touche pas `users`, donc pas de race d'ordre. Pas de fix nécessaire.
+- [x] [Review][Defer] Comparaison string `current_setting = 'path_admin'` fragile aux whitespaces — défensif TRIM en migration future ; risque très faible vu que `User.role` est `TextChoices` (validé côté Django).
+- [x] [Review][Defer] `_assert_non_superuser_in_postgres_lane` ne valide pas `pg_class.relforcerowsecurity = true` sur chaque table protégée — drift detection gap mais limité aux futures migrations qui oublieraient `FORCE` ; à durcir en story dédiée "RLS hardening".
+
+**⚪ Dismiss (3) :**
+- "Migration 0007 vs spec 0004" — déjà documenté dans Debug Log, justifié par chained 1.4 + 1.11.
+- "`is_superuser` empty fetchone passes vacuously" — degenerate, `SHOW is_superuser` retourne toujours une row sur PG ≥ 9.
+- "ADR date 2026-05-24 vs spec 2026-05-17" — cosmétique, date d'acceptance = date du commit.
 
 ### File List
 

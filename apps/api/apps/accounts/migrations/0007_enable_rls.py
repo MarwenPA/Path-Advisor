@@ -12,18 +12,32 @@ a consistent RLS state:
    table owner (the Django app role) silently bypasses RLS and tests pass
    for the wrong reason.
 
-3. **Named policies (PG only):** policies key on three session GUCs that
-   `TenantSessionMiddleware` (Story 1.8 T2) populates at request entry:
-   `app.current_user_id`, `app.current_tenant_id`, `app.actor_role`.
-   `current_setting(name, true)` returns NULL when unset, which the
-   policies treat as a deny — important during migrations themselves
-   (no request, no GUCs).
+3. **Named policies (PG only):** policies key on four session GUCs:
+
+   - `app.current_user_id`, `app.current_tenant_id`, `app.actor_role`:
+     populated by `TenantSessionMiddleware` (Story 1.8 T2) at request entry.
+   - `app.bypass_rls`: opened by `apps.core.rls.bypass_rls()` /
+     `with_system_actor()` (post-review D3/D4) for the narrow set of
+     anonymous endpoints (signup signal, parental /decide/, status read)
+     and system tasks (Celery beat) that legitimately need cross-row
+     access without a `request.user`. Each entry is audited via the
+     `rls.bypass_used` action.
+
+4. **Anti-escalation trigger (PG only):** `users_block_privileged_field_update`
+   BEFORE UPDATE on `users` raises if `role` or `tenant_id` change without
+   `app.actor_role = 'path_admin'`. Belt-and-suspenders with the RLS modify
+   policy — without it, the policy `id = current_user_id` would let a
+   student promote themselves to `path_admin` and unlock the cross-tenant
+   bypass (post-review D2).
 
 `audit_logs` is intentionally NOT touched: cross-tenant by design (ADR-0009
 §7, DPO oversight). `users` policies allow `path_admin` cross-tenant
 visibility so the back-office (Story 1.13 + future 1.9/1.11/1.12) can
 operate. `parental_consents` is stricter — even same-tenant counselors
 must not read another student's parental consent.
+
+Migration is replayable: every `CREATE POLICY` / `CREATE TRIGGER` is
+preceded by `DROP IF EXISTS` so a partial apply + replay works.
 """
 
 from __future__ import annotations
@@ -54,33 +68,36 @@ ALTER TABLE parental_consents DISABLE ROW LEVEL SECURITY;
 # ---------------------------------------------------------------------------
 # Step 3 — Named policies
 #
-# `users`:
+# `users` SELECT — laxe:
 #   - path_admin role bypasses (back-office cross-tenant operations).
+#   - whitelisted bypass via `app.bypass_rls` (anonymous flows, system tasks).
 #   - any user can see their own row.
 #   - same-tenant users see each other (counselor → cohort, Epic 6).
 #
-# `parental_consents`:
-#   - path_admin role bypasses.
-#   - the owning student sees their own consent rows.
-#   - parents authenticated via the URL-safe token DON'T pass through this
-#     middleware — the parental_consent views run as anonymous and rely on
-#     the explicit token lookup. RLS in their case sees actor_role='' and
-#     denies — that's why the parental-consent endpoints are decorated
-#     `@permission_classes([AllowAny])` and the views set the GUC themselves
-#     (out-of-band for the specific token row only; this is the documented
-#     bypass in §4.7 / Story 1.4).
+# `users` MODIFY — same shape; the trigger below enforces that role/tenant_id
+#   changes need explicit `path_admin`.
 #
-# Note: `current_setting(name, true)` returns NULL when unset; combined with
+# `parental_consents` — stricter:
+#   - path_admin bypass.
+#   - `app.bypass_rls` bypass.
+#   - the owning student.
+#
+# `current_setting(name, true)` returns NULL when unset; combined with
 # `current_setting(...) = 'literal'`, NULL ≠ literal so the row is denied.
-# That's exactly the "deny by default during migrations" behaviour we want.
+# That's the "deny by default during migrations / anonymous" behaviour we want.
 # ---------------------------------------------------------------------------
 
+# `CREATE POLICY` does not natively support `IF NOT EXISTS` in PG ≤ 16, so we
+# always `DROP IF EXISTS` first. Same pattern for the trigger function +
+# trigger itself. Result: migration is fully replayable.
 CREATE_POLICIES_SQL = """
 -- USERS ---------------------------------------------------------------------
+DROP POLICY IF EXISTS users_isolation_select ON users;
 CREATE POLICY users_isolation_select ON users
     FOR SELECT
     USING (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR id = current_setting('app.current_user_id', true)
         OR (
             tenant_id IS NOT NULL
@@ -88,36 +105,41 @@ CREATE POLICY users_isolation_select ON users
         )
     );
 
+DROP POLICY IF EXISTS users_isolation_modify ON users;
 CREATE POLICY users_isolation_modify ON users
     FOR ALL
     USING (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR id = current_setting('app.current_user_id', true)
     )
     WITH CHECK (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR id = current_setting('app.current_user_id', true)
     );
 
 -- PARENTAL_CONSENTS ---------------------------------------------------------
--- Stricter: same-tenant alone is NOT enough — must be the owning student.
--- Parents authenticated by token aren't in `request.user`; their views
--- already bypass at the application layer via token lookup.
+DROP POLICY IF EXISTS parental_consents_isolation_select ON parental_consents;
 CREATE POLICY parental_consents_isolation_select ON parental_consents
     FOR SELECT
     USING (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR student_id = current_setting('app.current_user_id', true)
     );
 
+DROP POLICY IF EXISTS parental_consents_isolation_modify ON parental_consents;
 CREATE POLICY parental_consents_isolation_modify ON parental_consents
     FOR ALL
     USING (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR student_id = current_setting('app.current_user_id', true)
     )
     WITH CHECK (
-        current_setting('app.actor_role', true) = 'path_admin'
+        current_setting('app.bypass_rls', true) = 'true'
+        OR current_setting('app.actor_role', true) = 'path_admin'
         OR student_id = current_setting('app.current_user_id', true)
     );
 """
@@ -127,6 +149,47 @@ DROP POLICY IF EXISTS users_isolation_select ON users;
 DROP POLICY IF EXISTS users_isolation_modify ON users;
 DROP POLICY IF EXISTS parental_consents_isolation_select ON parental_consents;
 DROP POLICY IF EXISTS parental_consents_isolation_modify ON parental_consents;
+"""
+
+
+# ---------------------------------------------------------------------------
+# Step 4 — Anti-escalation trigger (post-review D2)
+#
+# RLS lets self-update via `id = current_user_id`. Without further guard, a
+# student could `UPDATE users SET role = 'path_admin' WHERE id = self` and
+# unlock the cross-tenant bypass. This trigger refuses any UPDATE that
+# changes `role` OR `tenant_id` unless the caller asserts path_admin
+# explicitly OR the audited bypass GUC is set (back-office migrations).
+# ---------------------------------------------------------------------------
+
+CREATE_TRIGGER_SQL = """
+CREATE OR REPLACE FUNCTION users_block_privileged_field_update()
+RETURNS trigger AS $$
+BEGIN
+    IF (NEW.role IS DISTINCT FROM OLD.role
+        OR NEW.tenant_id IS DISTINCT FROM OLD.tenant_id)
+       AND coalesce(current_setting('app.actor_role', true), '') != 'path_admin'
+       AND coalesce(current_setting('app.bypass_rls', true), '') != 'true'
+    THEN
+        RAISE EXCEPTION
+            'users.privileged_field_update_blocked: role / tenant_id '
+            'changes require path_admin actor (got %)',
+            coalesce(current_setting('app.actor_role', true), '')
+            USING ERRCODE = 'P0001';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS users_block_privileged_field_update ON users;
+CREATE TRIGGER users_block_privileged_field_update
+    BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION users_block_privileged_field_update();
+"""
+
+DROP_TRIGGER_SQL = """
+DROP TRIGGER IF EXISTS users_block_privileged_field_update ON users;
+DROP FUNCTION IF EXISTS users_block_privileged_field_update();
 """
 
 
@@ -156,23 +219,25 @@ def reverse_backfill_noop(apps, schema_editor) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Step 2+3 — PG-only RLS setup
+# Step 2+3+4 — PG-only RLS setup
 # ---------------------------------------------------------------------------
 
 
 def apply_rls(apps, schema_editor) -> None:
-    """Enable RLS + create policies. Mirrors the audit-trigger guard pattern."""
+    """Enable RLS + create policies + install anti-escalation trigger."""
     if schema_editor.connection.vendor != "postgresql":
         return
     with schema_editor.connection.cursor() as cursor:
         cursor.execute(ENABLE_RLS_SQL)
         cursor.execute(CREATE_POLICIES_SQL)
+        cursor.execute(CREATE_TRIGGER_SQL)
 
 
 def revert_rls(apps, schema_editor) -> None:
     if schema_editor.connection.vendor != "postgresql":
         return
     with schema_editor.connection.cursor() as cursor:
+        cursor.execute(DROP_TRIGGER_SQL)
         cursor.execute(DROP_POLICIES_SQL)
         cursor.execute(DISABLE_RLS_SQL)
 
@@ -190,6 +255,6 @@ class Migration(migrations.Migration):
             field=models.UUIDField(blank=True, db_index=True, null=True),
         ),
         migrations.RunPython(backfill_tenant_id, reverse_backfill_noop),
-        # Steps 2 + 3 — PostgreSQL-only RLS setup.
+        # Steps 2 + 3 + 4 — PostgreSQL-only RLS setup.
         migrations.RunPython(apply_rls, revert_rls),
     ]

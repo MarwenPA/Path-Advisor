@@ -33,9 +33,22 @@ def _create_dummy_table(django_db_setup, django_db_blocker):
     `schema_editor` cannot run inside SQLite's per-test transaction, so we
     materialise it at module scope. `django_db_setup` guarantees migrations
     have applied before we add our ephemeral table.
+
+    Post-review patch: drop the table at setup too so a previously aborted
+    suite (CTRL+C, OOM) on a `--keepdb` Postgres DB doesn't leave the
+    `_test_dummy_scoped` table around and crash the next run with
+    "relation already exists".
     """
-    with django_db_blocker.unblock(), connection.schema_editor() as editor:
-        editor.create_model(_DummyScoped)
+    import contextlib
+
+    with django_db_blocker.unblock():
+        # Best-effort cleanup of leftovers from a prior aborted run — when
+        # the table is absent (happy path) `delete_model` raises; suppress
+        # silently and proceed to create.
+        with connection.schema_editor() as editor, contextlib.suppress(Exception):
+            editor.delete_model(_DummyScoped)
+        with connection.schema_editor() as editor:
+            editor.create_model(_DummyScoped)
     yield
     with django_db_blocker.unblock(), connection.schema_editor() as editor:
         editor.delete_model(_DummyScoped)

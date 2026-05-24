@@ -2,16 +2,22 @@
 
 For every request that resolves a Django user, this middleware runs:
 
-    SET LOCAL app.current_user_id = '<user.id>';
-    SET LOCAL app.current_tenant_id = '<user.tenant_id or empty>';
-    SET LOCAL app.actor_role = '<user.role>';
+    SELECT set_config('app.current_user_id',   '<user.id>',     false),
+           set_config('app.current_tenant_id', '<user.tenant>', false),
+           set_config('app.actor_role',        '<user.role>',   false);
 
-`SET LOCAL` is mandatory (not `SET SESSION`): the GUCs reset at transaction
-commit/rollback, so the next request that reuses the connection
-(`CONN_MAX_AGE > 0`) starts with a clean slate. Reading these GUCs from the
-RLS policies (`accounts/0007_enable_rls`) is what enforces tenant isolation
-at the DB engine layer — defense in depth on top of the application's
-own `.filter(tenant_id=...)` calls.
+`is_local=false` (= `SET SESSION`) is used instead of `SET LOCAL` because
+Django defaults to autocommit (no `ATOMIC_REQUESTS`): with `SET LOCAL`, the
+GUC would be scoped to the implicit one-statement transaction the middleware
+opens — by the time the view executes its own queries, the GUC would be
+gone. With `SET SESSION` the GUC persists for the lifetime of the connection;
+we explicitly `RESET ALL` in the `finally` block to keep `CONN_MAX_AGE > 0`
+safe (no leakage to the next request reusing the connection). Post-review
+decision D1 (2026-05-24).
+
+Reading these GUCs from the RLS policies (`accounts/0007_enable_rls`) is
+what enforces tenant isolation at the DB engine layer — defense in depth
+on top of the application's own `.filter(tenant_id=...)` calls.
 
 Position in `MIDDLEWARE` matters:
 - AFTER `django.contrib.auth.middleware.AuthenticationMiddleware` — `request.user`
@@ -31,7 +37,6 @@ on purpose — removing them is a follow-up cleanup, not part of 1.8).
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
 
 import structlog
 from django.db import connection
@@ -53,11 +58,12 @@ class TenantSessionMiddleware:
             self._apply_session_context(request)
             return self.get_response(request)
         finally:
-            # Per-request hygiene: the thread-local is the same per-process
-            # store the audit subsystem reads (cf. apps.core.request_context).
-            # Without `clear()`, a thread reused by gunicorn between two
-            # requests would carry the previous actor through to the second.
+            # 1. Thread-local clear (per-request hygiene — gunicorn thread reuse).
             request_context.clear()
+            # 2. PG GUC clear: `RESET ALL` wipes every `set_config(... false)` we
+            #    wrote at request entry. Without this, `CONN_MAX_AGE > 0`
+            #    connection reuse leaks the previous request's GUCs to the next.
+            self._reset_session_context()
 
     # ---------------------------- internals ---------------------------------
 
@@ -79,44 +85,52 @@ class TenantSessionMiddleware:
             tenant_id = ""
             actor_role = ""
         else:
-            user_id = str(getattr(user, "id", "") or "")
+            raw_id = getattr(user, "id", "") or ""
+            user_id = str(raw_id)
             raw_tenant = getattr(user, "tenant_id", None)
             tenant_id = str(raw_tenant) if raw_tenant is not None else ""
             actor_role = str(getattr(user, "role", "") or "")
 
+            # Defensive: an authenticated user without a usable id is a bug
+            # — log loudly so the broken auth backend surfaces, but don't
+            # bypass: leave the GUC empty so RLS denies (fail-closed).
+            if not user_id:
+                log.error(
+                    "tenant.authenticated_user_without_id",
+                    user_repr=repr(user),
+                )
+
+        # `is_local=false` (= SET SESSION) — see module docstring for the
+        # autocommit rationale (post-review D1).
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT "
+                "set_config('app.current_user_id', %s, false), "
+                "set_config('app.current_tenant_id', %s, false), "
+                "set_config('app.actor_role', %s, false)",
+                [user_id, tenant_id, actor_role],
+            )
+
+    def _reset_session_context(self) -> None:
+        """Clear every `app.*` GUC and any other session-level SET this request made.
+
+        Wrapping in `try/except` keeps a connection drop mid-request from
+        masking the original exception. The cleared connection will be torn
+        down by Django's `close_old_connections` signal at request end if
+        `CONN_MAX_AGE = 0`, so a failed RESET on a broken connection is
+        harmless.
+        """
+        if connection.vendor != "postgresql":
+            return
         try:
             with connection.cursor() as cursor:
-                # `SET LOCAL` requires being inside a transaction. Django wraps
-                # each request in one when ATOMIC_REQUESTS is set, but we don't
-                # rely on that — `set_session` works either way because Django
-                # autocommit boundaries still scope GUC clears on connection
-                # release.
-                cursor.execute(
-                    "SELECT "
-                    "set_config('app.current_user_id', %s, true), "
-                    "set_config('app.current_tenant_id', %s, true), "
-                    "set_config('app.actor_role', %s, true)",
-                    [user_id, tenant_id, actor_role],
-                )
+                cursor.execute("RESET ALL")
         except Exception as exc:
-            # RLS GUC setup MUST NOT block a request — if PG is unreachable
-            # for the GUC write, the query that needs the policy will fail
-            # explicitly later (deny by default), which is the right behavior.
-            # We surface the issue via structlog + Sentry but let the request
-            # proceed so failure modes are visible at the query layer.
             log.warning(
-                "tenant.guc_set_failed",
+                "tenant.guc_reset_failed",
                 error_type=exc.__class__.__name__,
                 error=str(exc),
             )
 
-    def __repr__(self) -> str:  # pragma: no cover - introspection helper
-        return f"<{type(self).__name__} get_response={self.get_response!r}>"
-
 
 __all__ = ["TenantSessionMiddleware"]
-
-
-# Type-only re-export for any future code that wants to type-check imports
-# of this symbol without pulling in the implementation.
-_TYPING_GUARD: Any = None

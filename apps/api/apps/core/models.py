@@ -27,6 +27,16 @@ from django.db import models
 from apps.core import request_context
 
 
+class TenantScopedManager(models.Manager):
+    """Default manager for `TenantScopedModel` — currently a thin pass-through.
+
+    Spec AC1 mandates this named manager so future cross-cutting hooks
+    (e.g. `with_user(user)` shortcut that combines `request_context.set_actor`
+    and the queryset) have a canonical attachment point. Today the underlying
+    behaviour is unchanged: RLS filters at the DB layer, the ORM stays naive.
+    """
+
+
 class TenantScopedModel(models.Model):
     """Abstract base for any model that stores user-specific personal data.
 
@@ -45,6 +55,10 @@ class TenantScopedModel(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # Explicit `objects = TenantScopedManager()` (AC1) — pass-through today,
+    # extension point for future cross-cutting helpers.
+    objects = TenantScopedManager()
 
     class Meta:
         abstract = True

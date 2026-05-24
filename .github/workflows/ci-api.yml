@@ -96,11 +96,23 @@ jobs:
           # Connect as the bootstrap superuser to create the constrained
           # role + test DB. `FORCE ROW LEVEL SECURITY` only takes effect
           # when the table owner is NEITHER superuser NOR has BYPASSRLS.
+          #
+          # Idempotent: wrap CREATE ROLE in a DO block (PG doesn't support
+          # CREATE ROLE IF NOT EXISTS) and use the explicit IF NOT EXISTS
+          # variant for CREATE DATABASE. Safe to re-run on self-hosted
+          # runners with persistent service containers.
           psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-          CREATE ROLE path_advisor_test
-              LOGIN NOSUPERUSER NOBYPASSRLS
-              PASSWORD 'ci_test_role';
-          CREATE DATABASE path_advisor_test OWNER path_advisor_test;
+          DO $$
+          BEGIN
+              IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'path_advisor_test') THEN
+                  CREATE ROLE path_advisor_test
+                      LOGIN NOSUPERUSER NOBYPASSRLS
+                      PASSWORD 'ci_test_role';
+              END IF;
+          END
+          $$;
+          SELECT 'CREATE DATABASE path_advisor_test OWNER path_advisor_test'
+          WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'path_advisor_test')\gexec
           GRANT CREATE, USAGE ON SCHEMA public TO path_advisor_test;
           SQL
 
