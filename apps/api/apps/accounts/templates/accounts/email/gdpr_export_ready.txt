@@ -1,0 +1,19 @@
+Salut,
+
+Ton export RGPD est prêt à être téléchargé.
+
+Rends-toi sur ton espace pour le récupérer :
+https://path-advisor.fr/parametres/confidentialite/mes-donnees#{{ export.id }}
+
+Ce lien est valable jusqu'au {{ expires_at|date:"j F Y à H:i" }} (7 jours).
+Tu peux le télécharger jusqu'à 10 fois.
+
+L'archive est protégée par un mot de passe.
+Pour des raisons de sécurité, ce mot de passe te sera envoyé dans un
+email séparé (à l'instant). Conserve-le : nous ne pouvons pas le
+récupérer si tu le perds (nous n'en stockons qu'un hash).
+
+Tu reçois cet email parce que tu as demandé un export Article 20 RGPD
+sur Path-Advisor. Tu as une question ? Écris à dpo@path-advisor.fr.
+
+L'équipe Path-Advisor

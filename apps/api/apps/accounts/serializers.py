@@ -27,6 +27,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.accounts.models import GdprExportRequest
 from apps.core.exceptions import (
     ConsentRgpdRequired,
     EmailAlreadyRegistered,
@@ -104,6 +105,29 @@ class SignupSerializer(RegisterSerializer):
             }
         )
         return cleaned
+
+
+class GdprExportRequestSerializer(serializers.ModelSerializer):
+    """Read-only serializer for GdprExportRequest (Story 1.11).
+
+    Every field is read-only — the only mutation a client can do is POST to
+    create a new request; status, S3 keys, and download counts all flow from
+    the server.
+    """
+
+    class Meta:
+        model = GdprExportRequest
+        fields = (
+            "id",
+            "status",
+            "requested_at",
+            "ready_at",
+            "expires_at",
+            "download_count",
+            "error_code",
+            "error_message",
+        )
+        read_only_fields = fields
 
 
 class UserDetailsSerializer(serializers.Serializer):

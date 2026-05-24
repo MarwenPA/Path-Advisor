@@ -1,0 +1,14 @@
+Salut,
+
+Ta demande d'export RGPD n'a pas pu aboutir.
+
+Nous t'invitons à retenter dans quelques minutes depuis ton espace :
+https://path-advisor.fr/parametres/confidentialite/mes-donnees
+
+Si le problème persiste, écris à dpo@path-advisor.fr en mentionnant la
+référence de ta demande : {{ export.id }}.
+
+Pour ton information, cette tentative ne consomme pas ton quota
+d'exports — tu peux en relancer un immédiatement.
+
+L'équipe Path-Advisor

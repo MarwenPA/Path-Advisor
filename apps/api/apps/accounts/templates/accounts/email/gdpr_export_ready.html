@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 560px; margin: 0 auto; padding: 24px;">
+    <h1 style="font-size: 20px; margin-top: 0;">Ton export RGPD est prêt</h1>
+    <p>Salut,</p>
+    <p>Ton export RGPD est prêt à être téléchargé.</p>
+    <p>
+      <a href="https://path-advisor.fr/parametres/confidentialite/mes-donnees#{{ export.id }}"
+         style="display: inline-block; padding: 10px 18px; background-color: #1f6feb; color: #fff; text-decoration: none; border-radius: 6px;">
+        Télécharger mon export
+      </a>
+    </p>
+    <p style="color: #555;">
+      Ce lien est valable jusqu'au <strong>{{ expires_at|date:"j F Y à H:i" }}</strong> (7 jours).
+      Tu peux le télécharger jusqu'à 10 fois.
+    </p>
+    <p style="background-color: #fff8c5; padding: 12px 16px; border-radius: 6px;">
+      <strong>Mot de passe :</strong> l'archive est protégée par un mot de passe.
+      Pour des raisons de sécurité, ce mot de passe te sera envoyé dans un
+      email <strong>séparé</strong> (à l'instant). Conserve-le : nous ne
+      pouvons pas le récupérer si tu le perds (nous n'en stockons qu'un hash).
+    </p>
+    <hr style="border: none; border-top: 1px solid #eaeaea; margin: 24px 0;">
+    <p style="color: #777; font-size: 13px;">
+      Tu reçois cet email parce que tu as demandé un export Article 20 RGPD
+      sur Path-Advisor. Tu as une question ? Écris à
+      <a href="mailto:dpo@path-advisor.fr">dpo@path-advisor.fr</a>.
+    </p>
+    <p style="color: #777; font-size: 13px;">L'équipe Path-Advisor</p>
+  </body>
+</html>

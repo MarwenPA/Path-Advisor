@@ -7,7 +7,13 @@ from datetime import date, timedelta
 import factory
 from django.utils import timezone
 
-from apps.accounts.models import User, UserRole, UserStatus
+from apps.accounts.models import (
+    GdprExportRequest,
+    GdprExportStatus,
+    User,
+    UserRole,
+    UserStatus,
+)
 
 
 class UserFactory(factory.django.DjangoModelFactory):
@@ -43,3 +49,31 @@ class MinorUserFactory(UserFactory):
     birth_date = factory.LazyFunction(
         lambda: date.today() - timedelta(days=365 * 13)
     )  # 13 years old
+
+
+class GdprExportRequestFactory(factory.django.DjangoModelFactory):
+    """Default: a `pending` request. Use traits for other states."""
+
+    class Meta:
+        model = GdprExportRequest
+
+    status = GdprExportStatus.PENDING
+
+    @factory.lazy_attribute
+    def user_id(self) -> str:
+        # The model carries a CharField (logical FK, no DB constraint) so a
+        # plain SubFactory(UserFactory) would assign the User instance rather
+        # than its id. lazy_attribute lets us materialise the user and grab .id.
+        return UserFactory().id
+
+
+class ReadyGdprExportFactory(GdprExportRequestFactory):
+    status = GdprExportStatus.READY
+    ready_at = factory.LazyFunction(timezone.now)
+    expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(days=7))
+    archive_s3_key = factory.LazyAttribute(
+        lambda obj: f"gdpr-exports/{obj.user_id}/{obj.id}.zip"
+    )
+    archive_size_bytes = 1024
+    archive_sha256 = "0" * 64
+    password_hash = "argon2$dummy$hash"

@@ -169,6 +169,12 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.CursorPagination",
     "PAGE_SIZE": 50,
     "EXCEPTION_HANDLER": "apps.core.exceptions.path_advisor_exception_handler",
+    # Per-scope throttle rates. Each scope is set on a ScopedRateThrottle / a
+    # custom UserRateThrottle subclass. Story 1.11 adds `gdpr_export_create` as
+    # a defense-in-depth layer above the 24h application rate limit.
+    "DEFAULT_THROTTLE_RATES": {
+        "gdpr_export_create": "50/hour",
+    },
 }
 
 # --- drf-spectacular ---
@@ -224,6 +230,22 @@ AUDIT_ARCHIVE_BUCKET = os.environ.get("AUDIT_ARCHIVE_BUCKET", "audit-logs-archiv
 AUDIT_EXPORTS_BUCKET = os.environ.get("AUDIT_EXPORTS_BUCKET", "exports-gdpr")
 # Presigned URL TTL for async CSV exports (Story 1.13 §AC5 — "lien valable 7 jours").
 AUDIT_EXPORT_PRESIGNED_TTL_SECONDS = 7 * 24 * 3600
+
+# --- GDPR portability exports (Story 1.11) ---
+# Bucket S3 pour les archives utilisateur (ZIP chiffré). En MVP on partage le bucket avec
+# AUDIT_EXPORTS_BUCKET, les préfixes de clé S3 les distinguent (audit-exports/ vs gdpr-exports/).
+GDPR_EXPORTS_BUCKET = os.environ.get("GDPR_EXPORTS_BUCKET", AUDIT_EXPORTS_BUCKET)
+# TTL du presigned URL servi sur GET /api/v1/me/gdpr-exports/{id}/download. Court car le
+# front est authentifié — pas besoin d'un lien réutilisable.
+GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS = int(
+    os.environ.get("GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS", 300)
+)
+GDPR_EXPORT_MAX_DOWNLOADS = int(os.environ.get("GDPR_EXPORT_MAX_DOWNLOADS", 10))
+GDPR_EXPORT_RATE_LIMIT_HOURS = int(os.environ.get("GDPR_EXPORT_RATE_LIMIT_HOURS", 24))
+GDPR_EXPORT_VALIDITY_DAYS = int(os.environ.get("GDPR_EXPORT_VALIDITY_DAYS", 7))
+GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS = int(
+    os.environ.get("GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS", 25 * 60)
+)
 
 # --- Celery ---
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1")
