@@ -1,0 +1,38 @@
+Bonjour,
+
+Votre enfant souhaite utiliser Path-Advisor, un service d'orientation
+scolaire qui l'aide à explorer des métiers et des parcours adaptés à son
+profil.
+
+Comme il a moins de 15 ans, la loi nous demande votre autorisation pour
+qu'il puisse continuer.
+
+Ce que votre enfant pourra faire :
+- Compléter un profil (passions, intérêts, valeurs)
+- Voir des métiers recommandés
+- Sauvegarder des parcours de formation
+
+Ce que Path-Advisor collectera :
+- L'email et le mot de passe de votre enfant (chiffrés)
+- Les informations de son profil scolaire (saisies ou OCR de bulletins)
+- Ses interactions avec le service
+
+Vos droits :
+- Vous pouvez autoriser ou refuser
+- Vous pouvez révoquer votre autorisation à tout moment
+- Vous pouvez nous écrire à dpo@path-advisor.fr pour toute question
+
+Pour décider, cliquez ici :
+{{ consent_url }}
+
+Vous avez 60 jours pour répondre. Sans réponse de votre part, le compte
+de votre enfant sera suspendu (mais pas supprimé).
+
+— L'équipe Path-Advisor
+
+---
+Vous recevez cet email parce qu'un mineur a utilisé votre adresse comme
+contact parental pour s'inscrire à Path-Advisor. Si vous ne connaissez
+pas cet enfant ou si cette demande vous semble suspecte, vous pouvez
+simplement ignorer ce message — sans votre autorisation, le compte sera
+suspendu automatiquement.

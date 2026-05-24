@@ -31,6 +31,52 @@ Items flagged during code reviews but consciously deferred. Each has a target st
 - **Storybook (or equivalent isolation viewer)** — UX spec recommends one Storybook per Couche 3 component. We substitute the `/design-system` showcase for MVP. Re-evaluate at Sprint 4+ when 4-5 Couche 3 composites exist and the page becomes hard to navigate.
 - **`ConsentDialog` path may migrate to `components/path-advisor/`** — colocated with `components/ui/` for now (cf. story §4.3). Revisit at Story 3.11 if the `ui/` folder is becoming crowded with custom composites.
 
+## Deferred from: code review of 1-4-inscription-eleve-moins-15-ans-parental (2026-05-24)
+
+- **Token binding via HMAC / IP / UA continuity** — Parental-consent token is the sole auth for the decision moment (256-bit entropy). Adversarial reviewer flagged absence of constant-time comparison + leaked-token replay window. Mitigation acceptable for MVP given entropy; revisit if leaked-token incidents surface.
+- **Token in URL path → log leakage** — Parent-landing fetch passes token in URL; logs/observability stores will record it. Move to log-scrubber config in deploy track rather than changing the email-link UX.
+- **Case-insensitive email lookup race** — `email__iexact` doesn't use the unique index; pre-existing from Story 1.3, DB constraint still catches collisions. Add a `CITEXT` column when convenient.
+- **`student_email_masked` leak via public status endpoint** — Anyone with a valid token can read masked email. Combined with log-scrubbing mitigation, residual risk is acceptable for MVP given 256-bit token entropy.
+- **Timezone boundary on age check (server `localdate()` vs frontend `new Date()`)** — 1-day window for users at exactly 15 ans 0 days, locale-dependent. Switch to UTC-midnight comparison everywhere when Story 7.7 (i18n foundation) lands.
+- **Real-time grant broadcast (`<LimitedModeBanner />` auto-dismiss)** — Banner doesn't poll; refresh required for users in `pending_parental_consent` to see the grant flip. Polling or SSE in a later story (8.x notifications).
+- **Distinct error types for "expired" vs "already-decided"** — Both map to `parental-consent-already-decided` (409) today; UX could differentiate them. Cosmetic.
+- **Celery beat schedule has no jitter** — Both parental-consent tasks at 04:00 / 04:15 UTC deterministically. Add `crontab(..., jitter=…)` if multi-tenant volumes spike (post-MVP).
+- **`is_fully_active` is a Python property, not a column** — Future admin/metrics queries duplicate the SQL rule. Materialise as a generated column or function-based index later.
+- **Plain `parent_email` retained indefinitely** — ADR-0003 claims "≤ 60-day effective use" but no purge job ships. Defer to partitioning/archival story (Sprint 4+) — see also pre-existing item below from implementation review.
+- **`_parent_email_pending` transient attribute coupling** — Acceptable but coupling-y. Revisit if allauth ever ships a DRF-native `user_signed_up` signal.
+
+## Deferred from: implementation of 1-4-inscription-eleve-moins-15-ans-parental (2026-05-17)
+
+- **`is_fully_active` gating of premium / envoi anticipé** — Story 1.4 ships the flag and the
+  `<LimitedModeBanner />` UI but does NOT gate any feature on it. Stories 5.x (premium subscription)
+  and 5.4 (envoi anticipé profil → école) MUST check `is_fully_active` before granting paywall /
+  external-dispatch features. Tracked here so the implementers do not forget.
+- **Counselor / tiers autorisé fallback for parental consent** — UX spec §Defining Principle #6
+  calls for "consentement par tiers autorisé" when no parent is available. Out of MVP scope; revisit
+  when Epic 6 ships partner-counselor identity (Story 6.5+).
+- **Parent self-service consent revocation post-grant** — UX spec hints at "révocable à tout moment".
+  MVP relies on Story 1.10 (revocation via `PermissionList`) + ConsentDialog revoke path. When Epic 6
+  ships the Parent Space, parents with real accounts can revoke from their dashboard via
+  `parent_user_id` linkage on the ParentalConsent row.
+- **Internationalised parental-consent email templates** — French only in MVP. next-intl + per-locale
+  rendering = Story 7.7 + Story 8.1 (email transactional abstraction).
+- **Address-of-record / residence proof for very-young minors** — some jurisdictions ask for stronger
+  proof than email opt-in. Out of MVP scope; LIL art. 7-1 cite documented in ADR-0003. Reopen if
+  CNIL guidance shifts post-MVP launch.
+- **`parental_consents` table partitioning / archival** — table grows monotonically, no purge in MVP.
+  Steady-state under ~10k rows / year at the target funnel — revisit when partitioning is worth the
+  Celery beat complexity (Sprint 4+ if volumes exceed projections).
+- **Salted hash for `parent_email_hash` in audit metadata** — currently a plain SHA-256 so the same
+  parent across multiple children is detectable across audit rows (intentional, ADR-0003). Revisit
+  if a post-launch legal review requires unlinkability across rows.
+- **Transient `user._parent_email_pending` attribute coupling** — allauth fires `user_signed_up`
+  with a plain `WSGIRequest` (no `.data`), so the adapter stashes `parent_email` on the user
+  object for the signal handler to read. Acceptable but coupling-y; revisit if allauth ever exposes
+  a DRF-native signal alternative or if we move away from allauth.
+- **Parent-link `<LimitedModeBanner />` resend cooldown UX** — currently surfaces a single line
+  "Trop tôt — réessaie dans une heure" on the 429. A countdown / next-available-at would be
+  friendlier; do it when the banner gets real product analytics (Story 10.2+ web push integration).
+
 ## Deferred from: code review of 1-13-journal-audit-acces (2026-05-17)
 
 - **Durable retry queue for failed audit writes** — `record_audit` swallow on DB failure is the §9 #4 decision, but a Redis list / outbox-style retry buffer was acknowledged as growth scope. Currently dropped audit events surface only via structlog + Sentry.
@@ -71,3 +117,9 @@ Items flagged during code reviews but consciously deferred. Each has a target st
 - **Rate limit `X-Forwarded-For` trust** — production gateway config (Caddy + `RATELIMIT_TRUSTED_PROXIES`). Deploy track.
 - **Signal-based activation transaction atomicity** — Story 1.13 (audit log) durcira avec retry idempotent Celery.
 - **CI gate "[À DÉFINIR]" detection sur build prod `/legal/rgpd`** — implementation simple (`grep -lr "À DÉFINIR" .next/server` exit ≠ 0) à ajouter dans une story deploy/CI dédiée.
+
+## Deferred from: planning of 1-8-multi-tenant-rls-postgresql (2026-05-17)
+
+- **Duplicate `set_actor_from_request` calls in audit views** — once Story 1.8's `TenantSessionMiddleware` lands, the manual calls at [apps/api/apps/audit/views.py:53,191](apps/api/apps/audit/views.py) (added defensively in Story 1.13 T5.7) become redundant. Keep them in 1.8 for safety; remove in a follow-up cleanup story once the middleware has run a full sprint without issues.
+- **Demote local `path_advisor` Postgres role from superuser** — Story 1.8 accepts that local dev silently bypasses RLS (relies on `make test-rls` + CI for enforcement). Fixing this requires a non-superuser app role + a separate migration role in `docker-compose.yml` + `infra/postgres/init.sql`. Deploy-track.
+- **Staging environment provisioning** — Story 1.8 §6 Q2 surfaced that no staging env exists yet. If/when it's created, revisit migrations that add NOT-NULL columns to existing tables (currently `parental_consents.tenant_id` uses a one-shot `UPDATE` safe only because the table is empty in every env).

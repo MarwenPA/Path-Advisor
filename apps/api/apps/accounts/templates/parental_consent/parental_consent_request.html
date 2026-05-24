@@ -1,0 +1,42 @@
+{% spaceless %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Path-Advisor : votre enfant a besoin de votre autorisation</title>
+</head>
+<body style="margin:0;padding:24px;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FAFAF7;color:#1A1A1A;line-height:1.55;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:8px;padding:32px;">
+<tr><td>
+<h1 style="margin:0 0 16px;color:#1A1A1A;font-size:22px;line-height:1.3;">Votre enfant a besoin de votre autorisation</h1>
+<p style="margin:0 0 16px;">Bonjour,</p>
+<p style="margin:0 0 16px;">Votre enfant souhaite utiliser <strong>Path-Advisor</strong>, un service d'orientation scolaire qui l'aide à explorer des métiers et des parcours adaptés à son profil.</p>
+<p style="margin:0 0 16px;">Comme il a moins de 15 ans, la loi nous demande votre autorisation pour qu'il puisse continuer.</p>
+<h2 style="margin:24px 0 8px;font-size:16px;color:#1A1A1A;">Ce que votre enfant pourra faire</h2>
+<ul style="margin:0 0 16px 20px;padding:0;">
+<li>Compléter un profil (passions, intérêts, valeurs)</li>
+<li>Voir des métiers recommandés</li>
+<li>Sauvegarder des parcours de formation</li>
+</ul>
+<h2 style="margin:24px 0 8px;font-size:16px;color:#1A1A1A;">Ce que Path-Advisor collectera</h2>
+<ul style="margin:0 0 16px 20px;padding:0;">
+<li>L'email et le mot de passe de votre enfant (chiffrés)</li>
+<li>Les informations de son profil scolaire (saisies ou OCR de bulletins)</li>
+<li>Ses interactions avec le service</li>
+</ul>
+<h2 style="margin:24px 0 8px;font-size:16px;color:#1A1A1A;">Vos droits</h2>
+<ul style="margin:0 0 24px 20px;padding:0;">
+<li>Vous pouvez autoriser ou refuser</li>
+<li>Vous pouvez révoquer votre autorisation à tout moment</li>
+<li>Vous pouvez nous écrire à <a href="mailto:dpo@path-advisor.fr" style="color:#C8312D;">dpo@path-advisor.fr</a> pour toute question</li>
+</ul>
+<p style="margin:32px 0;text-align:center;">
+<a href="{{ consent_url }}" style="display:inline-block;padding:14px 28px;background:#C8312D;color:#FFFFFF;text-decoration:none;border-radius:6px;font-weight:600;">Décider maintenant</a>
+</p>
+<p style="margin:24px 0 0;font-size:14px;color:#666660;">Vous avez 60 jours pour répondre. Sans réponse de votre part, le compte de votre enfant sera suspendu (mais pas supprimé).</p>
+<p style="margin:16px 0 0;font-size:14px;color:#666660;">— L'équipe Path-Advisor</p>
+<hr style="margin:32px 0;border:none;border-top:1px solid #E5E5E0;">
+<p style="margin:0;font-size:12px;color:#8C8C86;">Vous recevez cet email parce qu'un mineur a utilisé votre adresse comme contact parental pour s'inscrire à Path-Advisor. Si vous ne connaissez pas cet enfant ou si cette demande vous semble suspecte, vous pouvez simplement ignorer ce message — sans votre autorisation, le compte sera suspendu automatiquement.</p>
+</td></tr>
+</table>
+</body>
+</html>{% endspaceless %}

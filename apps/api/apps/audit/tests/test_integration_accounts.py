@@ -43,7 +43,10 @@ def test_email_verified_persists_audit_log_via_decorator():
     row = rows.first()
     assert row.result == AuditResult.SUCCESS
     assert row.subject_id == user.id
-    assert row.metadata == {"role": user.role}
+    # Story 1.4 review §P1: audit metadata gained `status_after` so the trail
+    # captures whether the verification promoted the user to ACTIVE or left
+    # them pending parental consent.
+    assert row.metadata == {"role": user.role, "status_after": "active"}
 
 
 @pytest.mark.django_db

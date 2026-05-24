@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-17  # PRs #1 (1.13), #2 (1.14), #4 (1.3) merged into main
+last_updated: 2026-05-24  # Story 1.4 done (review pass 26 patches applied)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -47,14 +47,14 @@ development_status:
   1-1-initialisation-projet: done
   1-2-design-system-tokens: done
   1-3-inscription-eleve-15-ans-rgpd: done
-  1-4-inscription-eleve-moins-15-ans-parental: ready-for-dev
+  1-4-inscription-eleve-moins-15-ans-parental: done
   1-5-connexion-email-password: backlog
   1-6-mfa-staff: backlog
   1-7-rbac-middleware-autorisation: backlog
-  1-8-multi-tenant-rls-postgresql: backlog
+  1-8-multi-tenant-rls-postgresql: ready-for-dev
   1-9-liste-tiers-acces-profil: backlog
   1-10-revocation-acces-tiers: backlog
-  1-11-export-portabilite-rgpd: backlog
+  1-11-export-portabilite-rgpd: ready-for-dev
   1-12-suppression-compte-rgpd: backlog
   1-13-journal-audit-acces: done
   1-14-composant-consent-dialog: done

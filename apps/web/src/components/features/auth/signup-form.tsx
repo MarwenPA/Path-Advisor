@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api/client";
 import { CGU_RGPD_VERSION, signupStudent } from "@/lib/api/auth";
+import { isUnderAge } from "@/lib/auth/age";
 
 const COPY = {
   title: "Créer ton compte",
@@ -22,7 +23,7 @@ const COPY = {
   passwordHelp: "12 caractères minimum. Évite les mots de passe courants ou seulement numériques.",
   birthDateLabel: "Date de naissance",
   birthDateHelp:
-    "L'inscription des moins de 15 ans nécessite un consentement parental (arrive prochainement).",
+    "Si tu as moins de 15 ans, nous te demanderons l'email d'un parent ou tuteur pour autoriser ton inscription.",
   consentLabel: "J'accepte les CGU et la",
   consentLink: "politique RGPD",
   submit: "Créer mon compte",
@@ -44,11 +45,43 @@ const SignupSchema = z
     consent_rgpd_accepted: z.literal(true, {
       errorMap: () => ({ message: "Tu dois accepter les CGU et la politique RGPD." }),
     }),
+    // Optional at the schema level — required iff `age < 15`. The cross-field
+    // refine below enforces the rule so the field-level Zod error stays clean.
+    parent_email: z.string().email("Adresse email parent invalide").optional().or(z.literal("")),
   })
   .refine((data) => data.password === data.passwordConfirm, {
     path: ["passwordConfirm"],
     message: "Les deux mots de passe ne correspondent pas.",
-  });
+  })
+  .refine(
+    (data) => {
+      // < 15 → parent_email required.
+      if (isUnderAge(data.birth_date, 15)) return !!data.parent_email;
+      return true;
+    },
+    {
+      path: ["parent_email"],
+      message: "Email du parent ou tuteur requis pour les moins de 15 ans.",
+    },
+  )
+  .refine(
+    (data) => {
+      // ≥ 15 + parent_email present → reject early (mirrors API ParentEmailNotApplicable).
+      if (!isUnderAge(data.birth_date, 15) && data.parent_email) return false;
+      return true;
+    },
+    {
+      path: ["parent_email"],
+      message: "L'email d'un parent n'est requis que pour les moins de 15 ans.",
+    },
+  )
+  .refine(
+    (data) => !data.parent_email || data.parent_email.toLowerCase() !== data.email.toLowerCase(),
+    {
+      path: ["parent_email"],
+      message: "Ton parent ne peut pas avoir la même adresse email que toi.",
+    },
+  );
 
 type SignupFormValues = z.infer<typeof SignupSchema>;
 
@@ -64,8 +97,21 @@ export function SignupForm() {
       passwordConfirm: "",
       birth_date: "",
       consent_rgpd_accepted: false as unknown as true,
+      parent_email: "",
     },
   });
+
+  const watchedBirthDate = useWatch({ control: form.control, name: "birth_date" });
+  const isMinor = isUnderAge(watchedBirthDate, 15);
+  const parentEmailInputRef = useRef<HTMLInputElement | null>(null);
+  const wasMinor = useRef(false);
+
+  useEffect(() => {
+    // When the conditional field appears, focus it so keyboard users land on it
+    // without needing to tab through every preceding question again.
+    if (isMinor && !wasMinor.current) parentEmailInputRef.current?.focus();
+    wasMinor.current = isMinor;
+  }, [isMinor]);
 
   const onSubmit = async (values: SignupFormValues) => {
     setServerError(null);
@@ -77,6 +123,9 @@ export function SignupForm() {
         birth_date: values.birth_date,
         consent_rgpd_accepted: values.consent_rgpd_accepted,
         consent_cgu_version: CGU_RGPD_VERSION,
+        // Only send parent_email when the user is a minor — sending an empty string
+        // would trigger ParentEmailNotApplicable on the API for ≥ 15 ans.
+        ...(isMinor && values.parent_email ? { parent_email: values.parent_email } : {}),
       });
       setSubmitted(true);
     } catch (error) {
@@ -196,6 +245,34 @@ export function SignupForm() {
           </p>
         )}
       </div>
+
+      {isMinor && (
+        <div className="flex flex-col gap-1.5" data-testid="signup-parent-email-block">
+          <Label htmlFor="signup-parent-email">Email de ton parent ou tuteur</Label>
+          <Input
+            id="signup-parent-email"
+            type="email"
+            autoComplete="email"
+            placeholder="ex. parent@example.com"
+            aria-invalid={errors.parent_email ? "true" : undefined}
+            aria-describedby="signup-parent-email-help signup-parent-email-error"
+            {...form.register("parent_email")}
+            ref={(el) => {
+              form.register("parent_email").ref(el);
+              parentEmailInputRef.current = el;
+            }}
+          />
+          <p id="signup-parent-email-help" className="text-body-sm text-text-muted">
+            Tes parents recevront un email pour autoriser ton inscription. Tu peux continuer à
+            explorer en attendant.
+          </p>
+          {errors.parent_email && (
+            <p id="signup-parent-email-error" className="text-body-sm text-danger">
+              {errors.parent_email.message}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex items-start gap-3">
         <Controller
