@@ -96,7 +96,7 @@ def test_build_export_marks_failed_when_s3_raises(fake_s3, settings):
     export = GdprExportRequest.objects.create(user_id=user.id)
 
     def _explode(**_kwargs):
-        raise RuntimeError("S3 down")
+        raise RuntimeError("S3 down — boto internal detail user must not see")
 
     with patch.object(fake_s3, "put_object", side_effect=_explode):
         build_export(export_id=export.id)
@@ -104,11 +104,86 @@ def test_build_export_marks_failed_when_s3_raises(fake_s3, settings):
     export.refresh_from_db()
     assert export.status == GdprExportStatus.FAILED
     assert export.error_code == "gdpr.build_failed"
-    assert "S3 down" in (export.error_message or "")
+    # Post-review patch: error_message must NOT leak raw exception details
+    # (boto endpoint, region, paths). Only the class name + safe pointer to Sentry.
+    assert export.error_message == "RuntimeError: see Sentry for details."
+    assert "S3 down" not in (export.error_message or "")
+    assert "boto" not in (export.error_message or "")
 
 
 @pytest.mark.django_db
-def test_notify_export_ready_sends_link_email_then_schedules_password(fake_s3, settings):
+def test_build_export_purges_orphan_s3_on_post_upload_failure(fake_s3, settings):
+    """Post-review patch: if put_object succeeds but a later step raises, the
+    S3 object MUST be deleted before transitioning to failed. Without this,
+    encrypted user data is orphaned indefinitely on S3 → Art. 5(1)(e) breach.
+    """
+    user = UserFactory()
+    export = GdprExportRequest.objects.create(user_id=user.id)
+
+    # Let put_object succeed, then force the subsequent `save()` to raise.
+    real_save = GdprExportRequest.save
+    save_calls = {"n": 0}
+
+    def flaky_save(self, *args, **kwargs):
+        save_calls["n"] += 1
+        # First save (status=IN_PROGRESS) must succeed; second one (status=READY)
+        # must raise so we exercise the orphan-cleanup path.
+        if save_calls["n"] == 2:
+            raise RuntimeError("DB hiccup right after put_object")
+        return real_save(self, *args, **kwargs)
+
+    with patch.object(GdprExportRequest, "save", flaky_save):
+        build_export(export_id=export.id)
+
+    export.refresh_from_db()
+    assert export.status == GdprExportStatus.FAILED
+    # The orphan that was uploaded must have been deleted.
+    key = f"gdpr-exports/{user.id}/{export.id}.zip"
+    assert (settings.GDPR_EXPORTS_BUCKET, key) not in fake_s3.objects
+    assert (settings.GDPR_EXPORTS_BUCKET, key) in fake_s3.delete_calls
+
+
+@pytest.mark.django_db
+def test_notify_export_ready_records_audit_and_sentry_when_no_email(fake_s3):
+    """Post-review patch: silent strand previously left exports `ready` with
+    no notification and no trace. Now we audit + Sentry-flag the skip.
+    """
+    import sys
+    from unittest.mock import MagicMock
+
+    user = UserFactory(email="x@example.test")
+    export = GdprExportRequest.objects.create(
+        user_id=user.id,
+        status=GdprExportStatus.READY,
+        ready_at=timezone.now(),
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+    # Empty the user's email so the no_email branch fires.
+    user.email = ""
+    user.save(update_fields=["email"])
+
+    # `import sentry_sdk` happens inside the task at call time — replace the
+    # module in sys.modules so the local import resolves to our mock.
+    sentry_mock = MagicMock()
+    with patch.dict(sys.modules, {"sentry_sdk": sentry_mock}):
+        result = notify_export_ready(export_id=export.id, password="ignored")
+
+    assert result == {"skipped": "no_email"}
+    from apps.audit.models import AuditLog
+
+    assert AuditLog.objects.filter(
+        action="gdpr.notify_skipped",
+        subject_id=user.id,
+        result="failure",
+    ).exists()
+    sentry_mock.capture_message.assert_called_once()
+
+
+@pytest.mark.django_db
+def test_notify_export_ready_sends_both_emails_in_single_task(fake_s3, settings):
+    """Post-review D1 (2026-05-24): a single task sends BOTH emails in-process so
+    the cleartext password never traverses the broker between two tasks.
+    """
     user = UserFactory(email="sarah@example.test")
     export = GdprExportRequest.objects.create(
         user_id=user.id,
@@ -117,27 +192,35 @@ def test_notify_export_ready_sends_link_email_then_schedules_password(fake_s3, s
         expires_at=timezone.now() + timedelta(days=7),
     )
 
-    with patch(
-        "apps.accounts.tasks.send_gdpr_export_password_email.apply_async"
-    ) as mock_apply:
+    # `time.sleep(30)` between the two sends is the in-process gap; patch it
+    # out so the test runs instantly.
+    with patch("apps.accounts.tasks.time.sleep") as mock_sleep:
         notify_export_ready(export_id=export.id, password="secretpw")
 
-    # 1 email sent now (link), 1 task scheduled with countdown=30 (password).
-    assert len(mail.outbox) == 1
-    link_email = mail.outbox[0]
-    assert "sarah@example.test" in link_email.to
-    assert "secretpw" not in link_email.body  # password is NOT in the link email
-    mock_apply.assert_called_once()
-    _, kwargs = mock_apply.call_args
-    assert kwargs["countdown"] == 30
-    assert kwargs["kwargs"]["password"] == "secretpw"
+    mock_sleep.assert_called_once_with(30)
 
-    # Idempotence: re-run does nothing.
+    # Both emails sent from the same task — no follow-up apply_async.
+    assert len(mail.outbox) == 2
+    link_email = mail.outbox[0]
+    password_email = mail.outbox[1]
+    assert "sarah@example.test" in link_email.to
+    assert "sarah@example.test" in password_email.to
+    # Password ONLY in the second email, never in the first.
+    assert "secretpw" not in link_email.body
+    assert "secretpw" in password_email.body
+    # Deep-link variant of the URL must include the export id (#anchor).
+    assert export.id in link_email.body
+
+    # Idempotence: re-run does nothing thanks to the emails_sent_at guard set
+    # BEFORE the first send.
+    export.refresh_from_db()
+    assert export.emails_sent_at is not None
     mail.outbox.clear()
-    mock_apply.reset_mock()
-    notify_export_ready(export_id=export.id, password="secretpw")
+    with patch("apps.accounts.tasks.time.sleep") as mock_sleep_2:
+        result = notify_export_ready(export_id=export.id, password="secretpw")
+    assert result == {"skipped": "already_sent"}
     assert mail.outbox == []
-    mock_apply.assert_not_called()
+    mock_sleep_2.assert_not_called()
 
 
 @pytest.mark.django_db

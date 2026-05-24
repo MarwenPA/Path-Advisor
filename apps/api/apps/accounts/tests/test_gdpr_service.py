@@ -75,6 +75,23 @@ def test_request_export_allows_after_rate_limit_window_elapsed():
 
 
 @pytest.mark.django_db
+def test_partial_unique_index_translates_race_into_in_progress_409():
+    """Post-review D4 (2026-05-24): two simultaneous POSTs both passing
+    `_has_active_export` are caught by the partial unique index at DB level.
+    The IntegrityError surfaces as `GdprExportInProgress` (409) to the caller.
+    """
+    user = UserFactory()
+    # Simulate the race: a pending row appears AFTER `_has_active_export`
+    # returned False (we patch the check to lie about the absence).
+    GdprExportRequest.objects.create(user_id=user.id, status=GdprExportStatus.PENDING)
+
+    with patch(
+        "apps.accounts.services.gdpr_service._has_active_export", return_value=False
+    ), pytest.raises(GdprExportInProgress):
+        GdprExportService.request_export(user=user)
+
+
+@pytest.mark.django_db
 def test_failed_export_does_not_consume_quota():
     user = UserFactory()
     GdprExportRequest.objects.create(

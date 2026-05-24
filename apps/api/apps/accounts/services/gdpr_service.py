@@ -27,7 +27,7 @@ import boto3
 import structlog
 from botocore.config import Config as BotoConfig
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.accounts.gdpr_exceptions import (
@@ -83,10 +83,26 @@ class GdprExportService:
                 retry_after_seconds=retry_after,
             )
 
-        export = GdprExportRequest.objects.create(
-            user_id=user.id,
-            status=GdprExportStatus.PENDING,
-        )
+        try:
+            export = GdprExportRequest.objects.create(
+                user_id=user.id,
+                status=GdprExportStatus.PENDING,
+            )
+        except IntegrityError as exc:
+            # Two concurrent POSTs both passed `_has_active_export` and reached
+            # the INSERT. The partial unique index (migration 0004) rejects the
+            # second one — translate it back into the same 409 the application
+            # check would have produced (post-review patch D4, 2026-05-24).
+            #
+            # PostgreSQL reports the constraint name; SQLite (tests) reports the
+            # column name. Match either to keep the test backend SQLite-friendly.
+            message = str(exc)
+            if (
+                "uniq_gdpr_active_per_user" in message
+                or "gdpr_export_requests.user_id" in message
+            ):
+                raise GdprExportInProgress() from exc
+            raise
 
         # Local import to avoid the circular module load
         # `models → service → tasks → models` at Django startup.

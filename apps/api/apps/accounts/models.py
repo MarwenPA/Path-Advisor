@@ -164,6 +164,15 @@ class GdprExportRequest(models.Model):
                 name="idx_gdpr_exports_status_exp",
             ),
         ]
+        # Partial unique index — only one active (pending/in_progress) export
+        # per user (post-review patch D4, 2026-05-24).
+        constraints: ClassVar[list] = [
+            models.UniqueConstraint(
+                fields=["user_id"],
+                condition=models.Q(status__in=("pending", "in_progress")),
+                name="uniq_gdpr_active_per_user",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"GdprExportRequest({self.id}, user={self.user_id}, status={self.status})"

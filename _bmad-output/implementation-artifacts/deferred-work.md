@@ -31,6 +31,15 @@ Items flagged during code reviews but consciously deferred. Each has a target st
 - **Storybook (or equivalent isolation viewer)** — UX spec recommends one Storybook per Couche 3 component. We substitute the `/design-system` showcase for MVP. Re-evaluate at Sprint 4+ when 4-5 Couche 3 composites exist and the page becomes hard to navigate.
 - **`ConsentDialog` path may migrate to `components/path-advisor/`** — colocated with `components/ui/` for now (cf. story §4.3). Revisit at Story 3.11 if the `ui/` folder is becoming crowded with custom composites.
 
+## Deferred from: code review of 1-11-export-portabilite-rgpd (2026-05-24)
+
+- **`_build_zip` charge l'archive entière en BytesIO** — viole l'anti-pattern §3.2 "ne télécharge pas l'archive en mémoire". OK MVP (exporters accounts+audit < 100 KB), critique en Story 2.3 quand bulletins.pdf entreront dans l'archive. À reprendre avec `tempfile.NamedTemporaryFile()` + `upload_fileobj` en streaming dans Story 2.3 ou story dédiée.
+- **`[locale]` routing + next-intl namespace `gdpr` non câblés** — cohérent avec Story 1.3/1.14 qui n'utilisent pas next-intl non plus. Cross-cutting i18n à reprendre en Epic 7 (découverte publique SEO multilingue).
+- **Relative timestamps + tooltip absolu manquants** (UX polish AC8) — implémentation actuelle affiche uniquement `formatDateTime` absolu. À reprendre quand le design-system livre un composant `<RelativeTime>` partagé.
+- **Playwright `e2e/gdpr-export.spec.ts` manquant** — infra Playwright non bootstrapée pour 1.x (aucune story 1.x n'a livré de e2e). Cross-cutting story dédiée à créer pour bootstrap + tests des parcours PRD critiques.
+- **`build_export` sans `transaction.atomic` global + pas de reaper task pour `in_progress` stuck** — scénario : DB connection drop entre la transition `PENDING → IN_PROGRESS` et `IN_PROGRESS → READY`, la ligne reste bloquée pour toujours (l'idempotence guard refuse de re-picker). Risque faible MVP ; ajouter un reaper Celery beat quotidien qui flip `IN_PROGRESS > 1h` vers `FAILED` en growth.
+- **CSRF token silently optional sur POST** (`readCsrfCookie() ?? undefined`) — pattern à harmoniser avec Story 1.5 login flow qui livrera le contrat CSRF strict.
+
 ## Deferred from: code review of 1-13-journal-audit-acces (2026-05-17)
 
 - **Durable retry queue for failed audit writes** — `record_audit` swallow on DB failure is the §9 #4 decision, but a Redis list / outbox-style retry buffer was acknowledged as growth scope. Currently dropped audit events surface only via structlog + Sentry.

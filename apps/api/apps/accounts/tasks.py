@@ -1,14 +1,14 @@
 """Celery tasks backing the GDPR Article 20 export pipeline (Story 1.11).
 
-Pipeline (cf. story §3.4 Pattern A — one Celery task per stage):
+Pipeline (post code-review 2026-05-24 — single-task notify keeps the cleartext
+password inside a single worker process, never on the broker between hops):
 
     POST /me/gdpr-exports
         ↓ transaction.on_commit
     build_export(export_id)
         ↓ on success
-    notify_export_ready(export_id, password)
-        ↓ countdown=30
-    send_gdpr_export_password_email(export_id, password)
+    notify_export_ready(export_id, password)    # sends BOTH emails in-process
+        link email → time.sleep(30) → password email
 
 Failure on `build_export` triggers `send_gdpr_export_failed_email` only —
 no link, no password.
@@ -24,11 +24,21 @@ import hashlib
 import io
 import json
 import secrets
+import time
 from datetime import timedelta
+from smtplib import SMTPException
+from types import SimpleNamespace
 from typing import Any
 
 import pyzipper
 import structlog
+from botocore.exceptions import (
+    BotoCoreError,
+    ClientError,
+)
+from botocore.exceptions import (
+    ConnectionError as BotoConnectionError,
+)
 from celery import shared_task
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
@@ -46,6 +56,17 @@ log = structlog.get_logger(__name__)
 
 
 SCHEMA_VERSION = "1.0"
+
+# Sentinel "actor" for system-triggered audit rows (Story 1.11 post-review D3).
+# `record_audit` reads `.id` and `.role` from this object — actor_id=None means
+# "no human", actor_role="system" makes the DPO filter explicit.
+_SYSTEM_ACTOR = SimpleNamespace(id=None, role="system")
+
+# Narrow retryable email exceptions — programming bugs (TemplateDoesNotExist,
+# KeyError) must NOT be retried with the password in kwargs (Story 1.11
+# post-review patch).
+_EMAIL_RETRY_EXC = (SMTPException, ConnectionError, TimeoutError, OSError)
+
 README_BODY = """\
 Path-Advisor — Export RGPD (Article 20)
 =======================================
@@ -74,12 +95,11 @@ Pour toute question : dpo@path-advisor.fr
 @shared_task(
     name="gdpr.build_export",
     bind=True,
-    time_limit=None,  # hard limit controlled via setting (see below)
+    soft_time_limit=settings.GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS - 60,
+    time_limit=settings.GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS,
 )
 def build_export(self, export_id: str) -> dict[str, Any]:
     """Assemble the encrypted ZIP, upload to S3, transition `pending → ready`."""
-    self.soft_time_limit = settings.GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS
-
     try:
         export = GdprExportRequest.objects.get(pk=export_id)
     except GdprExportRequest.DoesNotExist:
@@ -106,16 +126,17 @@ def build_export(self, export_id: str) -> dict[str, Any]:
         _mark_failed(export, code="gdpr.user_missing", message="User account no longer exists.")
         return {"failed": "user_missing"}
 
+    archive_s3_key: str | None = None
     try:
         password = secrets.token_urlsafe(24)
         archive_bytes, manifest, errors_per_domain = _build_zip(user=user, password=password)
         sha256 = hashlib.sha256(archive_bytes).hexdigest()
-        key = f"gdpr-exports/{user.id}/{export.id}.zip"
+        archive_s3_key = f"gdpr-exports/{user.id}/{export.id}.zip"
 
         s3 = gdpr_s3_client()
         s3.put_object(
             Bucket=settings.GDPR_EXPORTS_BUCKET,
-            Key=key,
+            Key=archive_s3_key,
             Body=archive_bytes,
             ContentType="application/zip",
             ServerSideEncryption="AES256",
@@ -130,7 +151,7 @@ def build_export(self, export_id: str) -> dict[str, Any]:
         export.status = GdprExportStatus.READY
         export.ready_at = now
         export.expires_at = now + timedelta(days=settings.GDPR_EXPORT_VALIDITY_DAYS)
-        export.archive_s3_key = key
+        export.archive_s3_key = archive_s3_key
         export.archive_sha256 = sha256
         export.archive_size_bytes = len(archive_bytes)
         export.password_hash = make_password(password)
@@ -149,6 +170,7 @@ def build_export(self, export_id: str) -> dict[str, Any]:
         record_audit(
             action="gdpr.export_ready",
             result=AuditResult.SUCCESS,
+            actor=_SYSTEM_ACTOR,
             subject_id=user.id,
             metadata={
                 "export_id": export.id,
@@ -158,21 +180,42 @@ def build_export(self, export_id: str) -> dict[str, Any]:
             },
         )
 
-        notify_export_ready.delay(export_id=export.id, password=password)
+        # `notify_export_ready` is a Celery task — `.delay()` may itself raise
+        # on broker outage. In that case we still ack the build (the ZIP is
+        # in S3 and the DB row is READY) but Sentry-flag the missed email.
+        try:
+            notify_export_ready.delay(export_id=export.id, password=password)
+        except Exception as dispatch_exc:
+            log.error(
+                "gdpr.notify_dispatch_failed",
+                export_id=export.id,
+                error=str(dispatch_exc),
+                exc_info=True,
+            )
 
         return {
             "export_id": export.id,
             "size_bytes": len(archive_bytes),
-            "key": key,
+            "key": archive_s3_key,
             "sha256": sha256,
         }
 
     except Exception as exc:
+        # Sanitize the error message: only the exception CLASS NAME persists.
+        # Raw `str(exc)` can carry S3 endpoints, region, bucket paths, partial
+        # secrets — all of which leak via the serializer + failure email
+        # (post-review patch).
         code = "gdpr.build_failed"
-        _mark_failed(export, code=code, message=str(exc)[:500])
+        _mark_failed(
+            export,
+            code=code,
+            message=f"{exc.__class__.__name__}: see Sentry for details.",
+            archive_s3_key_to_purge=archive_s3_key,
+        )
         log.error(
             "gdpr.build_export.failed",
             export_id=export.id,
+            error_type=exc.__class__.__name__,
             error=str(exc),
             exc_info=True,
         )
@@ -186,7 +229,11 @@ def build_export(self, export_id: str) -> dict[str, Any]:
 def _build_zip(
     *, user: User, password: str
 ) -> tuple[bytes, dict[str, Any], dict[str, str]]:
-    """Build the in-memory AES-256 encrypted ZIP and return (bytes, manifest, errors)."""
+    """Build the in-memory AES-256 encrypted ZIP and return (bytes, manifest, errors).
+
+    Streaming-to-disk is deferred until Story 2.3 ships an exporter heavy enough
+    to OOM the worker (cf. deferred-work code review 2026-05-24).
+    """
     buf = io.BytesIO()
     files: list[dict[str, Any]] = []
     domains_summary: list[dict[str, Any]] = []
@@ -278,7 +325,40 @@ def _build_zip(
     return buf.getvalue(), manifest, errors_per_domain
 
 
-def _mark_failed(export: GdprExportRequest, *, code: str, message: str) -> None:
+def _mark_failed(
+    export: GdprExportRequest,
+    *,
+    code: str,
+    message: str,
+    archive_s3_key_to_purge: str | None = None,
+) -> None:
+    """Transition to `failed` and best-effort purge any orphan S3 object.
+
+    `message` MUST already be sanitized — only class names / safe codes belong
+    here (post-review patch — `str(exc)` leaked boto endpoint/region/path).
+
+    If `archive_s3_key_to_purge` is set, we attempt to delete it before
+    marking the row failed. Without this cleanup, a put_object that succeeds
+    followed by a save() that raises orphans the encrypted archive on S3 —
+    direct GDPR Art. 5(1)(e) storage-limitation breach (post-review patch).
+    """
+    if archive_s3_key_to_purge:
+        try:
+            gdpr_s3_client().delete_object(
+                Bucket=settings.GDPR_EXPORTS_BUCKET,
+                Key=archive_s3_key_to_purge,
+            )
+        except Exception as cleanup_exc:
+            # Log + Sentry but do not block the failure transition — orphan
+            # cleanup can be retried manually via the DPO runbook.
+            log.error(
+                "gdpr.mark_failed.s3_orphan_cleanup_failed",
+                export_id=export.id,
+                key=archive_s3_key_to_purge,
+                error=str(cleanup_exc),
+                exc_info=True,
+            )
+
     export.status = GdprExportStatus.FAILED
     export.error_code = code
     export.error_message = message
@@ -286,19 +366,33 @@ def _mark_failed(export: GdprExportRequest, *, code: str, message: str) -> None:
     record_audit(
         action="gdpr.export_failed",
         result=AuditResult.FAILURE,
+        actor=_SYSTEM_ACTOR,
         subject_id=export.user_id,
         metadata={"export_id": export.id, "error_code": code},
     )
 
 
 # ===========================================================================
-#  NOTIFY
+#  NOTIFY  (single task — keeps password OFF the broker between hops)
 # ===========================================================================
 
 
-@shared_task(name="gdpr.notify_export_ready")
+@shared_task(
+    name="gdpr.notify_export_ready",
+    autoretry_for=_EMAIL_RETRY_EXC,
+    max_retries=3,
+    default_retry_delay=60,
+    retry_backoff=True,
+)
 def notify_export_ready(*, export_id: str, password: str) -> dict[str, Any]:
-    """Send the link email; schedule the password email 30s later."""
+    """Send link email, sleep 30s, send password email — all in one worker process.
+
+    Single-task design (Story 1.11 post-review decision D1): the cleartext
+    password is an argument of THIS task only. It never moves to a follow-up
+    task, so it sits in the broker for the in-flight time of this task and is
+    discarded on ACK. Retries on the narrow `_EMAIL_RETRY_EXC` keep that
+    window bounded.
+    """
     try:
         export = GdprExportRequest.objects.get(pk=export_id)
     except GdprExportRequest.DoesNotExist:
@@ -307,14 +401,43 @@ def notify_export_ready(*, export_id: str, password: str) -> dict[str, Any]:
     if export.status != GdprExportStatus.READY:
         return {"skipped": export.status}
 
-    # Idempotence guard: re-running this task must not re-send emails.
+    # Idempotence guard — set BEFORE the first email goes out. On retry,
+    # `emails_sent_at is not None` short-circuits us before any second send.
+    # (Post-review patch — previously set AFTER apply_async, opening a window
+    # for duplicate link emails on partial failure.)
     if export.emails_sent_at is not None:
         return {"skipped": "already_sent"}
 
     user = User.objects.filter(pk=export.user_id).only("email").first()
     if user is None or not user.email:
-        log.warning("gdpr.notify_export_ready.no_email", export_id=export.id)
+        # Silent strand: audit + Sentry so the DPO can intervene
+        # (post-review patch — previously logged warning only).
+        log.error(
+            "gdpr.notify_export_ready.no_email",
+            export_id=export.id,
+            user_id=export.user_id,
+        )
+        record_audit(
+            action="gdpr.notify_skipped",
+            result=AuditResult.FAILURE,
+            actor=_SYSTEM_ACTOR,
+            subject_id=export.user_id,
+            metadata={"export_id": export.id, "reason": "no_email"},
+        )
+        try:
+            import sentry_sdk
+
+            sentry_sdk.capture_message(
+                f"gdpr.notify_skipped: export {export.id} ready but user has no email",
+                level="error",
+            )
+        except Exception:
+            log.warning("gdpr.sentry_capture_failed", export_id=export.id)
         return {"skipped": "no_email"}
+
+    # Reserve the idempotence slot BEFORE the first send. If the link email
+    # fails, autoretry hits the guard at the top and skips — no duplicate send.
+    GdprExportRequest.objects.filter(pk=export.id).update(emails_sent_at=timezone.now())
 
     _send_gdpr_email(
         subject="[Path-Advisor] Ton export RGPD est prêt",
@@ -326,33 +449,9 @@ def notify_export_ready(*, export_id: str, password: str) -> dict[str, Any]:
         },
     )
 
-    # Schedule the password email with a 30s gap so it doesn't land in the
-    # same Gmail conversation/notification batch as the link email.
-    send_gdpr_export_password_email.apply_async(
-        kwargs={"export_id": export.id, "password": password},
-        countdown=30,
-    )
-
-    GdprExportRequest.objects.filter(pk=export.id).update(emails_sent_at=timezone.now())
-    return {"sent": "link"}
-
-
-@shared_task(
-    name="gdpr.send_gdpr_export_password_email",
-    autoretry_for=(Exception,),
-    max_retries=3,
-    default_retry_delay=60,
-    retry_backoff=True,
-)
-def send_gdpr_export_password_email(*, export_id: str, password: str) -> dict[str, Any]:
-    try:
-        export = GdprExportRequest.objects.get(pk=export_id)
-    except GdprExportRequest.DoesNotExist:
-        return {"skipped": "missing"}
-
-    user = User.objects.filter(pk=export.user_id).only("email").first()
-    if user is None or not user.email:
-        return {"skipped": "no_email"}
+    # In-process gap so the password email doesn't land in the same Gmail
+    # conversation / push notification batch as the link email.
+    time.sleep(30)
 
     _send_gdpr_email(
         subject="[Path-Advisor] Mot de passe de ton export RGPD",
@@ -360,12 +459,13 @@ def send_gdpr_export_password_email(*, export_id: str, password: str) -> dict[st
         to=user.email,
         context={"export": export, "password": password},
     )
-    return {"sent": "password"}
+
+    return {"sent": "link+password"}
 
 
 @shared_task(
     name="gdpr.send_gdpr_export_failed_email",
-    autoretry_for=(Exception,),
+    autoretry_for=_EMAIL_RETRY_EXC,
     max_retries=3,
     default_retry_delay=60,
     retry_backoff=True,
@@ -413,6 +513,11 @@ def _send_gdpr_email(
 # ===========================================================================
 
 
+# Concrete S3-side exceptions we know how to handle gracefully during the
+# nightly sweep. Anything else still bubbles to the worker logs.
+_S3_EXPIRE_EXC = (BotoCoreError, ClientError, BotoConnectionError)
+
+
 @shared_task(name="gdpr.expire_old_exports")
 def expire_old_exports() -> dict[str, Any]:
     """Move `ready` exports past `expires_at` to `expired` and purge S3 objects.
@@ -422,13 +527,23 @@ def expire_old_exports() -> dict[str, Any]:
     """
     now = timezone.now()
     expired_count = 0
-    qs = GdprExportRequest.objects.filter(
-        status=GdprExportStatus.READY,
-        expires_at__lt=now,
-    ).iterator(chunk_size=100)
+    # Materialise the id list up-front so server-side cursor semantics don't
+    # interact with the in-loop saves (post-review patch — `iterator()` while
+    # mutating the same queryset was risky).
+    expired_ids = list(
+        GdprExportRequest.objects.filter(
+            status=GdprExportStatus.READY,
+            expires_at__lt=now,
+        )
+        .order_by("expires_at")
+        .values_list("pk", flat=True)
+    )
 
     s3 = gdpr_s3_client()
-    for export in qs:
+    for export_id in expired_ids:
+        export = GdprExportRequest.objects.filter(pk=export_id).first()
+        if export is None or export.status != GdprExportStatus.READY:
+            continue
         # Purge S3 first — if it fails, we leave the DB row as `ready` and the
         # next nightly run will retry. Otherwise we'd lose the S3 reference.
         if export.archive_s3_key:
@@ -437,11 +552,21 @@ def expire_old_exports() -> dict[str, Any]:
                     Bucket=settings.GDPR_EXPORTS_BUCKET,
                     Key=export.archive_s3_key,
                 )
-            except Exception as exc:
+            except _S3_EXPIRE_EXC as exc:
                 log.warning(
                     "gdpr.expire_old_exports.s3_delete_failed",
                     export_id=export.id,
                     key=export.archive_s3_key,
+                    error=str(exc),
+                )
+                continue
+            except Exception as exc:
+                # Unknown error — same conservative bail-out as boto failures.
+                log.warning(
+                    "gdpr.expire_old_exports.s3_delete_unexpected",
+                    export_id=export.id,
+                    key=export.archive_s3_key,
+                    error_type=exc.__class__.__name__,
                     error=str(exc),
                 )
                 continue
@@ -463,6 +588,7 @@ def expire_old_exports() -> dict[str, Any]:
         record_audit(
             action="gdpr.export_expired",
             result=AuditResult.SUCCESS,
+            actor=_SYSTEM_ACTOR,
             subject_id=export.user_id,
             metadata={"export_id": export.id, "downloaded": downloaded},
         )

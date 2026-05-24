@@ -176,35 +176,61 @@ class GdprExportViewSet(
             raise GdprExportNotReady(
                 detail=f"Cet export n'est pas encore prêt (statut : {export.status})."
             )
-        if export.download_count >= settings.GDPR_EXPORT_MAX_DOWNLOADS:
-            raise GdprExportDownloadCap()
+        # Lazy-expiry check (post-review patch): the nightly beat purges
+        # expired rows at 04:00 UTC; between `expires_at` and the next beat
+        # tick (up to ~24h), `status` is still READY though the row is logically
+        # expired. Reject the download here to honour the 7-day contract.
+        if export.expires_at and export.expires_at < timezone.now():
+            raise GdprExportExpired()
         if not export.archive_s3_key:
             # Defensive: status=ready without an S3 key is an invariant violation.
             raise GdprExportNotReady(detail="Archive introuvable.")
 
-        # Increment the counter and audit BEFORE the redirect — the 302 itself
-        # is what S3 will log; whether the user follows it is not knowable
-        # client-side. We treat the click as the relevant business event.
-        new_count = export.download_count + 1
-        GdprExportRequest.objects.filter(pk=export.id).update(
+        # Atomic cap enforcement (post-review patch — TOCTOU was bypassable by
+        # concurrent requests both reading download_count < MAX before either
+        # incremented). `.update(... = F(field) + 1)` with a guarded filter
+        # returns the number of rows updated; if zero, another request already
+        # hit the cap.
+        updated = GdprExportRequest.objects.filter(
+            pk=export.id,
+            download_count__lt=settings.GDPR_EXPORT_MAX_DOWNLOADS,
+        ).update(
             download_count=F("download_count") + 1,
             last_downloaded_at=timezone.now(),
         )
+        if updated == 0:
+            raise GdprExportDownloadCap()
+
+        # Generate the presigned URL BEFORE writing the audit row, so a boto3
+        # failure does not leave a phantom "downloaded" audit entry without an
+        # actual redirect (post-review patch).
+        try:
+            s3 = gdpr_s3_client()
+            presigned = s3.generate_presigned_url(
+                "get_object",
+                Params={
+                    "Bucket": settings.GDPR_EXPORTS_BUCKET,
+                    "Key": export.archive_s3_key,
+                },
+                ExpiresIn=settings.GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS,
+            )
+        except Exception:
+            # Roll back the counter we just claimed so the user can retry.
+            GdprExportRequest.objects.filter(pk=export.id).update(
+                download_count=F("download_count") - 1,
+            )
+            raise
+
+        # Refetch the authoritative count post-update so the audit row reflects
+        # actual ordering under concurrency (post-review patch — the previous
+        # `new_count = stale + 1` produced duplicate values).
+        export.refresh_from_db(fields=["download_count"])
         record_audit(
             action="gdpr.export_downloaded",
             result=AuditResult.SUCCESS,
             actor=request.user,
             subject_id=request.user.id,
-            metadata={"export_id": export.id, "download_count": new_count},
+            metadata={"export_id": export.id, "download_count": export.download_count},
         )
 
-        s3 = gdpr_s3_client()
-        presigned = s3.generate_presigned_url(
-            "get_object",
-            Params={
-                "Bucket": settings.GDPR_EXPORTS_BUCKET,
-                "Key": export.archive_s3_key,
-            },
-            ExpiresIn=settings.GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS,
-        )
         return HttpResponseRedirect(presigned)

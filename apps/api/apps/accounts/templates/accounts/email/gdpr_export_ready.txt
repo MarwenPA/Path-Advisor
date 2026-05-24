@@ -3,7 +3,7 @@ Salut,
 Ton export RGPD est prêt à être téléchargé.
 
 Rends-toi sur ton espace pour le récupérer :
-https://path-advisor.fr/parametres/confidentialite/mes-donnees
+https://path-advisor.fr/parametres/confidentialite/mes-donnees#{{ export.id }}
 
 Ce lien est valable jusqu'au {{ expires_at|date:"j F Y à H:i" }} (7 jours).
 Tu peux le télécharger jusqu'à 10 fois.

@@ -23,8 +23,16 @@ class AccountsConfig(AppConfig):
         for app_config in apps.get_app_configs():
             if app_config.name == self.name:
                 continue
+            module_name = f"{app_config.name}.exporters"
             try:
-                import_module(f"{app_config.name}.exporters")
-            except ModuleNotFoundError:
-                # Apps without an exporters module contribute nothing — skip silently.
-                continue
+                import_module(module_name)
+            except ModuleNotFoundError as exc:
+                # Only swallow the absence of `<app>.exporters` itself.
+                # A transitive `ModuleNotFoundError` raised by code INSIDE an
+                # existing `exporters.py` (missing dep, typo in import) must
+                # propagate so the app fails loud at startup instead of
+                # silently shipping with an incomplete export
+                # (post-review patch 2026-05-24).
+                if exc.name == module_name:
+                    continue
+                raise

@@ -150,6 +150,57 @@ def test_download_302_increments_counter_and_audits(api_client, fake_s3, setting
 
 
 @pytest.mark.django_db
+def test_download_410_when_ready_but_past_expires_at(api_client, fake_s3, settings):
+    """Post-review patch: lazy-expiry — a row is logically expired the moment
+    `expires_at < now()`, even before the nightly `expire_old_exports` beat
+    flips status. The view must enforce this contract.
+    """
+    user = UserFactory()
+    api_client.force_authenticate(user=user)
+    export = GdprExportRequest.objects.create(
+        user_id=user.id,
+        status=GdprExportStatus.READY,
+        ready_at=timezone.now() - timedelta(days=10),
+        expires_at=timezone.now() - timedelta(minutes=5),
+        archive_s3_key=f"gdpr-exports/{user.id}/x.zip",
+    )
+    response = api_client.get(f"/api/v1/me/gdpr-exports/{export.id}/download/")
+    assert response.status_code == drf_status.HTTP_410_GONE
+    assert response.json()["type"] == "https://path-advisor.fr/errors/gdpr-export-expired"
+
+
+@pytest.mark.django_db
+def test_download_rolls_back_counter_when_presign_fails(api_client, fake_s3, settings):
+    """Post-review patch: if presigned URL generation fails AFTER the F-update,
+    the counter must be rolled back so the user does not lose a download slot.
+    """
+    user = UserFactory()
+    api_client.force_authenticate(user=user)
+    export = GdprExportRequest.objects.create(
+        user_id=user.id,
+        status=GdprExportStatus.READY,
+        ready_at=timezone.now(),
+        expires_at=timezone.now() + timedelta(days=7),
+        archive_s3_key=f"gdpr-exports/{user.id}/x.zip",
+        download_count=3,
+    )
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("S3 unavailable")
+
+    # DRF's APIClient re-raises view-level exceptions by default (`raise_request_exception=True`).
+    # The view itself rolls back via its try/except before re-raising — we only need the
+    # rollback assertion afterwards.
+    api_client.raise_request_exception = False
+    with patch.object(fake_s3, "generate_presigned_url", side_effect=_boom):
+        response = api_client.get(f"/api/v1/me/gdpr-exports/{export.id}/download/")
+
+    assert response.status_code == drf_status.HTTP_500_INTERNAL_SERVER_ERROR
+    export.refresh_from_db()
+    assert export.download_count == 3, "counter must be rolled back on presign failure"
+
+
+@pytest.mark.django_db
 def test_download_403_when_cap_reached(api_client, fake_s3, settings):
     user = UserFactory()
     api_client.force_authenticate(user=user)

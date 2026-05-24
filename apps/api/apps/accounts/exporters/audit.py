@@ -1,4 +1,11 @@
-"""Audit-trail exporter: every AuditLog where the user is actor or subject.
+"""Audit-trail exporter: AuditLog rows where the user is the SUBJECT.
+
+Post-review decision D2 (2026-05-24): rows where the user is the `actor_id`
+but the `subject_id` is someone else are intentionally NOT in the export.
+GDPR Article 20 covers "the user's personal data" — actions a user performed
+ON THIRD PARTIES (e.g. counselor consulting a student, parent acknowledging
+a child's consent) are someone else's personal data and would leak third-
+party subject_ids + metadata into the requester's archive.
 
 The hash-chain columns (`prev_hash`, `row_hash`) are intentionally omitted —
 they are internal integrity metadata for the audit subsystem (Story 1.13)
@@ -11,8 +18,6 @@ import io
 import json
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
-
-from django.db.models import Q
 
 from apps.accounts.exporters import ExporterEntry, register_exporter
 from apps.audit.models import AuditLog
@@ -29,10 +34,7 @@ def export_audit_log(user: User) -> Iterable[ExporterEntry]:
     account, or after audit retention cleanup). The export task then simply
     skips the file.
     """
-    qs = (
-        AuditLog.objects.filter(Q(subject_id=user.id) | Q(actor_id=user.id))
-        .order_by("created_at")
-    )
+    qs = AuditLog.objects.filter(subject_id=user.id).order_by("created_at")
 
     buf = io.BytesIO()
     has_rows = False

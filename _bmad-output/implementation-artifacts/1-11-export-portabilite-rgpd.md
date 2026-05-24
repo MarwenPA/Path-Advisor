@@ -1,7 +1,7 @@
 # Story 1.11 : Export portabilité RGPD — toutes mes données personnelles
 
 **Epic :** 1 — Foundation : Auth multi-rôle, RBAC, Conformité RGPD & Infra technique
-**Status :** review
+**Status :** done
 **Sprint :** 1 (Fondations)
 **Story Key :** `1-11-export-portabilite-rgpd`
 **Estimation :** L (large) — pose toute l'infrastructure d'export RGPD : modèle `GdprExportRequest`, service orchestrateur, **registry d'exporters par domaine** (extensible aux futures stories 2.3 bulletins / 3.x recos / 4.x parcours / 5.x outreach), tâche Celery de génération asynchrone, chiffrement AES-256 du ZIP (pyzipper), upload S3 (bucket `exports-gdpr` déjà configuré par 1.13), endpoints REST `/api/v1/me/gdpr-exports`, double email (lien + mot de passe envoyés séparément), page UI `/parametres/confidentialite/mes-donnees`, rate limit 1/jour, intégration `@audit_action` (1.13).
@@ -1063,6 +1063,41 @@ claude-opus-4-7 (1M context)
 - Manifest/README FR-only — i18n Epic 7+.
 - Pas de retry idempotent sur `build_export` (un échec = `failed`, l'user retente) — décision MVP §AC5.
 - 2 mypy errors pré-existants dans `apps/accounts/managers.py` (Story 1.3), pas régressés par 1.11.
+
+### Review Findings
+
+**Decision-needed (4) — résolues + appliquées en patch :**
+
+- [x] [Review][Decision] D1 password broker — **résolue : pipeline single-task**. `notify_export_ready` envoie maintenant les 2 emails dans le même worker (`time.sleep(30)` in-process), le password ne quitte jamais une seule task. Élimine la fenêtre d'exposition broker.
+- [x] [Review][Decision] D2 audit exporter actor leakage — **résolue : filter `subject_id=user.id` uniquement**. Les rows où user = actor sur tiers sont exclues (élimine fuite cross-tenant + tiers PII).
+- [x] [Review][Decision] D3 system actor — **résolue : `actor_role="system"` explicite**. Helper `_SYSTEM_ACTOR = SimpleNamespace(id=None, role="system")` passé à tous les `record_audit` Celery-side.
+- [x] [Review][Decision] D4 double-POST race — **résolue : partial unique index migration 0004**. `IntegrityError` translaté en `GdprExportInProgress` (409) côté service.
+
+**Patch (14) — appliqués :**
+
+- [x] [Review][Patch] TOCTOU `download_count` cap → `.update(filter=download_count__lt=MAX, F+1)` atomic guard [apps/api/apps/accounts/views.py:download]
+- [x] [Review][Patch] `download_count` incrémenté avant presign → presign d'abord + counter rollback sur échec [apps/api/apps/accounts/views.py:download]
+- [x] [Review][Patch] Lazy-expiry bypass → check `expires_at < now()` ajouté avant download [apps/api/apps/accounts/views.py:download]
+- [x] [Review][Patch] `_mark_failed` orphan S3 → cleanup `archive_s3_key_to_purge` ajouté à la signature, best-effort delete avant flip status [apps/api/apps/accounts/tasks.py:_mark_failed]
+- [x] [Review][Patch] `error_message` sanitize → ne contient plus que `<ExcClass>: see Sentry for details.` (raw `str(exc)` log Sentry uniquement) [apps/api/apps/accounts/tasks.py:_mark_failed + serializers.py]
+- [x] [Review][Patch] `notify_export_ready` autoretry `_EMAIL_RETRY_EXC` (SMTP/Connection/Timeout/OSError) + single-task pipeline [apps/api/apps/accounts/tasks.py:notify_export_ready]
+- [x] [Review][Patch] `emails_sent_at` set AVANT le 1er email (idempotence stricte) [apps/api/apps/accounts/tasks.py:notify_export_ready]
+- [x] [Review][Patch] `send_gdpr_export_password_email` retry narrow → `_EMAIL_RETRY_EXC` au lieu de `Exception` [apps/api/apps/accounts/tasks.py]
+- [x] [Review][Patch] `soft_time_limit` au décoration time (`@shared_task(soft_time_limit=..., time_limit=...)`) [apps/api/apps/accounts/tasks.py:build_export]
+- [x] [Review][Patch] Lien email deep-link `#{export.id}` + `scroll-mt-24 target:ring-2 target:ring-brand` sur la card [templates + gdpr-export-card.tsx]
+- [x] [Review][Patch] `rel="noopener noreferrer"` [apps/web/src/components/features/gdpr/gdpr-export-card.tsx]
+- [x] [Review][Patch] Polling stop sur ApiError 401 via `state.authLost` flag [apps/web/src/components/features/gdpr/gdpr-export-list.tsx]
+- [x] [Review][Patch] `no_email` → `record_audit("gdpr.notify_skipped")` + `sentry_sdk.capture_message` [apps/api/apps/accounts/tasks.py:notify_export_ready]
+- [x] [Review][Patch] `apps.py` autoloader narrow → catch `ModuleNotFoundError` uniquement si `exc.name == "<app>.exporters"`, propagate transitive failures [apps/api/apps/accounts/apps.py]
+
+**Defer (6) — pré-existants ou hors scope :**
+
+- [x] [Review][Defer] `_build_zip` charge l'archive entière en BytesIO (viole anti-pattern §3.2 streaming) — non bloquant tant qu'aucun exporter n'envoie 100+ MB ; tracking pour Story 2.3 (bulletins) qui ajoutera l'exporter volumineux [apps/api/apps/accounts/tasks.py:_build_zip]
+- [x] [Review][Defer] `[locale]` routing + next-intl namespace `gdpr` non câblés — cohérent avec l'état actuel (Story 1.3/1.14 n'utilisent pas non plus). Cross-cutting i18n en Epic 7 [apps/web/src/app/(authenticated)/]
+- [x] [Review][Defer] Relative timestamps + tooltip absolu manquants (UX polish AC8) — non bloquant, à reprendre quand le design-system livre un `<RelativeTime>` component [apps/web/src/components/features/gdpr/gdpr-export-card.tsx]
+- [x] [Review][Defer] Playwright `e2e/gdpr-export.spec.ts` manquant — infra Playwright non bootstrapée pour 1.x ; cross-cutting story dédiée [apps/web/e2e/]
+- [x] [Review][Defer] `build_export` sans `transaction.atomic` global + pas de reaper task pour `in_progress` stuck (DB connection drop scenario) — risque faible MVP, ajouter un reaper Celery beat en growth [apps/api/apps/accounts/tasks.py:build_export]
+- [x] [Review][Defer] CSRF token silently optional sur POST (`readCsrfCookie() ?? undefined`) — pattern à harmoniser avec Story 1.5 login flow [apps/web/src/lib/api/gdpr.ts]
 
 ### File List
 

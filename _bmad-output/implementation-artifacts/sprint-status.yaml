@@ -54,7 +54,7 @@ development_status:
   1-8-multi-tenant-rls-postgresql: backlog
   1-9-liste-tiers-acces-profil: backlog
   1-10-revocation-acces-tiers: backlog
-  1-11-export-portabilite-rgpd: review
+  1-11-export-portabilite-rgpd: done
   1-12-suppression-compte-rgpd: backlog
   1-13-journal-audit-acces: done
   1-14-composant-consent-dialog: done

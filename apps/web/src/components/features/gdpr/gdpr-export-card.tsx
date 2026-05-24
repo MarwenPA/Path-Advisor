@@ -29,7 +29,10 @@ export function GdprExportCard({ export_, onRetry }: GdprExportCardProps) {
     export_.status === "pending" || export_.status === "in_progress";
 
   return (
-    <article className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-4">
+    <article
+      id={export_.id}
+      className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-4 scroll-mt-24 target:ring-2 target:ring-brand"
+    >
       <header className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
           <p className="text-sm text-text">
@@ -60,7 +63,7 @@ export function GdprExportCard({ export_, onRetry }: GdprExportCardProps) {
             <Link
               href={buildGdprDownloadUrl(export_.id)}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               aria-label={`Télécharger l'export du ${formatDateTime(
                 export_.requested_at,
               )}`}

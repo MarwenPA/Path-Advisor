@@ -54,11 +54,16 @@ def test_account_exporter_emits_one_profile_json():
 
 
 @pytest.mark.django_db
-def test_audit_exporter_filters_by_subject_or_actor():
+def test_audit_exporter_filters_to_subject_only():
+    """Post-review D2 (2026-05-24): only rows where user is the SUBJECT are exported.
+
+    Rows where the user is the actor on someone else are intentionally excluded
+    to avoid leaking third-party subject_ids + metadata via Article 20 exports.
+    """
     user_a = UserFactory()
     user_b = UserFactory()
 
-    # user_a is subject
+    # user_a IS the subject — included.
     AuditLog.objects.create(
         action="user.signed_up",
         result=AuditResult.SUCCESS,
@@ -68,7 +73,7 @@ def test_audit_exporter_filters_by_subject_or_actor():
         row_hash="a" * 64,
         created_at=_T0,
     )
-    # user_b only — not in user_a's export
+    # user_b is subject — never in user_a's export.
     AuditLog.objects.create(
         action="user.signed_up",
         result=AuditResult.SUCCESS,
@@ -78,7 +83,7 @@ def test_audit_exporter_filters_by_subject_or_actor():
         row_hash="b" * 64,
         created_at=_T0 + timedelta(seconds=60),
     )
-    # user_a as actor on user_b — also goes into user_a's export
+    # user_a is ACTOR on user_b — explicitly excluded post-review.
     AuditLog.objects.create(
         action="consent.granted",
         result=AuditResult.SUCCESS,
@@ -94,8 +99,9 @@ def test_audit_exporter_filters_by_subject_or_actor():
     content = entries[0].content.decode("utf-8")
     lines = [json.loads(line) for line in content.strip().split("\n")]
     actions = [event["action"] for event in lines]
-    assert actions == ["user.signed_up", "consent.granted"], (
-        "audit exporter must include rows where the user is subject OR actor, in chronological order."
+    assert actions == ["user.signed_up"], (
+        "audit exporter must include ONLY rows where user is subject — "
+        "the actor-on-third-party row must NOT leak into the export."
     )
     # Hash chain fields are internal — must NOT leak into the user-facing export.
     for event in lines:

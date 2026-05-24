@@ -19,6 +19,9 @@ interface State {
   exports: GdprExportRequest[];
   error: string | null;
   submitting: boolean;
+  // When the API returns 401, polling must stop — otherwise we hammer the
+  // backend every 5 s until tab close (post-review patch 2026-05-24).
+  authLost: boolean;
 }
 
 function hasActiveExport(exports: GdprExportRequest[]): boolean {
@@ -34,6 +37,7 @@ export function GdprExportList() {
     exports: [],
     error: null,
     submitting: false,
+    authLost: false,
   });
 
   const refresh = useCallback(async () => {
@@ -44,13 +48,20 @@ export function GdprExportList() {
         loading: false,
         exports: page.results,
         error: null,
+        authLost: false,
       }));
     } catch (cause) {
       const message =
         cause instanceof ApiError
           ? cause.problem?.detail ?? cause.message
           : "Impossible de récupérer tes demandes d'export pour le moment.";
-      setState((previous) => ({ ...previous, loading: false, error: message }));
+      const authLost = cause instanceof ApiError && cause.status === 401;
+      setState((previous) => ({
+        ...previous,
+        loading: false,
+        error: message,
+        authLost: previous.authLost || authLost,
+      }));
     }
   }, []);
 
@@ -62,15 +73,18 @@ export function GdprExportList() {
     void refresh();
   }, [refresh]);
 
-  // Polling — only active when at least one row is `pending`/`in_progress`.
-  // The interval is torn down as soon as no export is active.
+  // Polling — only active when at least one row is `pending`/`in_progress`
+  // AND we still have a valid session. A 401 from any prior call sets
+  // `authLost` and definitively stops polling until the user reloads
+  // (post-review patch 2026-05-24).
   useEffect(() => {
+    if (state.authLost) return;
     if (!hasActiveExport(state.exports)) return;
     const interval = setInterval(() => {
       void refresh();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [state.exports, refresh]);
+  }, [state.exports, state.authLost, refresh]);
 
   const requestNewExport = useCallback(async () => {
     setState((previous) => ({ ...previous, submitting: true, error: null }));
