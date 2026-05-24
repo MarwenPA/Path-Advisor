@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-17  # PRs #1 (1.13), #2 (1.14), #4 (1.3) merged into main
+last_updated: 2026-05-17  # Story 1.11 file created (ready-for-dev)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -54,7 +54,7 @@ development_status:
   1-8-multi-tenant-rls-postgresql: backlog
   1-9-liste-tiers-acces-profil: backlog
   1-10-revocation-acces-tiers: backlog
-  1-11-export-portabilite-rgpd: backlog
+  1-11-export-portabilite-rgpd: review
   1-12-suppression-compte-rgpd: backlog
   1-13-journal-audit-acces: done
   1-14-composant-consent-dialog: done

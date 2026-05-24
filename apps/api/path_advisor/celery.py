@@ -22,6 +22,11 @@ app.conf.beat_schedule = {
         "task": "audit.verify_chain_integrity",
         "schedule": crontab(day_of_month="2", hour=4, minute=0),
     },
+    # Story 1.11 — expire les exports RGPD au-delà de GDPR_EXPORT_VALIDITY_DAYS (default 7).
+    "gdpr-expire-old-exports": {
+        "task": "gdpr.expire_old_exports",
+        "schedule": crontab(hour=4, minute=0),
+    },
 }
 
 
