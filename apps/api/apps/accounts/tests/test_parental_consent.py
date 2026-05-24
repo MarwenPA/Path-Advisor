@@ -186,7 +186,7 @@ def test_minor_email_verify_does_not_bypass_parental_consent():
     """
     from apps.accounts.services.auth_service import mark_email_verified
 
-    user, consent = _make_pending_consent(email_verified=False)
+    user, _consent = _make_pending_consent(email_verified=False)
     assert user.status == UserStatus.PENDING_PARENTAL_CONSENT
 
     mark_email_verified(user)
