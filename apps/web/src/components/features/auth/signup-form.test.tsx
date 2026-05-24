@@ -56,6 +56,29 @@ describe("SignupForm", () => {
     expect(signupMock).not.toHaveBeenCalled();
   });
 
+  it("conditionally renders the parent_email field when birth_date implies age < 15", async () => {
+    render(<SignupForm />);
+
+    // Initially hidden: no birth_date entered yet.
+    expect(screen.queryByLabelText(/email de ton parent/i)).not.toBeInTheDocument();
+
+    // ≥ 15 → still hidden.
+    fireEvent.change(screen.getByLabelText(/date de naissance/i), {
+      target: { value: "2008-01-15" }, // ≥ 15 years old
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/email de ton parent/i)).not.toBeInTheDocument();
+    });
+
+    // < 15 → field appears.
+    fireEvent.change(screen.getByLabelText(/date de naissance/i), {
+      target: { value: "2014-01-15" }, // ~12 years old
+    });
+    await waitFor(() => {
+      expect(screen.getByLabelText(/email de ton parent/i)).toBeInTheDocument();
+    });
+  });
+
   it("surfaces the API Problem detail when signup fails", async () => {
     signupMock.mockRejectedValueOnce(
       new ApiError(400, "Tu dois accepter les CGU et la politique RGPD pour continuer.", {

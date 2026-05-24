@@ -166,6 +166,25 @@ make seed                    # recreate admin@path-advisor.local
 
 See [ADR-0002](./adr/0002-auth-allauth-dj-rest-auth.md) for the full auth-stack rationale.
 
+### Story 1.4 — Sub-15 users stuck in "limited mode"
+
+Users whose `status = pending_parental_consent` can log in but **don't** have `is_fully_active = true`,
+so the `<LimitedModeBanner />` shows at the top of every authenticated page. A few quirks to know:
+
+- The child's own email-verification flow is independent of parental consent (cf. Story 1.4 §AC3
+  state machine) — they must both complete to reach `active`.
+- `/api/v1/auth/parental-consent/resend/` is rate-limited 1 per hour per user; the banner button
+  surfaces a friendly "Trop tôt — réessaie dans une heure" on the 429.
+- A child who tried to re-attempt signup with a different parent email after a refusal will hit
+  the existing `EmailAlreadyRegistered` guard (Story 1.3). This is intentional — self-service
+  re-attempts would let a determined minor brute-force around a refusal. They have to contact
+  support, or wait for Epic 5/6 to ship the proper resolution flow.
+- Tokens are 60-day TTL. After 60 days the daily Celery beat job suspends the user (final email
+  sent to the child explaining the pause). Old tokens stay in the DB for audit replay; `/decide/`
+  returns 409 past expiry.
+
+See [ADR-0003](./adr/0003-parental-consent-tokenized.md) for the tokenised-parent design rationale.
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in

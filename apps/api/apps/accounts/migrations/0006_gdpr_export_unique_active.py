@@ -11,7 +11,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0003_gdpr_export_request"),
+        ("accounts", "0005_gdpr_export_request"),
     ]
 
     operations = [

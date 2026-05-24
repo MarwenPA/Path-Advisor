@@ -6,7 +6,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("accounts", "0002_default_site"),
+        ("accounts", "0004_parental_consent_review_columns"),
     ]
 
     operations = [

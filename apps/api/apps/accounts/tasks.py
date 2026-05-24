@@ -1,21 +1,17 @@
-"""Celery tasks backing the GDPR Article 20 export pipeline (Story 1.11).
+"""Celery tasks for the `accounts` app — Story 1.4 (parental consent) + Story 1.11 (GDPR export).
 
-Pipeline (post code-review 2026-05-24 — single-task notify keeps the cleartext
-password inside a single worker process, never on the broker between hops):
+Two unrelated task families share this module because Celery's autodiscovery
+binds `accounts.<task_name>` to whatever `apps/accounts/tasks.py` exposes:
 
-    POST /me/gdpr-exports
-        ↓ transaction.on_commit
-    build_export(export_id)
-        ↓ on success
-    notify_export_ready(export_id, password)    # sends BOTH emails in-process
-        link email → time.sleep(30) → password email
+- **Parental-consent lifecycle (Story 1.4)** — daily pull-based reminders and
+  suspensions on `requested_at + N days`. Idempotent against beat drop-outs
+  thanks to `reminder_sent_at IS NULL` guards.
+- **GDPR Article 20 export pipeline (Story 1.11)** — `build_export` →
+  `notify_export_ready` (single task: link + 30s sleep + password email) →
+  nightly `expire_old_exports`. The single-task notify keeps the cleartext
+  password inside one worker process, never on the broker between hops.
 
-Failure on `build_export` triggers `send_gdpr_export_failed_email` only —
-no link, no password.
-
-Idempotence: every task starts by reloading the row and re-checking the
-expected state. A double-fire (Celery beat / retry / replay) becomes a no-op
-instead of duplicating ZIPs, emails, or audit entries.
+Discovery: registered via `app.autodiscover_tasks()` in `path_advisor/celery.py`.
 """
 
 from __future__ import annotations
@@ -47,13 +43,135 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.accounts.exporters import ExporterEntry, iter_exporters
-from apps.accounts.models import GdprExportRequest, GdprExportStatus, User
+from apps.accounts.models import (
+    GdprExportRequest,
+    GdprExportStatus,
+    ParentalConsent,
+    ParentalConsentDecision,
+    User,
+    UserStatus,
+)
 from apps.accounts.services.gdpr_service import gdpr_s3_client
+from apps.accounts.services.parental_consent import suspend_for_unresolved_consent
+from apps.accounts.services.parental_consent_email import (
+    send_expired_to_child,
+    send_granted_to_child,
+    send_reminder_to_parent,
+)
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 
 log = structlog.get_logger(__name__)
 
+
+# ============================================================================
+#  Story 1.4 — Parental consent lifecycle
+# ============================================================================
+
+# Reminder threshold from Story 1.4 §AC6. Centralised as a constant so tests can
+# monkey-patch — `time_machine`/`freezegun` is the preferred path. The 60-day
+# suspension threshold is baked into `ParentalConsent.expires_at` at insertion
+# (`_default_parental_consent_expires_at`), so the suspend task queries on
+# `expires_at__lte=now()` directly — see §P13.
+_REMINDER_AFTER_DAYS = 30
+
+
+@shared_task(name="accounts.send_parental_consent_reminders")
+def send_parental_consent_reminders() -> int:
+    """Reminder dispatch — runs daily at 04:00 UTC (cf. path_advisor.celery beat).
+
+    Returns the number of reminders sent so the task's success row in Celery flower /
+    structlog is queryable. The DB write happens **after** the SMTP send completes:
+    if mail dispatch raises, `reminder_sent_at` stays NULL and the next run retries.
+    """
+    cutoff = timezone.now() - timedelta(days=_REMINDER_AFTER_DAYS)
+    pending = ParentalConsent.objects.filter(
+        decision__isnull=True,
+        reminder_sent_at__isnull=True,
+        requested_at__lte=cutoff,
+        expires_at__gt=timezone.now(),
+    ).select_related("student")
+
+    sent = 0
+    for consent in pending:
+        try:
+            if send_reminder_to_parent(consent):
+                consent.reminder_sent_at = timezone.now()
+                consent.save(update_fields=["reminder_sent_at", "updated_at"])
+                sent += 1
+        except Exception:
+            log.exception("parental_consent.reminder_failed", consent_id=consent.id)
+            continue
+
+    log.info("parental_consent.reminders_sent", count=sent)
+    return sent
+
+
+@shared_task(name="accounts.suspend_unresolved_parental_consents")
+def suspend_unresolved_parental_consents() -> int:
+    """Suspend `pending_parental_consent` users whose 60-day window has expired.
+
+    Idempotent: skips users already in `SUSPENDED` state. Returns the number of
+    user accounts flipped — important for the Celery beat structlog summary.
+    """
+    now = timezone.now()
+    expired = ParentalConsent.objects.filter(
+        decision__isnull=True,
+        expires_at__lte=now,
+    ).select_related("student")
+
+    suspended_count = 0
+    for consent in expired:
+        student = consent.student
+        if student.status == UserStatus.SUSPENDED:
+            continue
+        try:
+            suspend_for_unresolved_consent(consent=consent)
+            send_expired_to_child(student)
+            suspended_count += 1
+        except Exception:
+            log.exception(
+                "parental_consent.suspend_failed",
+                consent_id=consent.id,
+                user_id=student.id,
+            )
+            continue
+
+    log.info("parental_consent.suspended", count=suspended_count)
+    return suspended_count
+
+
+@shared_task(name="accounts.notify_unconfirmed_granted_consents")
+def notify_unconfirmed_granted_consents() -> int:
+    """Resend the "granted" child email for rows where SMTP failed (Story 1.4 §P14).
+
+    The synchronous `/decide/` POST stamps `notification_sent_at` only on
+    successful SMTP send. This hourly reconciliation closes the gap when the
+    parent has clicked "Autoriser" but the child never got the confirmation.
+    """
+    rows = ParentalConsent.objects.filter(
+        decision=ParentalConsentDecision.GRANTED,
+        notification_sent_at__isnull=True,
+    ).select_related("student")
+
+    sent = 0
+    for consent in rows:
+        try:
+            if send_granted_to_child(consent.student):
+                consent.notification_sent_at = timezone.now()
+                consent.save(update_fields=["notification_sent_at", "updated_at"])
+                sent += 1
+        except Exception:
+            log.exception("parental_consent.grant_notify_failed", consent_id=consent.id)
+            continue
+
+    log.info("parental_consent.grant_notifications_sent", count=sent)
+    return sent
+
+
+# ============================================================================
+#  Story 1.11 — GDPR Article 20 export pipeline
+# ============================================================================
 
 SCHEMA_VERSION = "1.0"
 
@@ -87,9 +205,7 @@ Pour toute question : dpo@path-advisor.fr
 """
 
 
-# ===========================================================================
-#  BUILD
-# ===========================================================================
+# --- BUILD -----------------------------------------------------------------
 
 
 @shared_task(
@@ -317,9 +433,9 @@ def _build_zip(
             "domains": domains_summary,
             "files": files,
         }
-        manifest_bytes = json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True).encode(
-            "utf-8"
-        )
+        manifest_bytes = json.dumps(
+            manifest, indent=2, ensure_ascii=False, sort_keys=True
+        ).encode("utf-8")
         zf.writestr("manifest.json", manifest_bytes)
 
     return buf.getvalue(), manifest, errors_per_domain
@@ -372,9 +488,7 @@ def _mark_failed(
     )
 
 
-# ===========================================================================
-#  NOTIFY  (single task — keeps password OFF the broker between hops)
-# ===========================================================================
+# --- NOTIFY  (single task — keeps password OFF the broker between hops) ---
 
 
 @shared_task(
@@ -508,9 +622,7 @@ def _send_gdpr_email(
     msg.send(fail_silently=False)
 
 
-# ===========================================================================
-#  EXPIRE
-# ===========================================================================
+# --- EXPIRE ----------------------------------------------------------------
 
 
 # Concrete S3-side exceptions we know how to handle gracefully during the

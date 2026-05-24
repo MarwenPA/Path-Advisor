@@ -40,12 +40,52 @@ class DomainError(Exception):
 
 
 class AgeUnder15(DomainError):
+    # Retained as a fall-through for the rare case where `parent_email` is missing
+    # AND the consent_rgpd path is hit before the per-field branch (Story 1.3 backstop).
+    # Normal sub-15 signups go through ParentEmailRequired (Story 1.4).
     type = "https://path-advisor.fr/errors/age-under-15"
     title = "Inscription mineur sous 15 ans"
+    default_detail = "L'inscription des moins de 15 ans nécessite l'email d'un parent ou tuteur."
+
+
+class ParentEmailRequired(DomainError):
+    # Sub-15 signup without a parent_email — the front must show the conditional field.
+    type = "https://path-advisor.fr/errors/parent-email-required"
+    title = "Email parent requis pour les moins de 15 ans"
     default_detail = (
-        "L'inscription des moins de 15 ans nécessite un consentement parental — "
-        "flow disponible prochainement (Story 1.4)."
+        "Pour ton âge, nous avons besoin de l'email d'un parent ou tuteur pour "
+        "valider ton inscription."
     )
+
+
+class ParentEmailNotApplicable(DomainError):
+    # Strict guard: prevent ≥ 15 signups from silently carrying a parent_email field.
+    # Keeps Story 1.3's happy path immutable and surfaces front-end form mismatches early.
+    type = "https://path-advisor.fr/errors/parent-email-not-applicable"
+    title = "Email parent non applicable"
+    default_detail = "L'email d'un parent n'est requis que pour les moins de 15 ans."
+
+
+class ParentEmailSameAsStudent(DomainError):
+    type = "https://path-advisor.fr/errors/parent-email-same-as-student"
+    title = "Email parent identique"
+    default_detail = "Ton parent ne peut pas avoir la même adresse email que toi."
+
+
+class ParentalConsentNotFound(DomainError):
+    type = "https://path-advisor.fr/errors/parental-consent-not-found"
+    title = "Lien invalide ou expiré"
+    status_code = status.HTTP_404_NOT_FOUND
+    default_detail = "Ce lien d'autorisation parentale n'existe pas ou a expiré."
+
+
+class ParentalConsentAlreadyDecided(DomainError):
+    # Single-use semantics on the decision: once granted or refused, the token is locked.
+    # 60-day window also blocks the parent post-expiry; same status, distinct UX.
+    type = "https://path-advisor.fr/errors/parental-consent-already-decided"
+    title = "Décision déjà enregistrée"
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Cette demande a déjà reçu une décision ou a expiré."
 
 
 class EmailAlreadyRegistered(DomainError):

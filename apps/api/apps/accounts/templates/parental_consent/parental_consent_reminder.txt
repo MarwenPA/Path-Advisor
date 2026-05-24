@@ -1,0 +1,19 @@
+Bonjour,
+
+Vous n'avez pas encore répondu à notre première demande — votre enfant
+attend toujours votre autorisation pour utiliser Path-Advisor.
+
+En cas d'oubli ou de doute, vous pouvez :
+- Cliquer ci-dessous pour décider (autoriser ou refuser)
+- Ignorer ce message si vous n'êtes pas concerné(e) ; le compte sera
+  alors suspendu automatiquement
+
+Pour décider, cliquez ici :
+{{ consent_url }}
+
+Pour rappel, Path-Advisor est un service d'orientation scolaire qui
+aide votre enfant à explorer des métiers et des parcours. Toutes les
+données restent en France et vous pouvez nous écrire à
+dpo@path-advisor.fr pour toute question.
+
+— L'équipe Path-Advisor

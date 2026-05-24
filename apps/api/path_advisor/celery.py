@@ -22,10 +22,30 @@ app.conf.beat_schedule = {
         "task": "audit.verify_chain_integrity",
         "schedule": crontab(day_of_month="2", hour=4, minute=0),
     },
+    # Story 1.4 parental-consent lifecycle. Daily windows are deliberate: the queries
+    # are pull-based on `requested_at + N days`, so missing a day just delays affected
+    # rows by 24h — there's no debt accumulation.
+    "parental-consent-send-reminders": {
+        "task": "accounts.send_parental_consent_reminders",
+        "schedule": crontab(hour=4, minute=0),
+    },
+    "parental-consent-suspend-unresolved": {
+        "task": "accounts.suspend_unresolved_parental_consents",
+        "schedule": crontab(hour=4, minute=15),
+    },
+    # Story 1.4 review §P14: reconciliation task — re-sends the "granted" child
+    # email for rows where the synchronous /decide/ POST hit an SMTP failure.
+    # Runs hourly because the unhappy path is rare and we want to close the gap
+    # quickly (parents may already have moved on if the child says "I haven't
+    # got the confirmation").
+    "parental-consent-notify-unconfirmed-granted": {
+        "task": "accounts.notify_unconfirmed_granted_consents",
+        "schedule": crontab(minute=20),
+    },
     # Story 1.11 — expire les exports RGPD au-delà de GDPR_EXPORT_VALIDITY_DAYS (default 7).
     "gdpr-expire-old-exports": {
         "task": "gdpr.expire_old_exports",
-        "schedule": crontab(hour=4, minute=0),
+        "schedule": crontab(hour=4, minute=30),
     },
 }
 
