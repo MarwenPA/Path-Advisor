@@ -9,7 +9,7 @@ Items flagged during code reviews but consciously deferred. Each has a target st
 - **`bulletins-encrypted` bucket has no SSE config** — Story 2.3 (upload bulletins) must call `PutBucketEncryption` + versioning + deny-public ACL.
 - **`CSRF_TRUSTED_ORIGINS` / `SESSION_COOKIE_SAMESITE` / `CSRF_COOKIE_SAMESITE` not configured** — Story 1.5 (cross-origin auth flow).
 - **`legacy-peer-deps=true` at repo level instead of scoped `overrides`** — to revisit when next-intl publishes Next 16 support.
-- **Test settings use SQLite while prod uses pgvector** — Story 1.8 (Row-Level Security tests need real postgres).
+- ~~**Test settings use SQLite while prod uses pgvector** — Story 1.8 (Row-Level Security tests need real postgres).~~ **Resolved in Story 1.8 (2026-05-24):** `make test-rls` runs the `postgresql_only` + `rls` suite under `path_advisor.settings.test_postgres` against a non-superuser PG role provisioned by the `rls-tests` CI job. SQLite fast path remains the default for the ~95 % of tests that have no RLS dependency.
 - **`export_openapi.py` uses `request=None`** — to revisit if generated schema diverges from live `/api/schema/`.
 - **`next.config.ts` is empty stub** — set `output: "standalone"` + `images.remotePatterns` when prod Dockerfile is created (deploy track).
 - **No resource limits / non-root containers in Compose** — prod hardening (deploy track).

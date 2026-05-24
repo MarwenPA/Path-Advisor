@@ -56,6 +56,12 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Story 1.8: pushes (user_id, tenant_id, role) into PG session GUCs so
+    # the RLS policies on `users` / `parental_consents` filter at the DB
+    # layer. MUST be AFTER AuthenticationMiddleware (request.user must be
+    # resolved) and BEFORE AccountMiddleware (allauth + views run with the
+    # GUCs in place).
+    "path_advisor.middleware.tenant.TenantSessionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # allauth ≥ 0.55 requires its own middleware to inject the request user.

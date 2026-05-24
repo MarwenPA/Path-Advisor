@@ -48,3 +48,64 @@ jobs:
         with:
           name: openapi-schema
           path: packages/openapi/openapi.json
+
+  # Story 1.8 — RLS lane: provisions a NOSUPERUSER NOBYPASSRLS role so
+  # `FORCE ROW LEVEL SECURITY` actually enforces (a superuser would silently
+  # bypass it). Runs the `postgresql_only` + `rls` suite.
+  rls-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_bootstrap
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: path_advisor_test
+      POSTGRES_USER: path_advisor_test
+      POSTGRES_PASSWORD: ci_test_role
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Python + dependencies
+        run: uv sync
+
+      - name: Provision non-superuser DB role + database
+        env:
+          PGPASSWORD: postgres_bootstrap
+        run: |
+          # Connect as the bootstrap superuser to create the constrained
+          # role + test DB. `FORCE ROW LEVEL SECURITY` only takes effect
+          # when the table owner is NEITHER superuser NOR has BYPASSRLS.
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE path_advisor_test
+              LOGIN NOSUPERUSER NOBYPASSRLS
+              PASSWORD 'ci_test_role';
+          CREATE DATABASE path_advisor_test OWNER path_advisor_test;
+          GRANT CREATE, USAGE ON SCHEMA public TO path_advisor_test;
+          SQL
+
+      - name: Pytest (RLS + postgresql_only)
+        run: |
+          uv run pytest \
+            -m "rls or postgresql_only" \
+            --ds=path_advisor.settings.test_postgres

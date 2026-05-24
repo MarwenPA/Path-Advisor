@@ -80,7 +80,8 @@ DJANGO_SETTINGS_MODULE = "path_advisor.settings.test"
 python_files = ["test_*.py", "*_test.py"]
 testpaths = ["apps"]
 markers = [
-    "postgresql_only: tests requiring PostgreSQL backend (e.g. audit_logs trigger). Skipped on SQLite.",
+    "postgresql_only: tests requiring PostgreSQL backend (e.g. audit_logs trigger, RLS policies). Skipped on SQLite.",
+    "rls: Row-Level Security isolation tests. Subset of postgresql_only — exercised by `make test-rls`.",
     "slow: tests that exercise rate-limits or long timing loops. Opt-in via -m slow.",
 ]
 
