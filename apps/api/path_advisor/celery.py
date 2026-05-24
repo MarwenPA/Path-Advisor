@@ -47,6 +47,14 @@ app.conf.beat_schedule = {
         "task": "gdpr.expire_old_exports",
         "schedule": crontab(hour=4, minute=30),
     },
+    # Story 1.12 — hard-delete cascade for account-deletion requests past their
+    # 30-day grace window. 03:45 Paris = 02:45 UTC (Celery beat default TZ).
+    # Slotted 15 minutes after the audit archival / GDPR-export expiry tasks so
+    # the daily ordering is deterministic for incident debugging.
+    "accounts-sweep-account-deletions": {
+        "task": "accounts.sweep_account_deletions",
+        "schedule": crontab(hour=2, minute=45),
+    },
 }
 
 

@@ -48,6 +48,27 @@ export type ConsentDialogProps = {
   refuseLabel?: string;
   isAcceptDestructive?: boolean;
   isSubmitting?: boolean;
+  /**
+   * Whether the accept action is currently blocked by a caller-side condition
+   * (e.g. a required password input is empty). Distinct from `isSubmitting`
+   * (which blocks both buttons during async work) — `isAcceptDisabled` only
+   * blocks the accept button, leaving refuse available.
+   *
+   * Added in Story 1.12 for the deletion-confirmation flow where the dialog
+   * embeds an inline password field via `bodySlot`.
+   */
+  isAcceptDisabled?: boolean;
+  /**
+   * Optional content rendered inside the dialog body, AFTER the bénéficiaire
+   * line and BEFORE the footer. Use for inline secondary inputs that must
+   * not appear as a separate dialog step (e.g. password re-auth for
+   * destructive consent in Story 1.12 §AC1).
+   *
+   * The slot is rendered inside the same scroll container as the data list
+   * so very tall inputs still scroll instead of pushing the footer below
+   * the viewport.
+   */
+  bodySlot?: React.ReactNode;
   onAccept: (meta: ConsentMeta) => void | Promise<void>;
   onRefuse?: () => void;
 };
@@ -94,6 +115,8 @@ export function ConsentDialog({
   refuseLabel,
   isAcceptDestructive = false,
   isSubmitting = false,
+  isAcceptDisabled = false,
+  bodySlot,
   onAccept,
   onRefuse,
 }: ConsentDialogProps) {
@@ -200,6 +223,7 @@ export function ConsentDialog({
               <span className="text-body-sm font-medium text-text-muted">Bénéficiaire</span>
               <p className="text-body text-text">{beneficiary}</p>
             </div>
+            {bodySlot ? <div className="mt-2">{bodySlot}</div> : null}
           </section>
 
           {/* Screen-reader announces submit state; spinner stays aria-hidden. */}
@@ -221,7 +245,7 @@ export function ConsentDialog({
               onClick={() => {
                 void handleAccept();
               }}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isAcceptDisabled}
             >
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
               {resolvedAcceptLabel}

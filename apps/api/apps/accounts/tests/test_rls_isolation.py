@@ -93,9 +93,7 @@ def test_users_select_cross_tenant_blocked(skip_if_sqlite):
         visible_ids = {row[0] for row in cur.fetchall()}
 
     assert user_a.id in visible_ids
-    assert user_b.id not in visible_ids, (
-        "RLS users_isolation_select must hide cross-tenant users."
-    )
+    assert user_b.id not in visible_ids, "RLS users_isolation_select must hide cross-tenant users."
 
 
 @pytest.mark.django_db(transaction=True)

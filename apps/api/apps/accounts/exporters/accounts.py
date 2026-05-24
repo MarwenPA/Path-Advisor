@@ -24,9 +24,7 @@ def export_account_profile(user: User) -> Iterable[ExporterEntry]:
         "email_verified_at": (
             user.email_verified_at.isoformat() if user.email_verified_at else None
         ),
-        "consent_rgpd_at": (
-            user.consent_rgpd_at.isoformat() if user.consent_rgpd_at else None
-        ),
+        "consent_rgpd_at": (user.consent_rgpd_at.isoformat() if user.consent_rgpd_at else None),
         "consent_cgu_version": user.consent_cgu_version,
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
@@ -34,8 +32,6 @@ def export_account_profile(user: User) -> Iterable[ExporterEntry]:
     }
     yield ExporterEntry(
         archive_path="profile/profile.json",
-        content=json.dumps(profile, indent=2, ensure_ascii=False, sort_keys=True).encode(
-            "utf-8"
-        ),
+        content=json.dumps(profile, indent=2, ensure_ascii=False, sort_keys=True).encode("utf-8"),
         content_type="application/json",
     )

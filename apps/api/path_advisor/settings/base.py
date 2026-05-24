@@ -152,6 +152,9 @@ REST_AUTH = {
     # exposes the derived `is_fully_active` flag (Story 1.4 §AC3) — the front gates
     # "limited mode" on it without re-implementing the email-verified + active rule.
     "USER_DETAILS_SERIALIZER": "apps.accounts.serializers.UserDetailsSerializer",
+    # Story 1.12 — intercepts DELETED-status logins to surface a typed 403 + Problem
+    # Details so the front routes to the cancel-flow info page (§AC3).
+    "LOGIN_SERIALIZER": "apps.accounts.login_serializer.PathAdvisorLoginSerializer",
     "SESSION_LOGIN": True,
     "USE_JWT": False,
     "TOKEN_MODEL": None,
@@ -252,6 +255,25 @@ GDPR_EXPORT_VALIDITY_DAYS = int(os.environ.get("GDPR_EXPORT_VALIDITY_DAYS", 7))
 GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS = int(
     os.environ.get("GDPR_EXPORT_TASK_HARD_TIMEOUT_SECONDS", 25 * 60)
 )
+
+# --- GDPR account deletion (Story 1.12 — right to erasure) ---
+# Fenêtre de rétractation entre le soft-delete (clic utilisateur) et le hard-delete
+# Celery sweep. Le minimum légal raisonnable per la CNIL est ~30 jours pour les
+# demandes Article 17. Overridable per-env (tests) via env var.
+GDPR_ACCOUNT_DELETION_GRACE_DAYS = int(os.environ.get("GDPR_ACCOUNT_DELETION_GRACE_DAYS", 30))
+# Cap d'attempts du hard-delete sweep avant que la row ne soit gelée (intervention DPO).
+# 7 = un jour de retry par tentative (le sweep tourne quotidiennement) — au-delà
+# c'est un incident infra que le DPO doit traiter manuellement, pas une boucle silencieuse.
+GDPR_ACCOUNT_DELETION_MAX_HARD_DELETE_ATTEMPTS = int(
+    os.environ.get("GDPR_ACCOUNT_DELETION_MAX_HARD_DELETE_ATTEMPTS", 7)
+)
+# Préfixes S3 qui hébergent des données utilisateur — listés ici pour que le
+# sweep AC6.2 sache quoi purger. Tuple de (bucket_setting_name, prefix_template).
+# Chaque future story qui ajoute un bucket par-user (Story 2.3 bulletins, etc.)
+# ajoute son tuple ici sans toucher au code du sweep.
+GDPR_USER_OWNED_S3_PREFIXES: list[tuple[str, str]] = [
+    ("GDPR_EXPORTS_BUCKET", "gdpr-exports/{user_id}/"),
+]
 
 # --- Celery ---
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1")

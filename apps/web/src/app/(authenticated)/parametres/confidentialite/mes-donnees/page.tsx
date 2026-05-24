@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DeleteAccountSection } from "@/components/features/account/delete-account-section";
 import { GdprExportList } from "@/components/features/gdpr/gdpr-export-list";
 
 export const metadata: Metadata = {
@@ -52,6 +53,9 @@ export default function MesDonneesPage() {
           </li>
         </ul>
       </aside>
+
+      {/* Story 1.12 — Account deletion (right to erasure, GDPR Article 17). */}
+      <DeleteAccountSection />
     </main>
   );
 }

@@ -99,9 +99,7 @@ def test_retrieve_other_users_export_returns_404(api_client):
 def test_download_404_when_not_ready(api_client):
     user = UserFactory()
     api_client.force_authenticate(user=user)
-    export = GdprExportRequest.objects.create(
-        user_id=user.id, status=GdprExportStatus.IN_PROGRESS
-    )
+    export = GdprExportRequest.objects.create(user_id=user.id, status=GdprExportStatus.IN_PROGRESS)
     response = api_client.get(f"/api/v1/me/gdpr-exports/{export.id}/download/")
     assert response.status_code == drf_status.HTTP_404_NOT_FOUND
     assert response.json()["type"] == "https://path-advisor.fr/errors/gdpr-export-not-ready"
@@ -138,7 +136,10 @@ def test_download_302_increments_counter_and_audits(api_client, fake_s3, setting
     response = api_client.get(f"/api/v1/me/gdpr-exports/{export.id}/download/")
     assert response.status_code == drf_status.HTTP_302_FOUND
     assert "fake-s3.test" in response["Location"]
-    assert f"X-Amz-Expires={settings.GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS}" in response["Location"]
+    assert (
+        f"X-Amz-Expires={settings.GDPR_EXPORT_DOWNLOAD_PRESIGNED_TTL_SECONDS}"
+        in response["Location"]
+    )
 
     export.refresh_from_db()
     assert export.download_count == 1

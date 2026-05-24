@@ -29,13 +29,13 @@ def _safe_reset_pg_session() -> None:
     try:
         with connection.cursor() as cursor:
             cursor.execute("RESET ALL")
-    except Exception:  # noqa: BLE001
+    except Exception:
         # Connection might be in an aborted-tx state — rollback + retry once.
         try:
             connection.rollback()
             with connection.cursor() as cursor:
                 cursor.execute("RESET ALL")
-        except Exception:  # noqa: BLE001
+        except Exception:
             # Connection is broken; Django's `close_old_connections` will
             # discard it at request boundary. Silent here so the autouse
             # cleanup doesn't mask the original test failure.
@@ -91,9 +91,7 @@ def _assert_non_superuser_in_postgres_lane(django_db_setup, django_db_blocker):
     with django_db_blocker.unblock(), connection.cursor() as cursor:
         cursor.execute("SHOW is_superuser")
         is_super = (cursor.fetchone() or [""])[0]
-        cursor.execute(
-            "SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user"
-        )
+        cursor.execute("SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user")
         bypass = (cursor.fetchone() or [False])[0]
     if str(is_super).lower() == "on" or bypass:
         pytest.exit(

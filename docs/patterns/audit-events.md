@@ -54,13 +54,44 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Result :** `success` si chaîne intacte, `failure` sinon.
 - **Metadata :** `{"verified_rows": int, "broken_rows": list[str]}`.
 
+## Story 1.12 — Account deletion (GDPR Article 17, right to erasure)
+
+### `gdpr.account_deletion_requested`
+- **Posé par :** `apps.accounts.services.account_deletion.request_deletion` (via `@audit_action`).
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"deletion_request_id": "adr_…", "hard_delete_after": "ISO 8601"}`.
+- **Side-effect tracked :** soft-delete + session teardown + confirmation email.
+
+### `gdpr.account_deletion_cancelled`
+- **Posé par :** `cancel_deletion` (self-service via token OR DPO admin override).
+- **Actor :** the user (self-service path) OR the DPO user (admin override).
+- **Subject :** the deletion request's `user_id_snapshot`.
+- **Metadata :** `{"deletion_request_id": "adr_…", "via": "user_self_service" | "dpo_override", "cancel_reason": "<prefixed string>"}`.
+
+### `gdpr.account_hard_deleted`
+- **Posé par :** `hard_delete` from the Celery sweep `accounts.sweep_account_deletions`.
+- **Actor :** `actor_id=NULL`, `actor_role="system"`.
+- **Subject :** the user (written BEFORE `user.delete()` so the FK cascade does not affect the row — `subject_id` is a CharField).
+- **Metadata :** `{"deletion_request_id": "adr_…", "s3_keys_deleted": int, "s3_prefixes": [...], "cascade_row_counts": {<model_label>: int}}`.
+
+### `gdpr.account_hard_delete_failed`
+- **Posé par :** sweep task on a per-row exception (S3 outage, lock contention, …).
+- **Subject :** the deletion request's `user_id_snapshot`.
+- **Metadata :** `{"deletion_request_id": "adr_…", "error_code": "<class_name>", "attempt": int}`.
+
+### `gdpr.account_hard_delete_giving_up`
+- **Posé par :** sweep task when `attempt_count >= GDPR_ACCOUNT_DELETION_MAX_HARD_DELETE_ATTEMPTS` (default 7).
+- **Subject :** the deletion request's `user_id_snapshot`.
+- **Metadata :** `{"deletion_request_id": "adr_…", "max_attempts": int, "last_failure_code": "<class_name>"}`.
+- **DPO action required :** row is frozen until manual investigation; see `docs/runbooks/gdpr-request.md`.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
 - `auth.login_succeeded` / `auth.login_failed` — Story 1.5.
 - `auth.mfa_challenge_passed` / `auth.mfa_challenge_failed` — Story 1.6.
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.
 - `gdpr.export_requested` / `gdpr.export_generated` — Story 1.11.
-- `gdpr.account_deletion_requested` / `gdpr.account_deleted` — Story 1.12.
 - `parental.consent_requested` / `parental.consent_granted` / `parental.consent_refused` — Story 1.4.
 - `profile.bulletin_uploaded` / `profile.bulletin_ocr_completed` — Epic 2.
 - `recommendation.computed` / `recommendation.explanation_viewed` — Epic 3.
