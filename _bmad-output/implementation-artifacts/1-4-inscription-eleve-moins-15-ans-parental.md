@@ -1,7 +1,7 @@
 # Story 1.4: Student < 15 signup with parental-consent email opt-in
 
 **Epic:** 1 — Foundation: Multi-role Auth, RBAC, GDPR Compliance & Technical Infrastructure
-**Status:** ready-for-dev
+**Status:** done
 **Sprint:** 1 (Foundations)
 **Story Key:** `1-4-inscription-eleve-moins-15-ans-parental`
 **Estimation:** L (large) — extends the 1.3 signup pipeline with a branched flow (age < 15), a new `ParentalConsent` model + migration, a tokenized parent-facing page (no auth, deep-linked from email), two Celery beat jobs (30-day reminder, 60-day suspension), and a "limited mode" gate that several future Epics will rely on. Builds heavily on patterns shipped in 1.3 (allauth adapter, dj-rest-auth, structured Problem Details) and 1.13 (`@audit_action`, hash-chained audit log) and reuses `ConsentDialog` from 1.14 on the parent landing page.
@@ -289,6 +289,77 @@
 - [ ] T7.4 Update `apps/web/src/components/features/auth/signup-form.test.tsx` (existing — 3 tests today): **add** the conditional-field test (AC8 frontend #1). Ensure the existing 3 tests still pass.
 - [ ] T7.5 Create `apps/web/src/app/(public)/auth/parental-consent/[token]/page.test.tsx` (new) with the 2 frontend tests (AC8 frontend #2 and #3). Mock the API via `vi.mock` or MSW-light (no new dep).
 
+### Review Findings — 2026-05-24 (Opus + Sonnet + Haiku multi-LLM)
+
+Raw findings: 59 across 3 reviewers. After dedup + triage: 1 decision, 25 patches, 11 deferred, 10 dismissed.
+
+#### Decision Needed
+
+- [x] [Review][Decision] D1 — `accepted_at` field accepted but discarded — **Resolved 2026-05-24**: option B selected. Now stored as `client_accepted_at` column on `parental_consents` (migration 0004); skew vs server `decided_at` is structlog-warned if > 5 min. Forgery surface eliminated. [Blind H5 → P26 applied]
+
+#### Patches
+
+**HIGH severity:**
+
+- [x] [Review][Patch] P1 — `mark_email_verified` bypasses parental consent for minors [`apps/api/apps/accounts/services/auth_service.py:33-35`] — When a child in `pending_parental_consent` clicks verify-email, status auto-flips to `ACTIVE`, defeating the entire parental gate. Spec AC3 row 1 says status should STAY `pending_parental_consent`. Fix: guard on `user.status == PENDING_PARENTAL_CONSENT` — if there's no granted consent yet, only set `email_verified_at=now()`, keep status pending; if a granted consent exists, transition to ACTIVE. [Edge H1] **CRITICAL — full legal bypass**
+- [x] [Review][Patch] P2 — `/decide/` rate-limit lacks per-IP guard [`apps/api/apps/accounts/views.py:182`] — Per-token rate-limit gives one bucket per guessed token → unbounded brute-force rate. Stack a per-IP `60/h` limit on top of the per-token `5/h`. [Blind H2]
+- [x] [Review][Patch] P3 — `_ratelimit_key_by_consent_token` crashes on `resolver_match = None` [`apps/api/apps/accounts/views.py:118-120`] — `AttributeError` when middleware short-circuits routing. Guard: `if not request.resolver_match: return ""`. [Edge H2]
+- [x] [Review][Patch] P4 — `suspend_for_unresolved_consent` not wrapped in `transaction.atomic()` [`apps/api/apps/accounts/services/parental_consent.py:176-186`] — Audit row + user.status can diverge if either save fails. Wrap to match `record_decision`. [Edge H3]
+- [x] [Review][Patch] P5 — `/resend/` sends to expired consents [`apps/api/apps/accounts/views.py:1938-1948`] — Window between `expires_at < now()` and the daily Celery suspend → parent gets dead-link email, `reminder_sent_at` marked. Add `expires_at__gt=timezone.now()` to the filter. [Edge H4]
+- [x] [Review][Patch] P6 — `reminder_sent_at` updated even when SMTP fails [`apps/api/apps/accounts/views.py:1947`, `apps/accounts/tasks.py:64`] — `_send` swallows the SMTP error but the caller still flips the flag; reminder cron also won't retry. Have `_send` return success bool; only update the flag on True. [Auditor H2 + Blind L6 + L9]
+
+**MED severity:**
+
+- [x] [Review][Patch] P7 — `_truncate_ip` broken on IPv6 + IPv4-mapped IPv6 [`apps/api/apps/accounts/services/parental_consent.py:55-58`] — `2001:db8::1` → `2001:db8:::` (invalid); `::1` → `::1::`; `::ffff:1.2.3.4` → `::ffff::`. Use `ipaddress.ip_network(f"{ip}/48", strict=False).network_address`. [Blind M2 + Edge M5 + Auditor L1]
+- [x] [Review][Patch] P8 — Signal handler not wrapped in `transaction.atomic()` despite service-side comment claiming it is [`apps/api/apps/accounts/signals.py:30-43`] — Orphan-user scenario if `create_parental_consent_request` fails after allauth committed the User. Either wrap signal logic, or have `/resend/` lazily create a missing consent for `pending_parental_consent` users. [Blind M3]
+- [x] [Review][Patch] P9 — `<LimitedModeBanner />` shows parental-consent copy to non-minor users [`apps/web/src/components/features/auth/limited-mode-banner.tsx`] — Adult ≥ 15 ans who hasn't verified email yet sees "Tes parents doivent valider…". Gate on `user.status === "pending_parental_consent"` specifically, not on `!is_fully_active`. [Blind M4]
+- [x] [Review][Patch] P10 — `@ratelimit(key="user")` decorator ordering with `@permission_classes` [`apps/api/apps/accounts/views.py:204`] — If ratelimit runs before auth middleware populates `request.user`, anonymous users share one bucket. Use `key="user_or_ip"` (django-ratelimit built-in) to be safe. [Blind M5]
+- [x] [Review][Patch] P11 — Vacuous `content_hash` assertion in vitest [`apps/web/src/components/features/auth/parental-consent-flow.test.tsx:58`] — `.toMatch(/^[0-9a-f]{64}$/)` passes even if the dialog hashes a constant. Add a complementary assertion: 2 different beneficiaries produce 2 different hashes. [Blind M6]
+- [x] [Review][Patch] P12 — Celery `iterator()` + mid-loop `save()` can invalidate cursor [`apps/api/apps/accounts/tasks.py:46`] — `iterator()` without `chunk_size` opens a server-side cursor; `consent.save(...)` may invalidate it. Either materialise (`list(qs)`) or pass `chunk_size=100`. [Blind M9]
+- [x] [Review][Patch] P13 — Reminder + suspend queries use different time fields (`expires_at` vs `requested_at`) [`apps/api/apps/accounts/tasks.py`] — If clocks drift or admin edits a row, the two can disagree. Use `expires_at__lt=now()` consistently for the suspend query. [Blind M10 + Edge M4 + Auditor M2]
+- [x] [Review][Patch] P14 — Granted email failure leaves child uninformed [`apps/api/apps/accounts/views.py:190-195`] — `send_granted_to_child` outside `record_decision`'s atomic block + idempotent; if SMTP fails the parent's grant is locked but no email ever goes out. Add a reconciliation task (or Celery retry) that emails any granted-but-unnotified row. [Blind M11]
+- [x] [Review][Patch] P15 — Brittle `(reminder_sent_at - now()).days <= -1` assertion in task test [`apps/api/apps/accounts/tests/test_parental_consent_tasks.py:55`] — Edge cases on `timedelta.days` rounding. Use `assert already_reminded.reminder_sent_at < timezone.now() - timedelta(days=1)`. [Blind M12]
+- [x] [Review][Patch] P16 — `/resend/` uses initial-request template instead of reminder template [`apps/api/apps/accounts/views.py:1946`] — Child-initiated resend should re-use the "Vous n'avez pas encore répondu" copy, not the initial request copy. Swap to `send_reminder_to_parent`. [Edge M6]
+- [x] [Review][Patch] P17 — `UserDetailsSerializer` silently discards PATCH updates [`apps/api/apps/accounts/serializers.py:109-121`] — Base `serializers.Serializer` + all `read_only=True` → PATCH returns 200 with the original data. Either switch to `ModelSerializer` with `fields` whitelist OR override `update()` to raise 405. [Edge M7]
+- [x] [Review][Patch] P18 — Stale `consent` arg in `record_decision` audit metadata [`apps/api/apps/accounts/services/parental_consent.py:108`] — `kwargs["consent"]` is the pre-`select_for_update` object; if `parent_email` was concurrently mutated, the hash logged is wrong. Use the refreshed local `consent` in the metadata lambda. [Edge M8]
+
+**LOW severity:**
+
+- [x] [Review][Patch] P19 — `ParentalConsent.is_expired` uses strict `<` [`apps/api/apps/accounts/models.py:190`] — 1-second loophole at exact `expires_at` boundary. Switch to `<=` for consistency with the "60-day hard deadline" narrative. [Blind L1 + Auditor L3]
+- [x] [Review][Patch] P20 — `_truncate_ip` returns `None` on malformed IPv4 [`apps/api/apps/accounts/services/parental_consent.py:60-63`] — Silently drops forensic data; preserve `unknown` literal or the first octet at least. [Blind L7]
+- [x] [Review][Patch] P21 — URL ordering foot-gun: `resend/` route declared after `<token>/` would shadow [`apps/api/apps/accounts/urls.py:17-30`] — Current order is correct, but a future reorder could route `GET /parental-consent/resend/` to `parental_consent_status` with `token="resend"`. Pin with a unit test. [Blind L8]
+- [x] [Review][Patch] P22 — Reminder loop `save()` outside the `try/except` [`apps/api/apps/accounts/tasks.py:64-70`] — If `save()` raises (concurrent delete), `sent` count drifts vs reality. Move `save()` inside try, or update count only after successful save. [Blind L9]
+- [x] [Review][Patch] P23 — `isUnderAge` JS Date rollover on malformed input [`apps/web/src/lib/auth/age.ts`] — `new Date(2012, 12, 1)` rolls to January 2013, no NaN. Validate month ∈ [1,12] and day ∈ [1,31] explicitly. [Edge L2]
+- [x] [Review][Patch] P24 — `_age_today(None)` returns 0 [`apps/api/apps/accounts/views.py:124`] — Edge case: parent landing page shows "âge déclaré : 0 ans". Either guard at the view level (skip the field if None) or return `None` and have the serializer omit. [Edge L3]
+- [x] [Review][Patch] P25 — `expires_at` not backdated in task tests [`apps/api/apps/accounts/tests/test_parental_consent_tasks.py`] — Tests backdate `requested_at` but not `expires_at`, so `is_expired` path is never exercised. Backdate both for the 65-day case. [Edge L7]
+
+#### Deferred
+
+- [x] [Review][Defer] W1 — Token binding (HMAC / IP / UA continuity) — 256-bit entropy makes brute-force impractical; revisit if real-world leaked-token incidents surface. [Blind H1]
+- [x] [Review][Defer] W2 — Token appears in URL path → leaks to logs — Mitigate via log scrubber config in deploy track rather than API contract change (which would break the email-link UX). [Blind H3]
+- [x] [Review][Defer] W3 — Case-insensitive email lookup race [`serializers.py`] — Pre-existing from Story 1.3; DB unique constraint catches the actual collision. Add `CITEXT` column when ready. [Blind M1]
+- [x] [Review][Defer] W4 — `student_email_masked` leak via public status endpoint — Brute-force on 256-bit tokens is impractical; combined with W2's log-scrubbing, residual risk is acceptable for MVP. [Blind M8]
+- [x] [Review][Defer] W5 — Timezone boundary on age check (server localdate vs frontend `new Date()`) — 1-day window for users at exactly 15 ans 0 days, locale-dependent. Switch to UTC midnight everywhere when Story 7.7 (i18n foundation) lands. [Edge M2 + Blind L12]
+- [x] [Review][Defer] W6 — Real-time grant broadcast (banner auto-dismiss when parent grants in another tab) — Polling or SSE. MVP-acceptable as page-refresh hides the banner. [Auditor M3 + Edge L4]
+- [x] [Review][Defer] W7 — Distinct error types for "expired" vs "already-decided" — Both currently map to `parental-consent-already-decided`; UX could benefit from separation. Cosmetic. [Edge L5]
+- [x] [Review][Defer] W8 — Beat schedule has no jitter — Both jobs deterministically at 04:00/04:15 UTC. Add `crontab(..., jitter=...)` if volumes spike. [Blind L10]
+- [x] [Review][Defer] W9 — `is_fully_active` is a Python property, not a column — Future admin/metrics queries will need to re-implement the SQL rule. Materialise as a computed column or function-based index later. [Blind L11]
+- [x] [Review][Defer] W10 — Plain `parent_email` retained indefinitely — ADR-0003 claims "≤ 60-day effective use" but no purge ships. Defer to partitioning/archival story (Sprint 4+). [Blind L3]
+- [x] [Review][Defer] W11 — `_parent_email_pending` transient attr coupling — Already in deferred-work.md from implementation; revisit if allauth ever ships a DRF-native signal. [Blind L2]
+
+#### Dismissed (10)
+
+R1 — `@audit_action` transaction nesting speculation (verified in 1.13: decorator joins outer txn) [Blind H4 + Edge M3].
+R2 — 201 status code explicit test (dj-rest-auth default + indirectly covered) [Auditor H1].
+R3 — Rate-limit empty-string fallback docstring (already commented) [Auditor M1].
+R4 — `mask_email` ccTLD/subdomain behaviour matches spec's own docstring example [Blind M7 + Edge M1 + L1 + Auditor L1 partial].
+R5 — `content_hash` client-trusted (intentional per ADR-0003) [Auditor M4].
+R6 — Email HTML missing `dir` attribute (cosmetic, French doesn't need RTL) [Auditor M5].
+R7 — Factory imports not in diff (factories existed in Story 1.3, unchanged) [Blind L5].
+R8 — Email URL no urlencode (`secrets.token_urlsafe` produces URL-safe chars by definition) [Edge L6].
+R9 — `super().validate()` runs password check first (intentional ordering, correct UX) [Edge L8].
+R10 — `__all__` not defined for `mask_email` (cosmetic) [Auditor L2].
+
 ### T8 — Documentation + final validation
 
 - [ ] T8.1 Update `docs/onboarding.md` §troubleshooting: explain that `pending_parental_consent` users can log in but won't have full feature access; resend is rate-limited 1 / h / user.
@@ -563,16 +634,129 @@ _bmad-output/implementation-artifacts/deferred-work.md      # +5 deferred items
 
 ### Agent Model Used
 
-_(to be filled by dev agent)_
+Claude Opus 4.7 (`claude-opus-4-7[1m]`) — single-execution implementation 2026-05-17.
 
 ### Debug Log References
 
-_(to be filled by dev agent)_
+- T2/T3 signal bug: allauth fires `user_signed_up` with a `WSGIRequest` (no `.data`) — fixed by
+  stashing `parent_email` on a transient `user._parent_email_pending` attribute set by the adapter.
+- T4 rate-limit bug: `@method_decorator(ratelimit(...))` does not work on function-based views;
+  swapped for direct `@ratelimit(...)`. The `key="post:token"` was also wrong (looks at POST body
+  fields, not URL kwargs) — replaced with a callable that extracts the token from
+  `request.resolver_match.kwargs`.
+- T7 test bug: rate-limit cache is per-process, not per-test, so > 5 decide calls across the test
+  file collided into the same bucket. Fix above also resolved this — different consent tokens now
+  produce independent buckets.
 
 ### Completion Notes List
 
-_(to be filled by dev agent)_
+**What ships:**
+
+- Custom `User.is_fully_active` property + `UserDetailsSerializer` override on dj-rest-auth so
+  `/api/v1/auth/user/` exposes the derived flag.
+- `ParentalConsent` model (+ migration 0003) with three indexes covering the Celery beat queries +
+  the `/resend/` "latest pending for student" lookup.
+- 3 new exceptions in `apps/core/exceptions.py` (ParentEmailRequired, ParentEmailNotApplicable,
+  ParentEmailSameAsStudent) + 2 more (ParentalConsentNotFound, ParentalConsentAlreadyDecided) for
+  the decide endpoint.
+- `SignupSerializer` cross-field branching: `(age < 15, parent_email present)` decision matrix.
+- `apps/accounts/services/parental_consent.py`: `create_parental_consent_request`, `record_decision`
+  (atomic + select_for_update against double-click races), `suspend_for_unresolved_consent`.
+- `apps/accounts/services/parental_consent_email.py`: 4 dispatch helpers + Django template rendering
+  for the 4 events (request / reminder / granted-to-child / expired-to-child) × 3 files each.
+- `apps/accounts/tasks.py`: 2 Celery beat tasks (daily 04:00 / 04:15 UTC) — pull-based queries on
+  `requested_at + N days`, idempotent.
+- 3 endpoints: `GET /api/v1/auth/parental-consent/{token}/` (public, masked email read),
+  `POST /api/v1/auth/parental-consent/{token}/decide/` (public, 5/h/token rate-limit),
+  `POST /api/v1/auth/parental-consent/resend/` (auth, 1/h/user).
+- Frontend signup-form conditional `parent_email` field + auto-focus on appearance.
+- `apps/web/src/app/(public)/auth/parental-consent/[token]/page.tsx` — Server Component shell +
+  `ParentalConsentFlow` Client Component reusing Story 1.14's ConsentDialog (with the 8-field
+  content_hash as the audit-trail proof).
+- `<LimitedModeBanner />` at the `(authenticated)` layout level — self-hides for fully-active users.
+
+**Test count delta:**
+
+- pytest: 40 → 58 (+18 net new — 4 signup branching + 11 decide/resend + 3 Celery beat tests, mainly).
+- vitest: 29 → 33 (+4 — 1 conditional signup field + 3 parental-consent-flow tests).
+
+**OpenAPI delta:**
+
+- `+3 paths` (`/parental-consent/...`).
+- `User` schema gains `is_fully_active: boolean` (via the new UserDetailsSerializer).
+- Signup `request` body gains optional `parent_email`.
+- `parental_consent_resend` view triggers a drf-spectacular warning "unable to guess serializer" —
+  acceptable (no request body, the response is `{detail: string}` which the framework infers from
+  the docstring). Deferred to the next review pass if we want a cleaner schema.
+
+**Manual smoke (Mailpit at :8025):** signup with `birth_date=2012-01-15` + `parent_email=parent@…`
+→ 2 emails sent (child verify-email + parent consent request) → GET status returns `m***@p**.local`
++ age 14 + status pending → POST decide returns 200 + "granted" email sent to child → second POST
+returns 409.
 
 ### File List
 
-_(to be filled by dev agent)_
+**New (~22):**
+
+```
+apps/api/apps/accounts/migrations/0003_parentalconsent.py
+apps/api/apps/accounts/services/parental_consent.py
+apps/api/apps/accounts/services/parental_consent_email.py
+apps/api/apps/accounts/tasks.py
+apps/api/apps/accounts/templates/parental_consent/parental_consent_request.{txt,html}
+apps/api/apps/accounts/templates/parental_consent/parental_consent_request_subject.txt
+apps/api/apps/accounts/templates/parental_consent/parental_consent_reminder.{txt,html}
+apps/api/apps/accounts/templates/parental_consent/parental_consent_reminder_subject.txt
+apps/api/apps/accounts/templates/parental_consent/parental_consent_granted_to_child.{txt,html}
+apps/api/apps/accounts/templates/parental_consent/parental_consent_granted_to_child_subject.txt
+apps/api/apps/accounts/templates/parental_consent/parental_consent_expired_to_child.{txt,html}
+apps/api/apps/accounts/templates/parental_consent/parental_consent_expired_to_child_subject.txt
+apps/api/apps/accounts/tests/test_signup_under_15.py
+apps/api/apps/accounts/tests/test_parental_consent.py
+apps/api/apps/accounts/tests/test_parental_consent_tasks.py
+apps/api/apps/core/text.py
+apps/web/src/app/(authenticated)/layout.tsx
+apps/web/src/app/(public)/auth/parental-consent/[token]/page.tsx
+apps/web/src/components/features/auth/parental-consent-flow.tsx
+apps/web/src/components/features/auth/parental-consent-flow.test.tsx
+apps/web/src/components/features/auth/limited-mode-banner.tsx
+apps/web/src/lib/auth/age.ts
+docs/adr/0003-parental-consent-tokenized.md
+```
+
+**Modified (~13):**
+
+```
+apps/api/apps/accounts/admin.py                              # +ParentalConsentAdmin
+apps/api/apps/accounts/adapters.py                           # save_user branches on parent_email
+apps/api/apps/accounts/models.py                             # +ParentalConsent + ParentalConsentDecision + User.is_fully_active
+apps/api/apps/accounts/serializers.py                       # SignupSerializer + ParentalConsent* serializers + UserDetailsSerializer
+apps/api/apps/accounts/signals.py                            # user_signed_up → create_parental_consent_request + send email
+apps/api/apps/accounts/urls.py                               # +3 parental-consent paths
+apps/api/apps/accounts/views.py                              # +3 parental-consent views
+apps/api/apps/accounts/tests/test_signup_under_15.py        # (new, listed above)
+apps/api/apps/core/exceptions.py                             # +5 exception classes
+apps/api/path_advisor/celery.py                              # +2 beat schedule entries
+apps/api/path_advisor/settings/base.py                       # REST_AUTH.USER_DETAILS_SERIALIZER
+apps/web/src/components/features/auth/signup-form.tsx        # conditional parent_email field
+apps/web/src/components/features/auth/signup-form.test.tsx   # +1 conditional-field test
+apps/web/src/lib/api/auth.ts                                 # +CurrentUser + 3 parental-consent helpers
+docs/onboarding.md                                           # +troubleshooting 1.4 entry
+_bmad-output/implementation-artifacts/deferred-work.md      # +9 deferred items
+_bmad-output/implementation-artifacts/sprint-status.yaml    # 1-4 in-progress → review
+```
+
+### Change Log
+
+- 2026-05-17 — implemented Story 1.4 end-to-end (T1-T8). 25/25 new pytest pass, 4/4 new vitest pass.
+  No regression — 58/58 pytest (1 skipped, postgresql_only), 33/33 vitest. OpenAPI schema regenerates
+  cleanly with the 3 new endpoints. Manual smoke through Mailpit confirmed parent + child email flow.
+- 2026-05-24 — code review (Opus + Sonnet + Haiku) → 59 raw findings → 1 decision + 25 patches +
+  11 deferred + 10 dismissed. All 26 patches applied (decision D1 resolved as "store as
+  `client_accepted_at`"). Includes CRITICAL fix §P1: `mark_email_verified` no longer auto-promotes
+  minors to ACTIVE on email-verify-only — the parental gate is now enforced both directions.
+  New: migration 0004 (`client_accepted_at` + `notification_sent_at`); Celery beat task
+  `accounts.notify_unconfirmed_granted_consents` (hourly @ XX:20) to retry granted-email on SMTP
+  failure. Tests: 61/61 pytest (+3 — P1 minor-bypass guard, P21 URL ordering); 34/34 vitest (+1 —
+  hash-differs-by-beneficiary). Smoke E2E: granted decision now persists `client_accepted_at` +
+  `notification_sent_at` + `decision_ip_truncated=172.18.0.0` (proper /24 via `ipaddress` stdlib).

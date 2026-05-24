@@ -1,0 +1,14 @@
+Salut,
+
+Bonne nouvelle — tes parents ont validé ton inscription sur Path-Advisor.
+
+Tu as maintenant accès à toutes les fonctionnalités :
+- Complète ton profil (passions, intérêts, valeurs)
+- Découvre des métiers qui pourraient te correspondre
+- Sauvegarde des parcours de formation
+
+Pour démarrer, connecte-toi ici :
+{{ login_url }}
+
+À bientôt,
+L'équipe Path-Advisor

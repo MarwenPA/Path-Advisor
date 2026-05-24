@@ -142,6 +142,10 @@ ACCOUNT_RATE_LIMITS = {"login_failed": "5/5m"}
 # TokenModel must be explicitly disabled to skip the `rest_framework.authtoken` install.
 REST_AUTH = {
     "REGISTER_SERIALIZER": "apps.accounts.serializers.SignupSerializer",
+    # Override dj-rest-auth's default UserDetailsSerializer so `/api/v1/auth/user/`
+    # exposes the derived `is_fully_active` flag (Story 1.4 §AC3) — the front gates
+    # "limited mode" on it without re-implementing the email-verified + active rule.
+    "USER_DETAILS_SERIALIZER": "apps.accounts.serializers.UserDetailsSerializer",
     "SESSION_LOGIN": True,
     "USE_JWT": False,
     "TOKEN_MODEL": None,

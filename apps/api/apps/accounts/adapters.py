@@ -38,10 +38,23 @@ class PathAdvisorAccountAdapter(DefaultAccountAdapter):
             timezone.now() if cleaned.get("consent_rgpd_accepted") is True else None
         )
         user.consent_cgu_version = cleaned.get("consent_cgu_version")
-        user.status = "email_unverified"
+
+        # Story 1.4 branching: presence of a `parent_email` flags the minor flow. The
+        # `email_verified_at` field stays NULL either way — the child must independently
+        # verify their email (cf. AC3 state machine), parental consent is orthogonal.
+        parent_email = cleaned.get("parent_email")
+        if parent_email:
+            user.status = "pending_parental_consent"
+        else:
+            user.status = "email_unverified"
 
         if commit:
             user.save()
+        # Pass the parent_email through to the `user_signed_up` signal via a transient
+        # attribute — allauth fires the signal with a plain WSGIRequest (not a DRF
+        # Request), so `request.data` is unavailable in the handler. Re-reading the
+        # body there would force a second JSON parse and tie us to a Content-Type.
+        user._parent_email_pending = parent_email  # type: ignore[attr-defined]
         return user
 
     def get_email_confirmation_url(self, request: HttpRequest, emailconfirmation: Any) -> str:

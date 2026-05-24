@@ -15,6 +15,8 @@ export interface SignupPayload {
   birth_date: string; // ISO YYYY-MM-DD
   consent_rgpd_accepted: boolean;
   consent_cgu_version: string;
+  /** Required when the student is < 15 years old (Story 1.4). */
+  parent_email?: string;
 }
 
 export interface CsrfResponse {
@@ -67,3 +69,69 @@ export async function resendVerificationEmail(email: string): Promise<{ detail: 
 
 /** CGU/RGPD version currently in force — bump this string when the policy changes. */
 export const CGU_RGPD_VERSION = "2026-05-15";
+
+// --- Story 1.4 — Parental consent flow --------------------------------------
+
+export interface CurrentUser {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  is_fully_active: boolean;
+}
+
+/**
+ * Fetch the authenticated user. Throws ApiError on 401/403 — the caller decides
+ * whether to redirect to /auth/login or surface the error.
+ */
+export async function fetchCurrentUser(): Promise<CurrentUser> {
+  return apiFetch<CurrentUser>("/api/v1/auth/user/");
+}
+
+export interface ParentalConsentStatus {
+  student_email_masked: string;
+  child_age: number;
+  requested_at: string;
+  expires_at: string;
+  status: "pending" | "granted" | "refused" | "expired";
+}
+
+export interface ParentalConsentDecisionPayload {
+  decision: "granted" | "refused";
+  content_hash: string; // 64-char hex SHA-256 from ConsentDialog
+  accepted_at: string; // ISO 8601
+}
+
+export interface ParentalConsentDecisionResponse {
+  decision: "granted" | "refused";
+  child_status: string;
+}
+
+export async function fetchParentalConsentStatus(token: string): Promise<ParentalConsentStatus> {
+  return apiFetch<ParentalConsentStatus>(
+    `/api/v1/auth/parental-consent/${encodeURIComponent(token)}/`,
+  );
+}
+
+export async function decideParentalConsent(
+  token: string,
+  payload: ParentalConsentDecisionPayload,
+): Promise<ParentalConsentDecisionResponse> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<ParentalConsentDecisionResponse>(
+    `/api/v1/auth/parental-consent/${encodeURIComponent(token)}/decide/`,
+    {
+      method: "POST",
+      body: payload,
+      csrfToken,
+    },
+  );
+}
+
+export async function resendParentalConsentEmail(): Promise<{ detail: string }> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<{ detail: string }>("/api/v1/auth/parental-consent/resend/", {
+    method: "POST",
+    csrfToken,
+  });
+}
