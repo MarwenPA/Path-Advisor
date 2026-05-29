@@ -29,6 +29,40 @@ SECURE_HSTS_SECONDS = 31_536_000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
+# Story 1.5 §AC10: env-driven `CSRF_TRUSTED_ORIGINS` so production knows the
+# real front-end origin (the base.py default ships only localhost values).
+# Comma-separated list, e.g. `https://path-advisor.fr,https://app.path-advisor.fr`.
+# We REQUIRE this in prod (no fallback) — a wrong-origin login would silently
+# fail CSRF and present as a generic 403, which is hard to debug.
+# Strip first, THEN check empty-after-strip, so a whitespace-only env var
+# (e.g. `CSRF_TRUSTED_ORIGINS=" "`) raises instead of yielding an empty list
+# (code-review P17 — Story 1.5 review 2026-05-27).
+_csrf_trusted_raw = (os.environ.get("CSRF_TRUSTED_ORIGINS") or "").strip()
+if not _csrf_trusted_raw:
+    raise ImproperlyConfigured(
+        "CSRF_TRUSTED_ORIGINS must be set in production (comma-separated "
+        "HTTPS origins of the SPA front-end)."
+    )
+CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in _csrf_trusted_raw.split(",") if origin.strip()]
+if not CSRF_TRUSTED_ORIGINS:
+    raise ImproperlyConfigured(
+        "CSRF_TRUSTED_ORIGINS resolved to an empty list after stripping "
+        "(comma-separated env var contained only whitespace)."
+    )
+
+# Story 1.5 §AC5: validate `NEXT_PUBLIC_SITE_URL` at startup so a misconfigured
+# prod env fails the deploy instead of silently surviving until the first
+# password-reset request blows up with `ImproperlyConfigured` (code-review
+# P11 — Story 1.5 review 2026-05-27).
+_site_url = (os.environ.get("NEXT_PUBLIC_SITE_URL") or "").strip()
+if not _site_url:
+    raise ImproperlyConfigured(
+        "NEXT_PUBLIC_SITE_URL must be set in production — the password-reset "
+        "and email-verification flows use it to build the SPA's absolute URL."
+    )
+if not _site_url.startswith(("http://", "https://")):
+    raise ImproperlyConfigured(f"NEXT_PUBLIC_SITE_URL must be an absolute URL (got {_site_url!r}).")
+
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ["EMAIL_HOST"]
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))

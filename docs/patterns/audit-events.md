@@ -86,9 +86,50 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Metadata :** `{"deletion_request_id": "adr_…", "max_attempts": int, "last_failure_code": "<class_name>"}`.
 - **DPO action required :** row is frozen until manual investigation; see `docs/runbooks/gdpr-request.md`.
 
+## Story 1.5 — Login + per-account lockout + password reset
+
+### `auth.login_succeeded`
+- **Posé par :** `ThrottledLoginView.post` after `super().post()` returns 200.
+- **Actor :** the user themselves (from `self.user` set by dj-rest-auth's `login()`).
+- **Subject :** the user.
+- **Metadata :** `{"email_hashed": "<sha256>", "ip_truncated": "<…/24 or …/48>", "user_agent": "<truncated 200>"}`.
+
+### `auth.login_failed`
+- **Posé par :** `ThrottledLoginView.post` on any rejection (wrong password, unknown email, suspended/unverified/deleted).
+- **Actor :** `None`.
+- **Subject :** the user `id` if the email matched a real user, otherwise `None` (NEVER reflected in the HTTP response — internal DPO signal for enumeration detection).
+- **Metadata :** `{"email_hashed": "<sha256>", "ip_truncated": "<…>", "user_agent": "<truncated>", "reason": "invalid_credentials_or_unknown_email" | "AccountSuspended" | "EmailNotVerified" | "AccountDeleted" | "unknown_email"}`.
+- **Note :** the unknown-email branch is auto-flagged via `metadata.reason = "unknown_email"` so DPO filtering can spot enumeration sweeps without changing the public 400 shape.
+
+### `auth.login_blocked_locked`
+- **Posé par :** `ThrottledLoginView.post` when the serializer's `is_account_locked` check fires (user already locked, password not even checked).
+- **Subject :** the user.
+- **Metadata :** same shape as `auth.login_failed`.
+- **DPO action :** patterns of `login_blocked_locked` from the same `ip_truncated` against many `subject_id`s = credential-stuffing probe.
+
+### `auth.account_locked`
+- **Posé par :** `login_security.record_failed_attempt` when the N-th failure (default 5) trips the lockout column.
+- **Subject :** the user.
+- **Metadata :** `{"window_seconds": 900, "lock_duration_seconds": 600, "unlock_at": "<ISO>", "ip_truncated": "<…>"}`.
+
+### `auth.password_reset_requested`
+- **Posé par :** `ThrottledPasswordResetView.post` for KNOWN emails.
+- **Subject :** the user.
+- **Metadata :** `{"email_hashed": "<sha256>", "ip_truncated": "<…>"}`.
+
+### `auth.password_reset_requested_unknown`
+- **Posé par :** `ThrottledPasswordResetView.post` for UNKNOWN emails.
+- **Subject :** `None`.
+- **Metadata :** `{"email_hashed": "<sha256>", "ip_truncated": "<…>"}`.
+- **Note :** distinct action name (not just metadata.reason) so the DPO enumeration query is a single `WHERE action = 'auth.password_reset_requested_unknown'` — no body parsing needed.
+
+### `auth.password_reset_completed`
+- **Posé par :** `ThrottledPasswordResetConfirmView.post` after `super().post()` returns 200 + side-effects (sessions purged, lockout cleared, completion email sent).
+- **Subject :** the user.
+- **Metadata :** `{"sessions_killed": int, "ip_truncated": "<…>"}`.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
-- `auth.login_succeeded` / `auth.login_failed` — Story 1.5.
 - `auth.mfa_challenge_passed` / `auth.mfa_challenge_failed` — Story 1.6.
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.
 - `gdpr.export_requested` / `gdpr.export_generated` — Story 1.11.

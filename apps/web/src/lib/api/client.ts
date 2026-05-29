@@ -4,11 +4,15 @@
  * Story 1.1 seed: base URL + JSON helpers + CSRF header pass-through.
  * Story 1.3 extension: parses RFC 7807 Problem Details so feature code can read
  * `error.detail` / `error.type` and map them to user-facing copy.
- * Story 1.5 will add a typed client built on top of `src/lib/api/generated/schema.ts`.
+ * Story 1.5: default 15-second timeout (`AbortSignal.timeout`) so a hanging
+ * upstream never freezes the UI; callers needing longer can pass their own
+ * `signal` in the request init.
  *
  * Rule (cf. story 1.1 §4.4): no component should call `fetch` directly — everything
  * goes through this module.
  */
+
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 // Two URLs because Server Components run inside the `web` container and must reach
 // the API via the Docker network (http://api:8000), while Client Components run in
@@ -45,12 +49,36 @@ export interface ApiRequestInit extends Omit<RequestInit, "body"> {
 }
 
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
-  const { body, csrfToken, headers, ...rest } = init;
+  const { body, csrfToken, headers, signal, ...rest } = init;
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  // Story 1.5 §AC10: default 15s timeout via AbortSignal. Callers wanting a
+  // longer cap (Story 1.11 GDPR export polling, future long-running ops)
+  // pass their own `signal`. `AbortSignal.any` (Node 22 / browsers Q4 2024+)
+  // composes caller's signal with our timeout — if either fires, the fetch
+  // aborts. On older runtimes we fall back to a manual AbortController so
+  // the 15s timeout always applies even when a caller passes their own
+  // signal (code-review P9 — Story 1.5 review 2026-05-27).
+  const timeoutSignal = AbortSignal.timeout(DEFAULT_TIMEOUT_MS);
+  let effectiveSignal: AbortSignal;
+  if (!signal) {
+    effectiveSignal = timeoutSignal;
+  } else if (typeof AbortSignal.any === "function") {
+    effectiveSignal = AbortSignal.any([signal, timeoutSignal]);
+  } else {
+    const composed = new AbortController();
+    const propagate = (src: AbortSignal) => () => composed.abort(src.reason);
+    if (signal.aborted) composed.abort(signal.reason);
+    else signal.addEventListener("abort", propagate(signal), { once: true });
+    if (timeoutSignal.aborted) composed.abort(timeoutSignal.reason);
+    else timeoutSignal.addEventListener("abort", propagate(timeoutSignal), { once: true });
+    effectiveSignal = composed.signal;
+  }
 
   const response = await fetch(url, {
     ...rest,
     credentials: "include",
+    signal: effectiveSignal,
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",

@@ -60,20 +60,52 @@ class PathAdvisorAccountAdapter(DefaultAccountAdapter):
     def get_email_confirmation_url(self, request: HttpRequest, emailconfirmation: Any) -> str:
         """Return the Next.js verify-email URL embedded in the outgoing email.
 
-        Frontend route is `/auth/verify-email?key=<token>`. The host comes from
-        `NEXT_PUBLIC_SITE_URL` env var; we fail-fast outside `DEBUG` rather than
-        silently fall back to localhost (which would ship localhost links to
-        production users).
+        Frontend route is `/auth/verify-email?key=<token>`. Host resolution
+        via `_resolve_site_url`.
+        """
+        site_url = self._resolve_site_url()
+        # allauth's HMAC token can contain `=`, `+`, `/`; URL-encode to survive mailer rewrites.
+        key = quote(emailconfirmation.key, safe="")
+        return f"{site_url}/auth/verify-email?key={key}"
+
+    def get_password_reset_url(self, request: HttpRequest, uid: str, token: str) -> str:
+        """Return the Next.js password-reset URL — Story 1.5 §AC5.
+
+        Front-end route: `/auth/reset-password/<uid>/<token>`. Same host-
+        resolution policy as `get_email_confirmation_url` — fail-fast in
+        non-DEBUG when `NEXT_PUBLIC_SITE_URL` is unset.
+        """
+        site_url = self._resolve_site_url()
+        safe_uid = quote(uid, safe="")
+        safe_token = quote(token, safe="")
+        return f"{site_url}/auth/reset-password/{safe_uid}/{safe_token}"
+
+    def _resolve_site_url(self) -> str:
+        """Shared host-resolution for auth-flow emails.
+
+        Fail-fast in non-DEBUG keeps a missing `NEXT_PUBLIC_SITE_URL` from
+        shipping localhost links to real users.
         """
         site_url = os.environ.get("NEXT_PUBLIC_SITE_URL")
         if not site_url:
             if not settings.DEBUG:
                 raise ImproperlyConfigured(
                     "NEXT_PUBLIC_SITE_URL must be set in non-DEBUG environments "
-                    "to build email-verification links."
+                    "to build auth-flow links."
                 )
             site_url = "http://localhost:3000"
-        site_url = site_url.rstrip("/")
-        # allauth's HMAC token can contain `=`, `+`, `/`; URL-encode to survive mailer rewrites.
-        key = quote(emailconfirmation.key, safe="")
-        return f"{site_url}/auth/verify-email?key={key}"
+        return site_url.rstrip("/")
+
+    def send_mail(self, template_prefix: str, email: str, context: dict) -> None:
+        """Render + dispatch transactional emails under the `fr-FR` locale.
+
+        Story 1.5 §AC11 carries the locale-override fix from Story 1.12 §P21
+        forward: Celery workers (or sync callers with a system locale of
+        en-US) would otherwise render `{{ ...|date }}` filters in English.
+        Wrapping the render in `translation.override("fr-FR")` guarantees
+        FR month names regardless of worker locale.
+        """
+        from django.utils import translation
+
+        with translation.override("fr-FR"):
+            return super().send_mail(template_prefix, email, context)

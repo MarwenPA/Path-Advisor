@@ -150,3 +150,70 @@ class AccountDeleted(AccountDeletionError):
         "Ce compte est désactivé. "
         "Si tu n'as pas demandé cette suppression, vérifie tes emails pour annuler."
     )
+
+
+# ---------------------------------------------------------------------------
+# Story 1.5 — Login flow exceptions
+#
+# Note: this module is now broader than its name suggests (covers all auth
+# Problem Details since Story 1.12 added AccountDeleted). Rename to
+# `auth_exceptions.py` flagged as deferred-work in Story 1.5 §6 #2.
+# ---------------------------------------------------------------------------
+
+
+class AccountLocked(AccountDeletionError):
+    """Surfaced when the per-account lockout (5 fails / 15 min → 10 min lock)
+    has tripped (Story 1.5 §AC4).
+
+    400 (not 423 HTTP Locked) is deliberate — returning 423 would tell the
+    attacker "this account exists and we just locked it". The Problem
+    Details `type`/`title`/`detail` ALL collapse to the wrong-password
+    shape (`…/errors/validation` + "Validation" + same FR copy) so the
+    lockout is indistinguishable from continued wrong-password attempts
+    at every layer of the response body (code-review D1 — Story 1.5
+    review 2026-05-27, resolved by collapsing the dedicated `type` URI).
+
+    The unlock timestamp lives in the audit row + the DB column, NEVER
+    in the response body.
+    """
+
+    type = "https://path-advisor.fr/errors/validation"
+    title = "Validation"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Email ou mot de passe incorrect."
+
+
+class AccountSuspended(AccountDeletionError):
+    """Surfaced when a user with `status=SUSPENDED` attempts to log in.
+
+    The 403 acknowledges the account exists but is unreachable. Detail is
+    deliberately generic — does NOT reveal WHY suspension happened
+    (parental-consent expiry, abuse flag, manual hold) so a moderator's
+    decision can't be inferred from the login response (Story 1.5 §AC3).
+    """
+
+    type = "https://path-advisor.fr/errors/account-suspended"
+    title = "Compte suspendu"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Ton compte est suspendu. Contacte le DPO si tu penses que c'est une erreur."
+
+
+class EmailNotVerified(AccountDeletionError):
+    """Surfaced when a user with `status=EMAIL_UNVERIFIED` attempts to log in.
+
+    The `extras` payload carries the resend endpoint URL so the front can
+    offer a one-click "renvoie-moi le mail" button without hard-coding the
+    path (Story 1.5 §AC3). The hint is rendered as a TOP-LEVEL Problem
+    Details extension (RFC 7807 §3.2) rather than under `body.errors` so
+    a typed parser does not misclassify it as a field-level validation
+    error (code-review P12 — Story 1.5 review 2026-05-27).
+    """
+
+    type = "https://path-advisor.fr/errors/email-not-verified"
+    title = "Email non vérifié"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = (
+        "Vérifie ton adresse email avant de te connecter. "
+        "Si tu n'as pas reçu le mail, demande un nouvel envoi."
+    )
+    extras_as_extensions = True

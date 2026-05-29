@@ -1,8 +1,9 @@
-"""Shared fixtures for the GDPR-export test suite (Story 1.11).
+"""Shared fixtures for the accounts test suite.
 
-The S3 stub is intentionally local (not `moto`) so tests stay fast and have
-no external download: we only need `put_object`, `delete_object`, and
-`generate_presigned_url` behaviour, all easy to fake.
+Started as the GDPR-export S3 stub (Story 1.11); Story 1.5 promoted the
+`_clear_ratelimit_cache` autouse fixture here from `test_account_deletion_views.py`
+so every auth test stays isolated from rate-limit counter bleed (signup,
+login, password-reset, account-deletion all run through django-ratelimit).
 """
 
 from __future__ import annotations
@@ -11,6 +12,20 @@ from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
+
+
+@pytest.fixture(autouse=True)
+def _clear_ratelimit_and_login_counters():
+    """Reset the in-memory cache between tests so per-test cases don't leak
+    rate-limit counters OR login-failure counters (Story 1.5 lockout) into
+    each other. Promoted from Story 1.12's test_account_deletion_views.py
+    fixture so the full auth test suite shares one isolation guard.
+    """
+    from django.core.cache import cache
+
+    cache.clear()
+    yield
+    cache.clear()
 
 
 class FakeS3:

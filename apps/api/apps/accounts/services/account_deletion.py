@@ -29,7 +29,6 @@ import structlog
 from django.conf import settings
 from django.contrib.auth.hashers import check_password as django_check_password
 from django.contrib.auth.hashers import make_password
-from django.contrib.sessions.models import Session
 from django.db import transaction
 from django.utils import timezone
 
@@ -78,39 +77,13 @@ def _generate_cancel_token() -> str:
 
 
 def _terminate_user_sessions(user: User) -> int:
-    """Delete every Django session whose payload matches this user.
-
-    Sessions are NOT FK-linked to User (Django stores `_auth_user_id` inside the
-    encoded payload), so we walk the table and decode each row. Acceptable at
-    MVP scale (≤ 500 active sessions). Returns the number of sessions killed
-    so the structlog summary captures it.
-
-    A Sprint-4+ Redis session backend swap reduces this to a single SCAN+DEL;
-    documented as deferred-work.
+    """Story 1.5 extracted this helper to `session_utils.terminate_user_sessions`
+    so the password-reset confirm path can share it. Kept here as a thin
+    re-export so the call site (`request_deletion`) stays unchanged.
     """
-    user_id_str = str(user.pk)
-    killed = 0
-    # Skip already-expired rows (Story 1.12 code review §P16). Iterate with a
-    # chunked queryset so a large session table doesn't OOM.
-    active_sessions = Session.objects.filter(expire_date__gte=timezone.now())
-    for sess in active_sessions.iterator(chunk_size=200):
-        try:
-            data = sess.get_decoded()
-        except Exception as exc:
-            # Malformed payload (manual DB poke, expired signing key, SECRET_KEY
-            # rotation) — skip, don't fail the whole deletion on one bad row.
-            # Log so a flurry of decode failures surfaces in observability
-            # (Story 1.12 code review §P15).
-            log.warning(
-                "accounts.session_decode_failed",
-                session_key_prefix=(sess.session_key or "")[:6],
-                error_type=exc.__class__.__name__,
-            )
-            continue
-        if data.get("_auth_user_id") == user_id_str:
-            sess.delete()
-            killed += 1
-    return killed
+    from apps.accounts.services.session_utils import terminate_user_sessions
+
+    return terminate_user_sessions(user)
 
 
 def _alert_on_silent_audit_failure(audit_row: object | None, *, request_id: str) -> None:
