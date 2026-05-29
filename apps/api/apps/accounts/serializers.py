@@ -305,3 +305,71 @@ class ParentalConsentDecisionSerializer(serializers.Serializer):
         help_text="Lowercase SHA-256 hex from the ConsentDialog payload.",
     )
     accepted_at = serializers.DateTimeField(required=True)
+
+
+# ---------------------------------------------------------------------------
+# Story 1.5 — Password reset
+# ---------------------------------------------------------------------------
+
+
+class PathAdvisorPasswordResetSerializer:
+    """Overrides dj-rest-auth's `PasswordResetSerializer.get_email_options()` to
+    inject a Next.js-aware `url_generator` callable (Story 1.5 §AC5).
+
+    `AllAuthPasswordResetForm.save()` accepts a `url_generator(request, user,
+    token) -> str` kwarg via the options dict. We delegate to the existing
+    `PathAdvisorAccountAdapter.get_password_reset_url` so URL building stays
+    in one place (mirrors the verify-email URL helper from Story 1.3).
+
+    Implemented as a delayed import / lazy class to avoid the dj-rest-auth
+    AppRegistryNotReady issue at module load — defined inline at module
+    bottom so Django app loading completes before the subclass is built.
+    """
+
+    def __new__(cls, *args, **kwargs):
+        # Lazy-build the real subclass on first call to avoid the
+        # `from dj_rest_auth.serializers import PasswordResetSerializer`
+        # triggering `django.contrib.auth.models` import before Django apps
+        # are ready (only matters at module-load time on cold starts).
+        #
+        # Double-checked locking — under cold-start contention two workers
+        # would otherwise race the build; the loser-thread's `_Real` would
+        # be a different class object, breaking `isinstance` checks elsewhere
+        # (code-review P6 — Story 1.5 review 2026-05-27).
+        global _RealPathAdvisorPasswordResetSerializer
+        if _RealPathAdvisorPasswordResetSerializer is None:
+            with _RealPasswordResetSerializerLock:
+                if _RealPathAdvisorPasswordResetSerializer is None:
+                    _RealPathAdvisorPasswordResetSerializer = _build_password_reset_serializer()
+        return _RealPathAdvisorPasswordResetSerializer(*args, **kwargs)
+
+
+import threading as _threading  # noqa: E402
+
+_RealPasswordResetSerializerLock = _threading.Lock()
+_RealPathAdvisorPasswordResetSerializer = None
+
+
+def _build_password_reset_serializer():
+    from allauth.account.utils import user_pk_to_url_str
+    from dj_rest_auth.serializers import PasswordResetSerializer
+
+    class _Real(PasswordResetSerializer):
+        def get_email_options(self):
+            # `AllAuthPasswordResetForm.save()` reads `url_generator` from
+            # kwargs and calls it as `url_generator(request, user, token)`.
+            # We rebuild the same URL the front-end serves at
+            # `/auth/reset-password/<uid>/<token>` so the email link lands on
+            # the SPA form instead of allauth's default Django page.
+            from allauth.account.adapter import get_adapter
+
+            def url_generator(request, user, token):
+                return get_adapter(request).get_password_reset_url(
+                    request,
+                    uid=user_pk_to_url_str(user),
+                    token=token,
+                )
+
+            return {"url_generator": url_generator}
+
+    return _Real

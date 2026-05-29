@@ -96,6 +96,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # soft delete (Story 1.12)
+    # Story 1.5: per-account lockout after 5 failed logins in 15 min → set to
+    # `now() + 10 min` by `login_security.record_failed_attempt` when the
+    # threshold trips. Source of truth for the "locked" state (the Redis
+    # counter that drives the threshold is the staging state — see Story 1.5
+    # §AC4 + §4.5 #1 for the asymmetry rationale).
+    locked_until = models.DateTimeField(null=True, blank=True, db_index=True)
 
     objects = UserManager()
 
@@ -115,6 +121,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def is_email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+    @property
+    def is_locked(self) -> bool:
+        """True iff the user is currently locked out (Story 1.5 §AC4)."""
+        return self.locked_until is not None and self.locked_until > timezone.now()
 
     @property
     def is_fully_active(self) -> bool:

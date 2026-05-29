@@ -72,11 +72,25 @@ export const CGU_RGPD_VERSION = "2026-05-15";
 
 // --- Story 1.4 — Parental consent flow --------------------------------------
 
+export type UserRole =
+  | "student"
+  | "parent"
+  | "counselor"
+  | "school_admin"
+  | "path_admin";
+
+export type UserStatus =
+  | "email_unverified"
+  | "pending_parental_consent"
+  | "active"
+  | "suspended"
+  | "deleted";
+
 export interface CurrentUser {
   id: string;
   email: string;
-  role: string;
-  status: string;
+  role: UserRole;
+  status: UserStatus;
   is_fully_active: boolean;
 }
 
@@ -132,6 +146,60 @@ export async function resendParentalConsentEmail(): Promise<{ detail: string }> 
   const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
   return apiFetch<{ detail: string }>("/api/v1/auth/parental-consent/resend/", {
     method: "POST",
+    csrfToken,
+  });
+}
+
+// --- Story 1.5 — Login + logout + password reset ----------------------------
+
+export interface LoginResponse {
+  user: CurrentUser;
+}
+
+export async function loginUser(email: string, password: string): Promise<LoginResponse> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<LoginResponse>("/api/v1/auth/login/", {
+    method: "POST",
+    body: { email, password },
+    csrfToken,
+  });
+}
+
+export async function logoutUser(): Promise<{ detail: string }> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<{ detail: string }>("/api/v1/auth/logout/", {
+    method: "POST",
+    csrfToken,
+  });
+}
+
+/**
+ * Request a password-reset email. Always returns 200 — the body is identical
+ * whether the email is registered or not (anti-enumeration per Story 1.5 §AC5).
+ */
+export async function requestPasswordReset(email: string): Promise<{ detail: string }> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<{ detail: string }>("/api/v1/auth/password/reset/", {
+    method: "POST",
+    body: { email },
+    csrfToken,
+  });
+}
+
+export interface ConfirmPasswordResetPayload {
+  uid: string;
+  token: string;
+  new_password1: string;
+  new_password2: string;
+}
+
+export async function confirmPasswordReset(
+  payload: ConfirmPasswordResetPayload,
+): Promise<{ detail: string }> {
+  const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
+  return apiFetch<{ detail: string }>("/api/v1/auth/password/reset/confirm/", {
+    method: "POST",
+    body: payload,
     csrfToken,
   });
 }

@@ -33,6 +33,13 @@ class DomainError(Exception):
     status_code: int = status.HTTP_400_BAD_REQUEST
     default_detail: str = "An error occurred."
 
+    # When True, `extras` are rendered as Problem Details TOP-LEVEL extensions
+    # (RFC 7807 §3.2) instead of nested under `body.errors`. Use this for
+    # routing hints, retry-after-style fields, or anything that is NOT a
+    # field-level validation error. Default False preserves the pre-Story-1.5
+    # behavior (extras → `errors`) for existing callers.
+    extras_as_extensions: bool = False
+
     def __init__(self, detail: str | None = None, **extras: object) -> None:
         super().__init__(detail or self.default_detail)
         self.detail: str = detail or self.default_detail
@@ -164,7 +171,13 @@ def path_advisor_exception_handler(exc: Exception, context: dict) -> Response | 
             "instance": request_path,
         }
         if exc.extras:
-            problem["errors"] = exc.extras
+            if exc.extras_as_extensions:
+                # RFC 7807 §3.2: extension members live at the top level.
+                # Used by `EmailNotVerified` (resend_endpoint routing hint)
+                # so it does not pretend to be a field-level validation error.
+                problem.update(exc.extras)
+            else:
+                problem["errors"] = exc.extras
         response = Response(problem, status=exc.status_code)
         response["Content-Type"] = "application/problem+json"
         if exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:

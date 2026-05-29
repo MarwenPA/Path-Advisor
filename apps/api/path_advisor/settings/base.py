@@ -155,6 +155,10 @@ REST_AUTH = {
     # Story 1.12 — intercepts DELETED-status logins to surface a typed 403 + Problem
     # Details so the front routes to the cancel-flow info page (§AC3).
     "LOGIN_SERIALIZER": "apps.accounts.login_serializer.PathAdvisorLoginSerializer",
+    # Story 1.5 — overrides `get_email_options()` to route the password-reset
+    # link to the Next.js `/auth/reset-password/<uid>/<token>` page instead
+    # of allauth's default Django-served URL.
+    "PASSWORD_RESET_SERIALIZER": "apps.accounts.serializers.PathAdvisorPasswordResetSerializer",
     "SESSION_LOGIN": True,
     "USE_JWT": False,
     "TOKEN_MODEL": None,
@@ -190,8 +194,9 @@ REST_FRAMEWORK = {
 # dj-rest-auth's LoginView references its `TokenSerializer` in the success response.
 # With TOKEN_MODEL=None (session-cookie auth, ADR-0002), the TokenSerializer is left
 # with `model = None` and crashes drf-spectacular introspection. The preprocessing
-# hook below drops the offending endpoints from the schema. Story 1.5 wires the
-# actual login endpoint and will re-include it with an explicit `@extend_schema`.
+# hook below drops the offending `/api/v1/auth/token/*` endpoints (we don't expose
+# them). Story 1.5's auth endpoints (login, password-reset request/confirm) opt back
+# in via explicit `@extend_schema` decorators on the overridden views.
 SPECTACULAR_SETTINGS = {
     "TITLE": "Path-Advisor API",
     "DESCRIPTION": "REST API for Path-Advisor — career-orientation platform.",
@@ -221,6 +226,20 @@ CSRF_TRUSTED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
 # --- Rate limiting (django-ratelimit, Story 1.3) ---
 RATELIMIT_USE_CACHE = "default"
+
+# --- Story 1.5 — Per-account login lockout ---
+# Independent from the per-IP throttle on `ThrottledLoginView` (Story 1.12 §D5,
+# 5/min/IP). After `LOGIN_FAIL_THRESHOLD` failed attempts within
+# `LOGIN_FAIL_WINDOW_SECONDS` for the SAME user, the account is locked for
+# `LOGIN_LOCK_DURATION_SECONDS`. Tunable per-env (tests use very low values).
+LOGIN_FAIL_THRESHOLD = int(os.environ.get("LOGIN_FAIL_THRESHOLD", 5))
+LOGIN_FAIL_WINDOW_SECONDS = int(os.environ.get("LOGIN_FAIL_WINDOW_SECONDS", 900))
+LOGIN_LOCK_DURATION_SECONDS = int(os.environ.get("LOGIN_LOCK_DURATION_SECONDS", 600))
+
+# Password-reset token TTL — Django default is 3 days (`PASSWORD_RESET_TIMEOUT`,
+# in seconds). Story 1.5 §AC5 mandates 1 hour for tighter security on the
+# only credential-recovery surface.
+PASSWORD_RESET_TIMEOUT = int(os.environ.get("PASSWORD_RESET_TIMEOUT", 3600))
 
 # --- Audit log (Story 1.13) ---
 # Salt used to hash client IPs before storing in `audit_logs.ip_address_hash`.

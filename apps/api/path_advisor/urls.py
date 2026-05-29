@@ -1,7 +1,7 @@
 """Root URL configuration."""
 
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -10,6 +10,8 @@ from drf_spectacular.views import (
 
 from apps.accounts.views import (
     ThrottledLoginView,
+    ThrottledPasswordResetConfirmView,
+    ThrottledPasswordResetView,
     ThrottledRegisterView,
     ThrottledResendEmailView,
 )
@@ -30,7 +32,30 @@ urlpatterns = [
     # Story 1.12 — override the default login endpoint with a per-IP throttle
     # to cap enumeration via the DELETED-state 403 leak. Must come BEFORE the
     # dj_rest_auth.urls include below so `name="rest_login"` resolves here.
-    path("api/v1/auth/login/", ThrottledLoginView.as_view(), name="rest_login"),
+    # Story 1.5 §T11 — `re_path` with `/?$` matches both `/auth/login/` AND
+    # `/auth/login` so dj_rest_auth's no-slash variant (loaded via include
+    # below) doesn't shadow our throttled subclass on slash-less requests.
+    # The `reverse('rest_login')` resolution still wins for us because the
+    # last-registered name wins and we re-declare it on the include below.
+    re_path(
+        r"^api/v1/auth/login/?$",
+        ThrottledLoginView.as_view(),
+        name="rest_login",
+    ),
+    # Story 1.5 — throttled password-reset endpoints. Same `re_path` shape so
+    # both trailing-slash variants land on our throttled subclasses (audit
+    # logging + per-email throttle + Next.js URL via
+    # PathAdvisorPasswordResetSerializer).
+    re_path(
+        r"^api/v1/auth/password/reset/?$",
+        ThrottledPasswordResetView.as_view(),
+        name="rest_password_reset",
+    ),
+    re_path(
+        r"^api/v1/auth/password/reset/confirm/?$",
+        ThrottledPasswordResetConfirmView.as_view(),
+        name="rest_password_reset_confirm",
+    ),
     path("api/v1/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/auth/", include("dj_rest_auth.urls")),
     path("api/v1/", include("apps.core.urls")),

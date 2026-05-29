@@ -215,6 +215,24 @@ If your model owns a per-user S3 prefix, register it in
 
 Full details: [docs/patterns/account-deletion.md](./patterns/account-deletion.md).
 
+## 9c. Login security — per-IP throttle vs per-account lockout (Story 1.5)
+
+The login endpoint runs two **orthogonal** rate-limit shapes:
+
+| Layer | Scope | Trigger | Owner |
+|---|---|---|---|
+| Per-IP throttle | 5/min/IP | `django-ratelimit` on `ThrottledLoginView.dispatch` | Story 1.12 |
+| Per-account lockout | 5 fails / 15 min → 10 min lock on `User.locked_until` | `apps.accounts.services.login_security.record_failed_attempt` | Story 1.5 |
+
+- A botnet IP hammering many emails trips the per-IP throttle without filling any per-account counter.
+- A distributed attack on one email (multiple IPs) trips the per-account lockout without exhausting any IP's budget.
+
+The Redis counter (`auth.login_fail:{user_id}`, TTL 900s) is allowed to lose data on a cache flush. The DB column `User.locked_until` is the source of truth — the lockout itself never lapses early.
+
+Status-aware rejections (suspended, email unverified, deleted) and the lockout state all return a Problem Details payload via `apps.accounts.gdpr_exceptions`. Wrong-password and unknown-email collapse to the **same** generic 400 — never tell the caller which side failed. The audit row carries the truth (sha256-hashed email + truncated IP) for DPO triage.
+
+DPO playbooks for the two common support escalations ("I'm locked out", "I lost email access — please reset my password") live in [`docs/runbooks/login-and-password-reset.md`](./runbooks/login-and-password-reset.md).
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in

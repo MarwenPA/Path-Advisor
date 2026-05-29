@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-05-24  # Story 1.8 in-progress
+last_updated: 2026-05-30  # Story 1.5 done (code-review applied)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -48,7 +48,7 @@ development_status:
   1-2-design-system-tokens: done
   1-3-inscription-eleve-15-ans-rgpd: done
   1-4-inscription-eleve-moins-15-ans-parental: done
-  1-5-connexion-email-password: backlog
+  1-5-connexion-email-password: done
   1-6-mfa-staff: backlog
   1-7-rbac-middleware-autorisation: backlog
   1-8-multi-tenant-rls-postgresql: done

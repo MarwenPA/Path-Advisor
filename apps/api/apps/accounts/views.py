@@ -20,7 +20,7 @@ from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from dj_rest_auth.registration.views import RegisterView, ResendEmailVerificationView
-from dj_rest_auth.views import LoginView
+from dj_rest_auth.views import LoginView, PasswordResetConfirmView, PasswordResetView
 from django.conf import settings
 from django.db import IntegrityError
 from django.db.models import F
@@ -34,6 +34,7 @@ from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, serializers, viewsets
 from rest_framework import status as drf_status
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.exceptions import ValidationError
 from rest_framework.pagination import CursorPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
@@ -41,8 +42,12 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
 from apps.accounts.gdpr_exceptions import (
+    AccountDeleted,
     AccountDeletionNoPending,
     AccountDeletionNotFound,
+    AccountLocked,
+    AccountSuspended,
+    EmailNotVerified,
     GdprExportDownloadCap,
     GdprExportExpired,
     GdprExportNotReady,
@@ -122,26 +127,450 @@ class ThrottledRegisterView(RegisterView):
             raise EmailAlreadyRegistered() from exc
 
 
+def _hash_email_for_audit(email: str | None) -> str | None:
+    """Lowercase SHA-256 hex of the (normalised) email — Story 1.5 §AC2.
+
+    The audit log keeps `email_hashed` instead of the raw email so the 3-year
+    retention doesn't accumulate PII that should never have been there.
+    Mirrors the `parent_email_hash` convention from Story 1.4.
+    """
+    if not email:
+        return None
+    import hashlib
+
+    return hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
+
+
 @method_decorator(ratelimit(key="ip", rate="5/m", block=False), name="dispatch")
 class ThrottledLoginView(LoginView):
-    """Login endpoint with a per-IP throttle (Story 1.12 code review §D5).
+    """Login endpoint with per-IP throttle (Story 1.12 §D5) + audit hooks (Story 1.5 §AC9).
 
     The custom `PathAdvisorLoginSerializer` deliberately leaks the DELETED
     user state via a typed 403 (so the front can route to the cancel-flow
     info page). To keep that leak from being exploited as an enumeration
-    oracle, this view caps login attempts at 5/min/IP. A legitimate user
-    rarely needs more than a few attempts; a CGNAT-shared IP that hits the
-    cap retries in a minute.
+    oracle, this view caps login attempts at 5/min/IP.
 
-    Story 1.5 is the canonical home for login UX hardening; this
-    pre-emptive throttle ships with 1.12 because the leak is introduced
-    here. Revisit when 1.5 lands.
+    Story 1.5 layers audit-row writes for every login outcome so the DPO can
+    answer "was this user's account hammered? when did they last log in
+    successfully? was the lockout tripped from one IP or many?".
     """
 
     def post(self, request, *args, **kwargs):
         if getattr(request, "limited", False):
+            # IP-throttle hit — the user-account-level audit happens elsewhere;
+            # log a single structured event here for ops visibility.
             raise RateLimited(retry_after_seconds=60)
-        return super().post(request, *args, **kwargs)
+
+        email = (
+            (request.data.get("email") or "").strip().lower() if hasattr(request, "data") else None
+        )
+        ip_truncated = _truncate_ip_for_audit(_client_ip_from_request(request))
+        user_agent = (request.headers.get("user-agent") or "")[:200] or None
+
+        try:
+            response = super().post(request, *args, **kwargs)
+        except AccountLocked:
+            # User was ALREADY locked when they tried — distinct from the
+            # `auth.account_locked` event that fires once on lockout trip
+            # (written by `login_security.record_failed_attempt`).
+            _write_login_audit(
+                action="auth.login_blocked_locked",
+                result=AuditResult.FAILURE,
+                email=email,
+                ip_truncated=ip_truncated,
+                user_agent=user_agent,
+            )
+            raise
+        except (AccountDeleted, AccountSuspended, EmailNotVerified) as exc:
+            _write_login_audit(
+                action="auth.login_failed",
+                result=AuditResult.FAILURE,
+                email=email,
+                ip_truncated=ip_truncated,
+                user_agent=user_agent,
+                reason=exc.__class__.__name__,
+            )
+            raise
+        except ValidationError:
+            # Wrong password OR unknown email — both produce the same generic
+            # 400 body upstream. We differentiate in the audit metadata via
+            # `reason` ("invalid_credentials" vs "unknown_email") so the DPO
+            # can spot enumeration patterns without changing the public shape.
+            # `_write_login_audit` overrides reason → "unknown_email" when
+            # the email does not match a known user (subject_id is None).
+            _write_login_audit(
+                action="auth.login_failed",
+                result=AuditResult.FAILURE,
+                email=email,
+                ip_truncated=ip_truncated,
+                user_agent=user_agent,
+                reason="invalid_credentials",
+            )
+            raise
+
+        # Success path — write `auth.login_succeeded` with the actual user id.
+        # `self.user` is populated by dj-rest-auth's `LoginView.login()`
+        # method as the authenticated user (the serializer puts the User
+        # row at `validated_data['user']` and the view promotes it). We
+        # prefer it over `request.user` because the latter is still
+        # AnonymousUser at this point — the session-auth middleware that
+        # would have populated `request.user` only fires on the NEXT
+        # request that carries the freshly-issued session cookie.
+        user = getattr(self, "user", None)
+        user_id = getattr(user, "id", None) if user else None
+        record_audit(
+            action="auth.login_succeeded",
+            result=AuditResult.SUCCESS,
+            actor=user,
+            subject_id=user_id,
+            metadata={
+                "email_hashed": _hash_email_for_audit(email),
+                "ip_truncated": ip_truncated,
+                "user_agent": user_agent,
+            },
+        )
+
+        # dj-rest-auth returns 204 NoContent in our (session-cookie, no-JWT,
+        # no-Token) config. Story 1.5 §AC1 expects 200 + `{"user": {...}}` so
+        # the front can drive role-based redirect (§AC8) without a follow-up
+        # `/auth/user/` round-trip.
+        if response.status_code == 204 and user is not None:
+            from apps.accounts.serializers import UserDetailsSerializer
+
+            payload = {"user": UserDetailsSerializer(user).data}
+            new_response = Response(payload, status=drf_status.HTTP_200_OK)
+            # Preserve every cookie the parent set, attribute-by-attribute.
+            # Direct `new_response.cookies[k] = source_morsel` would copy
+            # the value but Python's http.cookies SimpleCookie semantics on
+            # Morsel-to-Morsel assignment are implementation-dependent (we've
+            # been bitten before by silent loss of Secure/HttpOnly/SameSite).
+            # Explicit set_cookie() reads the attrs off the source Morsel
+            # and re-emits them so the session cookie's security flags are
+            # never silently stripped (code-review P16 — Story 1.5 review
+            # 2026-05-27).
+            for cookie_name, morsel in response.cookies.items():
+                new_response.set_cookie(
+                    cookie_name,
+                    morsel.value,
+                    max_age=int(morsel["max-age"]) if morsel["max-age"] else None,
+                    expires=morsel["expires"] or None,
+                    path=morsel["path"] or "/",
+                    domain=morsel["domain"] or None,
+                    secure=bool(morsel["secure"]),
+                    httponly=bool(morsel["httponly"]),
+                    samesite=morsel["samesite"] or None,
+                )
+            return new_response
+        return response
+
+
+def _write_login_audit(
+    *,
+    action: str,
+    result: str,
+    email: str | None,
+    ip_truncated: str | None,
+    user_agent: str | None,
+    reason: str | None = None,
+) -> None:
+    """Write a login-flow audit row. Resolves `subject_id` from the email
+    lookup if the user exists (kept in DB), otherwise leaves it NULL — never
+    exposes the "user exists?" signal via HTTP, only via the (DPO-only)
+    audit log.
+    """
+    from apps.accounts.models import User as _User
+
+    subject_id: str | None = None
+    if email:
+        candidate = _User.objects.filter(email__iexact=email).only("id").first()
+        if candidate is not None:
+            subject_id = candidate.id
+
+    metadata = {
+        "email_hashed": _hash_email_for_audit(email),
+        "ip_truncated": ip_truncated,
+        "user_agent": user_agent,
+    }
+    if reason:
+        metadata["reason"] = reason
+    if not subject_id and email:
+        # Internal-only signal for DPO enumeration detection (Story 1.5 §AC2).
+        # NEVER reflected in the HTTP response.
+        metadata["reason"] = "unknown_email"
+
+    record_audit(
+        action=action,
+        result=result,
+        actor=None,
+        subject_id=subject_id,
+        metadata=metadata,
+    )
+
+
+def _truncate_ip_for_audit(ip: str | None) -> str | None:
+    """Coarsen IPv4 to /24 and IPv6 to /48 — Story 1.5 inlines the helper
+    rather than importing from `apps.accounts.services.account_deletion`
+    (private function with leading underscore). The duplication is flagged
+    in deferred-work for consolidation into `apps/core/text.py`.
+    """
+    import ipaddress
+
+    if not ip:
+        return None
+    try:
+        addr = ipaddress.ip_address(ip.strip())
+    except ValueError:
+        return None
+    if isinstance(addr, ipaddress.IPv4Address):
+        return str(ipaddress.ip_network(f"{addr}/24", strict=False).network_address)
+    return str(ipaddress.ip_network(f"{addr}/48", strict=False).network_address)
+
+
+def _ratelimit_key_by_email_in_body(group, request) -> str:
+    """Per-email rate-limit key for password-reset request endpoint (Story 1.5 §AC5).
+
+    Read directly from `request.body` because django-ratelimit's
+    `@method_decorator` runs at `dispatch` time — BEFORE DRF parses the
+    request and attaches `request.data`. Reading `request.data` here would
+    silently collapse to the empty key on every call (caught code-review
+    P1 — Story 1.5 review 2026-05-27).
+
+    Defensive: a request with no body, non-JSON body, or unparseable body
+    collapses to the empty key — those still hit the per-IP cap above us.
+    """
+    import json
+
+    try:
+        raw = request.body or b"{}"
+        payload = json.loads(raw)
+        email = payload.get("email", "") if isinstance(payload, dict) else ""
+    except (json.JSONDecodeError, ValueError, AttributeError):
+        email = ""
+    return (email or "").strip().lower()
+
+
+@method_decorator(ratelimit(key="ip", rate="5/h", block=False), name="dispatch")
+@method_decorator(
+    ratelimit(key=_ratelimit_key_by_email_in_body, rate="1/h", block=False),
+    name="dispatch",
+)
+class ThrottledPasswordResetView(PasswordResetView):
+    """Password reset request — Story 1.5 §AC5.
+
+    Stacked rate-limits:
+    - 5/h per IP: cheap noise blunting (django-ratelimit's IP key).
+    - 1/h per submitted email: stops a single legitimate user typing the
+      wrong email + resubmitting from clogging the SMTP queue.
+
+    Audit: every successful POST (200) writes either
+    `auth.password_reset_requested` (subject_id set) or
+    `auth.password_reset_requested_unknown` (subject_id null). The 200
+    response body is identical in both branches — the differentiation lives
+    in the audit log only (no enumeration leak).
+    """
+
+    def post(self, request, *args, **kwargs):
+        if getattr(request, "limited", False):
+            raise RateLimited(retry_after_seconds=3600)
+
+        email = (
+            (request.data.get("email") or "").strip().lower() if hasattr(request, "data") else ""
+        )
+        ip_truncated = _truncate_ip_for_audit(_client_ip_from_request(request))
+
+        # Resolve subject BEFORE delegating so we can branch the audit row
+        # regardless of whether the user exists. `super().post()` returns
+        # 200 in BOTH cases (allauth's PasswordResetForm silently no-ops
+        # for unknown emails — same anti-enumeration shape we want).
+        from apps.accounts.models import User as _User
+
+        subject_id: str | None = None
+        if email:
+            candidate = _User.objects.filter(email__iexact=email).only("id").first()
+            if candidate is not None:
+                subject_id = candidate.id
+
+        response = super().post(request, *args, **kwargs)
+
+        record_audit(
+            action=(
+                "auth.password_reset_requested"
+                if subject_id
+                else "auth.password_reset_requested_unknown"
+            ),
+            result=AuditResult.SUCCESS,
+            actor=None,
+            subject_id=subject_id,
+            metadata={
+                "email_hashed": _hash_email_for_audit(email),
+                "ip_truncated": ip_truncated,
+            },
+        )
+
+        # Override the dj-rest-auth default detail with the spec §AC5 wording.
+        # AC5's anti-enum contract hinges on the response BODY being identical
+        # whether the email is known or unknown — dj-rest-auth's translated
+        # default ("Un e-mail de réinitialisation…") doesn't match either
+        # branch's expectations. Force the FR copy here (code-review P13 —
+        # Story 1.5 review 2026-05-27).
+        if response.status_code == 200:
+            response.data = {
+                "detail": "Si cet email existe, un lien de réinitialisation t'a été envoyé."
+            }
+        return response
+
+
+@method_decorator(ratelimit(key="ip", rate="10/h", block=False), name="dispatch")
+class ThrottledPasswordResetConfirmView(PasswordResetConfirmView):
+    """Password reset confirm — Story 1.5 §AC6.
+
+    On a successful `200` (the parent updates the user's password hash
+    inside its own transaction), we:
+    - Clear the failed-attempts counter + `locked_until` column so a
+      previously-locked user can log in immediately with the new password.
+    - Purge every active Django session for the user (a leaked session
+      cookie tied to the old password is invalidated atomically).
+    - Send a "password changed" confirmation email so the legitimate user
+      sees a notification + has a clear "if this wasn't you, contact the
+      DPO" escape hatch.
+    - Audit-log `auth.password_reset_completed` with `subject_id = user.id`.
+
+    The parent serializer's `PasswordResetConfirmSerializer.save()` resolves
+    `self.user` from the uid+token validation — we re-resolve from
+    `serializer.user` to plumb the post-save side-effects.
+    """
+
+    def post(self, request, *args, **kwargs):
+        if getattr(request, "limited", False):
+            raise RateLimited(retry_after_seconds=3600)
+
+        # Defense-in-depth: refuse confirm for DELETED users BEFORE the
+        # parent serializer writes the new password hash. The request
+        # endpoint already filters on `is_active=True` via allauth's
+        # `PasswordResetForm.get_users()` — so a DELETED user should never
+        # have a valid token in the first place. This guards against the
+        # narrow window where (a) a user was DELETED between request and
+        # confirm, or (b) a future migration flips `is_active=True` back on
+        # a DELETED row (code-review D4 — Story 1.5 review 2026-05-27).
+        # The response body matches allauth's generic invalid-token 400 so
+        # the rejection is indistinguishable from an expired/forged token.
+        from allauth.account.utils import url_str_to_user_pk
+
+        from apps.accounts.models import User as _User
+        from apps.accounts.models import UserStatus as _UserStatus
+
+        uid_in = request.data.get("uid", "") if hasattr(request, "data") else ""
+        if uid_in:
+            try:
+                _pk = url_str_to_user_pk(uid_in)
+                _candidate = (
+                    _User.objects.filter(pk=_pk).only("id", "status").first() if _pk else None
+                )
+            except Exception:
+                _candidate = None
+            if _candidate is not None and _candidate.status == _UserStatus.DELETED:
+                return Response(
+                    {"token": ["Invalid value"]},
+                    status=drf_status.HTTP_400_BAD_REQUEST,
+                )
+
+        response = super().post(request, *args, **kwargs)
+
+        # Only run side-effects on a successful reset (HTTP 200). The parent
+        # returns 400 + `{"token": ["Invalid value"]}` on expired/invalid
+        # tokens, which we leave untouched.
+        if response.status_code != 200:
+            return response
+
+        # Re-resolve the user from the uid in the POST body — the parent
+        # serializer doesn't expose the resolved user via the response.
+        # IMPORTANT: with `allauth` in INSTALLED_APPS, dj-rest-auth uses
+        # allauth's `user_pk_to_url_str` encoder. Django's stdlib base64
+        # decoder produces a different value, so using it here would always
+        # fail to resolve.
+        #
+        # We do NOT re-verify the token here: `PasswordResetTokenGenerator`
+        # hashes the user's current password into the token, so by the time
+        # `super().post()` returned 200 (password updated), the original
+        # token no longer validates. The parent already verified it BEFORE
+        # writing the new password — that's the trust boundary we lean on.
+        from allauth.account.utils import url_str_to_user_pk
+
+        from apps.accounts.models import User as _User
+        from apps.accounts.services import login_security
+        from apps.accounts.services.session_utils import terminate_user_sessions
+
+        uid = request.data.get("uid", "")
+        ip_truncated = _truncate_ip_for_audit(_client_ip_from_request(request))
+
+        try:
+            pk = url_str_to_user_pk(uid)
+            user = _User.objects.filter(pk=pk).first()
+        except Exception:
+            user = None
+
+        # Defensive: if the parent succeeded but we can't resolve the user,
+        # don't crash the response. Just log + return — the password IS
+        # already updated by the parent's `serializer.save()`.
+        if user is None:
+            import structlog
+
+            structlog.get_logger(__name__).warning(
+                "auth.password_reset_completed.user_unresolved",
+                uid_prefix=uid[:8] if uid else None,
+            )
+            return response
+
+        login_security.clear_failed_attempts(user=user, trigger="password_reset")
+        sessions_killed = terminate_user_sessions(user)
+
+        # Confirmation email — best-effort, swallow SMTP errors so the
+        # caller still gets the 200 (the password change ITSELF already
+        # committed; the notification is a UX nicety). The success/failure
+        # is captured in the audit metadata so the DPO can investigate
+        # "user claims they were never notified" support tickets
+        # (code-review P10 — Story 1.5 review 2026-05-27).
+        email_sent = False
+        try:
+            from allauth.account.adapter import get_adapter
+
+            get_adapter(request).send_mail(
+                "account/email/password_reset_completed",
+                user.email,
+                {"user": user},
+            )
+            email_sent = True
+        except Exception:
+            import structlog
+
+            structlog.get_logger(__name__).warning(
+                "auth.password_reset_completed.notify_failed",
+                user_id=user.id,
+                exc_info=True,
+            )
+
+        # Actor is None — the confirm endpoint is reached anonymously (the
+        # user is not logged in at this point; they just clicked a link from
+        # their inbox). Attributing actor=user would misrepresent agency: it
+        # could be the legit user OR someone who phished the reset link. The
+        # audit row's subject_id captures whose password changed (code-review
+        # P5 — Story 1.5 review 2026-05-27).
+        record_audit(
+            action="auth.password_reset_completed",
+            result=AuditResult.SUCCESS,
+            actor=None,
+            subject_id=user.id,
+            metadata={
+                "sessions_killed": sessions_killed,
+                "email_sent": email_sent,
+                "ip_truncated": ip_truncated,
+            },
+        )
+
+        # Override the dj-rest-auth default detail with the spec §AC6 wording
+        # (code-review P13 — Story 1.5 review 2026-05-27).
+        response.data = {"detail": "Ton mot de passe a été réinitialisé."}
+        return response
 
 
 @method_decorator(ratelimit(key="ip", rate="5/h", block=False), name="dispatch")
