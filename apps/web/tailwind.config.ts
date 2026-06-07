@@ -74,7 +74,10 @@ const config: Config = {
           sur: "hsl(var(--color-semantic-sur))",
         },
         success: "hsl(var(--color-success))",
-        warning: "hsl(var(--color-warning))",
+        warning: {
+          DEFAULT: "hsl(var(--color-warning))",
+          bg: "hsl(var(--color-warning-bg))",
+        },
         danger: "hsl(var(--color-danger))",
       },
 
@@ -122,6 +125,20 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+
+      // ---------- Custom keyframes / animations ----------
+      // `scenario-loader-particle`: Story 2.8 AC2 — minimal "signal de vie"
+      // pulse on the loader illustration. Disabled by the global
+      // reduced-motion reset (tokens.css §reduced-motion).
+      keyframes: {
+        "scenario-loader-particle": {
+          "0%, 100%": { transform: "scale(0.8)", opacity: "0.4" },
+          "50%": { transform: "scale(1.1)", opacity: "1" },
+        },
+      },
+      animation: {
+        "scenario-loader-particle": "scenario-loader-particle 1800ms ease-out infinite",
       },
     },
   },
