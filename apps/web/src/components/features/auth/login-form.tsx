@@ -85,13 +85,32 @@ export function LoginForm() {
     setResendStatus(null);
     try {
       const res = await loginUser(email, password);
-      // Use router.refresh() + router.replace() instead of a hard
-      // `window.location.href` so the Set-Cookie commit on the fetch
+
+      // Story 1.6 — MFA branch. The backend returns `mfa_required:true` +
+      // `mfa_session` when the user has `requires_mfa=true` (staff role OR
+      // already-enrolled). NO session cookie is set. We stash the token in
+      // sessionStorage and route to the right MFA page.
+      if (res.mfa_required && res.mfa_session) {
+        const { storeMfaSession } = await import("@/lib/api/mfa");
+        // Code-review P19 — storeMfaSession is defensive (returns false on
+        // sessionStorage failure). If we can't store, the user can't
+        // continue the MFA flow; surface a clean error rather than crashing.
+        const stored = storeMfaSession(res.mfa_session);
+        if (!stored) {
+          setError(COPY.fallbackError);
+          return;
+        }
+        const target = res.mfa_enrollment_required
+          ? "/auth/mfa/enroll"
+          : "/auth/mfa/challenge";
+        router.replace(target);
+        return;
+      }
+
+      // Non-MFA happy path — use router.refresh() + router.replace() instead
+      // of `window.location.href` so the Set-Cookie commit on the fetch
       // response is fully settled before navigation triggers the next
       // round-trip (code-review P15 — Story 1.5 review 2026-05-27).
-      // `refresh()` invalidates the RSC tree so Server Components re-render
-      // with the new auth state; `replace()` keeps the login URL out of
-      // history.
       const path = getPostLoginPath(res.user.role, res.user.status);
       router.refresh();
       router.replace(path);

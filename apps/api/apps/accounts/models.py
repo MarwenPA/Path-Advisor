@@ -137,6 +137,112 @@ class User(AbstractBaseUser, PermissionsMixin):
         """
         return self.email_verified_at is not None and self.status == UserStatus.ACTIVE
 
+    @property
+    def requires_mfa(self) -> bool:
+        """True iff this user MUST go through the MFA challenge on every login.
+
+        Two paths trigger it (Story 1.6 §AC1, §AC2, §AC3):
+        - Role is in STAFF_ROLES_REQUIRING_MFA (FORCED by NFR-S2: counselor,
+          school_admin, path_admin) — they MUST enroll on first login and
+          challenge on every subsequent login.
+        - User has already enrolled an `MfaProfile.enrolled_at` (B2C opt-in) —
+          their own choice; challenges on every login from then on.
+        """
+        if self.role in STAFF_ROLES_REQUIRING_MFA:
+            return True
+        return self.has_mfa_enrolled
+
+    @property
+    def has_mfa_enrolled(self) -> bool:
+        """True iff this user has a confirmed `MfaProfile.enrolled_at` timestamp.
+
+        Distinct from `requires_mfa`: a fresh staff user (counselor with no
+        profile yet) returns `requires_mfa=True, has_mfa_enrolled=False` →
+        forced into the enrollment flow.
+
+        Defensive against missing row: the OneToOne reverse-accessor raises
+        `MfaProfile.DoesNotExist` (NOT AttributeError) when no row exists, so
+        the bare `getattr(..., None)` pattern does NOT catch it. Use the
+        explicit try/except idiom.
+        """
+        try:
+            profile = self.mfa_profile
+        except MfaProfile.DoesNotExist:
+            return False
+        return profile.enrolled_at is not None
+
+
+#: Set of roles whose accounts MUST go through MFA on every login (NFR-S2).
+#: B2C roles (`STUDENT`, `PARENT`) are NOT in this set — for them MFA is opt-in
+#: via the `/parametres/securite/mfa` settings page.
+STAFF_ROLES_REQUIRING_MFA = frozenset(
+    {
+        UserRole.COUNSELOR,
+        UserRole.SCHOOL_ADMIN,
+        UserRole.PATH_ADMIN,
+    }
+)
+
+
+class MfaProfile(models.Model):
+    """Per-user MFA state — Story 1.6.
+
+    Single row per user (`OneToOneField`) tracking enrollment timestamp,
+    last successful challenge, and the DPO-reset flag that forces re-enrollment
+    on the next login (§AC7).
+
+    The actual TOTP secret + recovery codes live in django-otp's tables
+    (`otp_totp_totpdevice`, `otp_static_staticdevice`, `otp_static_statictoken`).
+    This model is the Path-Advisor-specific metadata layer on top — django-otp
+    has no equivalent of `enrolled_at` (it tracks `confirmed: bool` only) and
+    no equivalent of the DPO reset flag.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="mfa_profile",
+        primary_key=True,
+    )
+    enrolled_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Set on successful `mfa.confirm_enrollment` — the moment the user "
+            "first verified a TOTP code. Reset to NULL by DPO override."
+        ),
+    )
+    last_challenge_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=(
+            "Updated on every successful `mfa.verify_challenge`. Used by "
+            "`recovery-codes/regenerate/` to enforce 'recent challenge' "
+            "re-auth (cf. Story 1.6 §T5)."
+        ),
+    )
+    requires_enrollment_at_next_login = models.BooleanField(
+        default=False,
+        help_text=(
+            "Set to TRUE by `mfa.reset_by_dpo` (Story 1.6 §AC7). The next "
+            "login forces the user through enrollment again, even though "
+            "their `role` would normally only force enrollment on the very "
+            "first login. Cleared on the next successful enrollment-confirm."
+        ),
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "accounts_mfa_profile"
+        verbose_name = "MFA profile"
+        verbose_name_plural = "MFA profiles"
+
+    def __str__(self) -> str:
+        state = "enrolled" if self.enrolled_at else "pending"
+        return f"MfaProfile<{self.user_id}:{state}>"
+
 
 class GdprExportStatus(models.TextChoices):
     PENDING = "pending", "En attente"

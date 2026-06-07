@@ -2,6 +2,7 @@
 
 from django.contrib import admin
 from django.urls import include, path, re_path
+from django_ratelimit.decorators import ratelimit
 from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularRedocView,
@@ -14,6 +15,27 @@ from apps.accounts.views import (
     ThrottledPasswordResetView,
     ThrottledRegisterView,
     ThrottledResendEmailView,
+    mfa_challenge_view,
+    mfa_disable_view,
+    mfa_enroll_confirm_view,
+    mfa_enroll_start_from_session_view,
+    mfa_enroll_start_view,
+    mfa_regenerate_recovery_codes_view,
+)
+
+# Rate-limit wrappers applied at URL-wire time so the per-IP / per-user caps
+# documented in Story 1.6 §T5 land on the right endpoints. Using `block=False`
+# keeps the upstream `request.limited` pattern Story 1.5's views already check
+# via `RateLimited` — the MFA views consume `request.limited` the same way.
+_mfa_enroll_start = ratelimit(key="ip", rate="5/h", block=False)(mfa_enroll_start_view)
+_mfa_enroll_start_from_session = ratelimit(key="user_or_ip", rate="3/h", block=False)(
+    mfa_enroll_start_from_session_view
+)
+_mfa_enroll_confirm = ratelimit(key="ip", rate="10/h", block=False)(mfa_enroll_confirm_view)
+_mfa_challenge = ratelimit(key="ip", rate="5/h", block=False)(mfa_challenge_view)
+_mfa_disable = ratelimit(key="user_or_ip", rate="3/h", block=False)(mfa_disable_view)
+_mfa_regenerate = ratelimit(key="user_or_ip", rate="5/h", block=False)(
+    mfa_regenerate_recovery_codes_view
 )
 
 urlpatterns = [
@@ -55,6 +77,29 @@ urlpatterns = [
         r"^api/v1/auth/password/reset/confirm/?$",
         ThrottledPasswordResetConfirmView.as_view(),
         name="rest_password_reset_confirm",
+    ),
+    # Story 1.6 — MFA endpoints (TOTP). Five public + auth-required surfaces.
+    # All declared with `re_path` slash-tolerant pattern matching Story 1.5's
+    # convention so a missing trailing slash doesn't fall through to a 404.
+    re_path(r"^api/v1/auth/mfa/enroll/start/?$", _mfa_enroll_start, name="mfa_enroll_start"),
+    # Story 1.6 code-review D3 — in-place enrollment for B2C users opting
+    # into MFA from `/parametres/securite/mfa` (no need to logout/login).
+    re_path(
+        r"^api/v1/auth/mfa/enroll/start-from-session/?$",
+        _mfa_enroll_start_from_session,
+        name="mfa_enroll_start_from_session",
+    ),
+    re_path(
+        r"^api/v1/auth/mfa/enroll/confirm/?$",
+        _mfa_enroll_confirm,
+        name="mfa_enroll_confirm",
+    ),
+    re_path(r"^api/v1/auth/mfa/challenge/?$", _mfa_challenge, name="mfa_challenge"),
+    re_path(r"^api/v1/auth/mfa/disable/?$", _mfa_disable, name="mfa_disable"),
+    re_path(
+        r"^api/v1/auth/mfa/recovery-codes/regenerate/?$",
+        _mfa_regenerate,
+        name="mfa_regenerate_recovery_codes",
     ),
     path("api/v1/auth/registration/", include("dj_rest_auth.registration.urls")),
     path("api/v1/auth/", include("dj_rest_auth.urls")),

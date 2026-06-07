@@ -217,3 +217,123 @@ class EmailNotVerified(AccountDeletionError):
         "Si tu n'as pas reçu le mail, demande un nouvel envoi."
     )
     extras_as_extensions = True
+
+
+# ---------------------------------------------------------------------------
+# Story 1.6 — MFA (TOTP)
+# ---------------------------------------------------------------------------
+
+
+class MfaSessionExpired(AccountDeletionError):
+    """Surfaced when the `mfa_session` token issued at password-success has
+    expired (default TTL 5 min). The client must restart the login flow.
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-session-expired"
+    title = "Session MFA expirée"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "Ta session de vérification a expiré. Reconnecte-toi pour relancer "
+        "la double authentification."
+    )
+    extras_as_extensions = True
+
+
+class MfaSessionConsumed(AccountDeletionError):
+    """Surfaced when the `mfa_session` token was already used (successful
+    challenge / enrollment-confirm completed, OR `MAX_FAILS_PER_TOKEN`
+    failures blacklisted the JTI — code-review P15 + P28).
+
+    Distinct from `MfaSessionInvalid` so the frontend can route to "your
+    previous attempt already completed, reconnect" instead of the generic
+    "tampered" message.
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-session-consumed"
+    title = "Session MFA déjà utilisée"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "Cette session de vérification a déjà été utilisée. Reconnecte-toi "
+        "pour en démarrer une nouvelle."
+    )
+    extras_as_extensions = True
+
+
+class MfaSessionInvalid(AccountDeletionError):
+    """Surfaced when the `mfa_session` token is malformed, signature-invalid,
+    IP-mismatched, payload-malformed, OR for a wrong stage. Anti-enum: a
+    single opaque error covers signature failure, IP mismatch, and wrong
+    stage so attackers can't distinguish "tampered" from "wrong page".
+
+    `MfaSessionExpired` and `MfaSessionConsumed` are SEPARATE so the UX
+    can route to the right "what to do next" copy (code-review P15).
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-session-invalid"
+    title = "Session MFA invalide"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Session de vérification invalide. Reconnecte-toi."
+    extras_as_extensions = True
+
+
+class MfaChallengeFailed(AccountDeletionError):
+    """Surfaced when the user submits an invalid TOTP / recovery code at the
+    challenge or enrollment-confirm endpoint. Generic body — does NOT reveal
+    whether the code was malformed, expired, or just wrong (anti-enum vs the
+    user's whole code space).
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-challenge-failed"
+    title = "Code incorrect"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Code incorrect. Vérifie ton code et réessaie."
+    extras_as_extensions = True
+
+
+class MfaEnrollmentRequired(AccountDeletionError):
+    """Surfaced when a user hits an MFA-protected endpoint (e.g. the
+    challenge endpoint) without an enrolled device. The frontend should
+    route them to the enrollment flow.
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-enrollment-required"
+    title = "Enrôlement MFA requis"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Tu dois enrôler une méthode MFA avant de continuer."
+    extras_as_extensions = True
+
+
+class MfaEnrollmentAlreadyComplete(AccountDeletionError):
+    """Refuse `enroll/start/` for a user who is already enrolled (code-review
+    P5). Without this, a stale `mfa_session` of stage `mfa_enrollment_pending`
+    could create a 2nd unconfirmed device for an enrolled user, then a
+    confirm flips it `confirmed=True` — leaving two confirmed devices.
+
+    The DPO reset path is the only legitimate way to re-enroll an enrolled
+    user (it sets `requires_enrollment_at_next_login=True`, which the view
+    layer treats as a re-enrollment trigger).
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-enrollment-already-complete"
+    title = "MFA déjà enrôlée"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = (
+        "La MFA est déjà active sur ton compte. Pour changer d'authenticator, contacte le DPO."
+    )
+    extras_as_extensions = True
+
+
+class MfaDisableForbiddenForStaff(AccountDeletionError):
+    """Refuse the self-service disable for staff roles — NFR-S2 mandates
+    MFA for `counselor`, `school_admin`, `path_admin`. The DPO override
+    (`mfa.reset_by_dpo`) is the only way to clear MFA state for these roles.
+    """
+
+    type = "https://path-advisor.fr/errors/mfa-disable-forbidden"
+    title = "Désactivation interdite"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = (
+        "La MFA est obligatoire pour ton rôle. Contacte le DPO si tu as "
+        "perdu l'accès à ton authentificateur."
+    )
+    extras_as_extensions = True
