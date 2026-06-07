@@ -151,6 +151,29 @@ class UserDetailsSerializer(serializers.Serializer):
     status = serializers.CharField(read_only=True)
     is_fully_active = serializers.BooleanField(read_only=True)
 
+    # Story 1.6 — MFA state for the frontend dashboard banner / settings page.
+    # `mfa_required_by_role` is the NFR-S2 forced-MFA flag (staff roles); the
+    # frontend uses it to render the "MFA obligatoire pour ton rôle" banner
+    # for staff who haven't yet enrolled. `mfa_enrolled` is the actual state.
+    # `mfa_recovery_codes_remaining` drives the low-codes warning on the
+    # settings page. NEVER includes the codes themselves — only a count.
+    mfa_required_by_role = serializers.SerializerMethodField()
+    mfa_enrolled = serializers.SerializerMethodField()
+    mfa_recovery_codes_remaining = serializers.SerializerMethodField()
+
+    def get_mfa_required_by_role(self, obj) -> bool:
+        from apps.accounts.models import STAFF_ROLES_REQUIRING_MFA
+
+        return obj.role in STAFF_ROLES_REQUIRING_MFA
+
+    def get_mfa_enrolled(self, obj) -> bool:
+        return obj.has_mfa_enrolled
+
+    def get_mfa_recovery_codes_remaining(self, obj) -> int:
+        from apps.accounts.services import mfa as _mfa
+
+        return _mfa.remaining_recovery_codes(obj)
+
     def update(self, instance: object, validated_data: dict) -> object:
         from apps.core.exceptions import InsufficientPermissions
 

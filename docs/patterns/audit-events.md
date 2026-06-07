@@ -128,9 +128,60 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Subject :** the user.
 - **Metadata :** `{"sessions_killed": int, "ip_truncated": "<…>"}`.
 
+## Story 1.6 — MFA TOTP (mandatory for staff, opt-in for B2C)
+
+### `auth.mfa_enrollment_started`
+- **Posé par :** `apps.accounts.services.mfa.start_enrollment` — fires on every QR-code generation (the user might iterate before scanning successfully).
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"ip_truncated": "<…>"}`.
+
+### `auth.mfa_enrolled`
+- **Posé par :** `mfa.confirm_enrollment` after the first TOTP code is verified.
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"device_type": "totp", "recovery_codes_count": 8, "ip_truncated": "<…>"}`.
+
+### `auth.mfa_challenge_passed`
+- **Posé par :** `mfa.verify_challenge` on a successful TOTP code (`method="totp"`). The recovery-code path uses a dedicated action `auth.mfa_recovery_code_used` instead of this one.
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"method": "totp", "ip_truncated": "<…>"}`.
+
+### `auth.mfa_challenge_failed`
+- **Posé par :** `mfa.verify_challenge` on invalid code (TOTP or recovery) — also written by the enrollment-confirm view on a wrong first code with `reason="invalid_enrollment_code"`.
+- **Actor :** the user themselves (when known).
+- **Subject :** the user.
+- **Metadata :** `{"method": "totp"|"recovery", "ip_truncated": "<…>", "reason": "invalid_code"|"invalid_enrollment_code"}`.
+- **DPO action :** patterns of `mfa_challenge_failed` from the same `ip_truncated` against many `subject_id`s = credential-stuffing probe (the attacker has the password and is trying random TOTP codes).
+
+### `auth.mfa_recovery_code_used`
+- **Posé par :** `mfa.verify_challenge` on a successful `method="recovery"` consumption.
+- **Subject :** the user.
+- **Metadata :** `{"method": "recovery", "remaining_codes": int, "ip_truncated": "<…>"}`.
+- **DPO action :** an unusually fast drain of recovery codes (3+ used in a week) is suspicious — could indicate the user's authenticator was lost AND a phisher is using the recovery codes.
+
+### `auth.mfa_recovery_codes_regenerated`
+- **Posé par :** `mfa.regenerate_recovery_codes` after the user re-auths with password + TOTP.
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"count": int, "ip_truncated": "<…>"}`.
+
+### `auth.mfa_disabled`
+- **Posé par :** `mfa.disable` (B2C self-service path — staff refused upstream).
+- **Actor :** the user themselves.
+- **Subject :** the user.
+- **Metadata :** `{"trigger": "user_self_service", "ip_truncated": "<…>"}`.
+
+### `auth.mfa_reset_by_dpo`
+- **Posé par :** `mfa.reset_by_dpo` (DPO override — manage.py shell after identity verification).
+- **Actor :** the DPO user.
+- **Subject :** the target user.
+- **Metadata :** `{"reason": "<free-text justification>"}`.
+- **DPO note :** this is the "break-glass" trail. Every entry must have a meaningful `reason` so reviewers can audit the decision later. See `docs/runbooks/mfa-lost-device.md`.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
-- `auth.mfa_challenge_passed` / `auth.mfa_challenge_failed` — Story 1.6.
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.
 - `gdpr.export_requested` / `gdpr.export_generated` — Story 1.11.
 - `parental.consent_requested` / `parental.consent_granted` / `parental.consent_refused` — Story 1.4.

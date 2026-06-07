@@ -102,8 +102,16 @@ class PathAdvisorLoginSerializer(_DjRestAuthLoginSerializer):
                 login_security.record_failed_attempt(user=candidate)
             raise
 
-        # Success path: clear any stale failed-attempt counter + lockout
-        # (Story 1.5 §AC4: "lockout cleared on successful login"). The user
-        # object in `attrs['user']` is the freshly authenticated row.
-        login_security.clear_failed_attempts(user=attrs["user"])
+        # NOTE — Story 1.6 semantic move: `clear_failed_attempts` USED to fire
+        # here on password-only success (Story 1.5 §AC4). It now fires at the
+        # view layer ONLY when the login is fully complete:
+        #
+        # - B2C non-MFA happy path → cleared in `ThrottledLoginView.post` right
+        #   before posting the session cookie.
+        # - MFA users (`user.requires_mfa=True`) → cleared in
+        #   `mfa_challenge_view` / `mfa_enroll_confirm_view` on full success.
+        #
+        # Why: an attacker who guessed the password but can't pass MFA would
+        # otherwise reset the per-account lockout on every guess, effectively
+        # bypassing the 5-failures-in-15-min cap for the password leg.
         return attrs
