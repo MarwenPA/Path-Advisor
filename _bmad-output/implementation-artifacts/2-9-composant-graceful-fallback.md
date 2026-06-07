@@ -290,9 +290,27 @@ export type GracefulFallbackProps = {
 - Ajout entrée `docs/components/graceful-fallback.md` : API + 5 exemples + guidelines copy (mots interdits, agentivité sur le système)
 - Mockup HTML de référence : `_bmad-output/planning-artifacts/mockups/2-3-ocr-loader-and-fallback.html` (scène C)
 
----
+### Review Findings (2026-06-08, BMad adversarial review)
 
-## 4. Dev Notes
+Triple-layer review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on commit `58b4de1`. 7 findings retained for 2.9 (0 High, 3 Medium, 1 Low patch, 3 Low defer). Cross-confirmation in brackets: `[B]` blind, `[E]` edge, `[A]` auditor.
+
+**MEDIUM — fix before merge:**
+
+- [x] [Review][Patch][M] Focus grab is no-op when primary CTA is disabled at mount `[E]` — `primaryRef.current?.focus()` on a `<button disabled>` is a browser no-op; focus stays on `<body>`. SR users dropped at the top of the page. The "focus first option" intent silently fails when primary loads disabled (e.g. retry token pending). Fix: fall through primary → secondary → tertiary → region with `tabIndex={-1}`. [graceful-fallback.tsx:172-176, 242-247]
+- [x] [Review][Patch][M] Primary CTA text color is `--color-bg` (#FAFAF7), not `#FFFFFF` `[A]` — AC3 explicit: "Color text: #FFFFFF pour primary". `text-primary-foreground` is mapped to `--color-bg` (= off-white #FAFAF7), not pure white. Sub-AA contrast risk on `--color-brand` background. Fix: `text-white` literal, or new `--color-text-on-brand: #FFFFFF` token. [graceful-fallback.tsx:122 (PRIMARY_COLORS)]
+- [x] [Review][Patch][M] Unhandled promise rejection if `action.onClick()` rejects `[B+E]` — `void action.onClick();` discards the Promise; rejection surfaces as global `unhandledrejection` event. Story 2.9 §4.5 says "promise rejection remonte au caller" but with `void`, the caller has no channel. Fix: `Promise.resolve(action.onClick()).catch(() => {})` and surface via optional `onActionError` prop. [graceful-fallback.tsx:208]
+
+**LOW patch — one-liner:**
+
+- [x] [Review][Patch][L] Vertical padding stays `py-12` on mobile vs spec `space-6` (24 px) `[A]` — AC2 says "padding `space-6` mobile / `space-12` desktop"; code is `py-12` always. Fix: `py-6 sm:py-12`. [graceful-fallback.tsx:216]
+
+**LOW — deferred (recorded in `deferred-work.md`):**
+
+- [x] [Review][Defer][L] Underline offset on fallback button is 4 px (Tailwind utility) vs 3 px (spec) `[A]` — visually negligible; switching to arbitrary `[underline-offset:3px]` would lose the Tailwind utility shape. Deferred, cosmetic.
+- [x] [Review][Defer][L] `validateTitleInDev` warns only on the first rule violation `[E]` — `"Tu as fait une erreur"` warns on `Tu ` and skips the forbidden-word loop. Dev-only DX polish; doesn't ship to users. Deferred.
+- [x] [Review][Defer][L] Word-boundary-free forbidden-word scan `title.includes(word)` `[B]` — `"raté"` could match inside longer words; risk is low because the words are domain-specific. Dev-only validator. Deferred, would use `new RegExp("\\b"+word+"\\b", "i")` when revisited.
+
+
 
 ### 4.1 Mockup HTML de référence
 

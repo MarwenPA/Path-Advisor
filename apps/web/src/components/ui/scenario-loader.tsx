@@ -130,11 +130,22 @@ export function ScenarioLoader({
   const [phraseIndex, setPhraseIndex] = React.useState(0);
   const [showWarning, setShowWarning] = React.useState(false);
   const [isFadingOut, setIsFadingOut] = React.useState(false);
+  // Drives the linear progress fill. Seeded to 0 on mount / phrasesKey
+  // change, then RAF'd to 100 so the CSS transition (duration = safeSeconds)
+  // runs visually. Snaps to 100 in motion-quick on isComplete. Frozen on
+  // isError so the loader fades out from wherever the wait got to.
+  const [barWidth, setBarWidth] = React.useState(0);
 
   const startedAtRef = React.useRef<number | null>(null);
   const completedEmittedRef = React.useRef(false);
   const erroredEmittedRef = React.useRef(false);
   const warningEmittedRef = React.useRef(false);
+  // Mirror of `phraseIndex` so the chained-setTimeout effect can resume from
+  // the current phrase when its deps change mid-flight (e.g. caller revises
+  // estimatedSeconds). Without this, the effect's closure restarts at 0
+  // and jumps the user BACKWARDS — violating the anti-cirque invariant.
+  const phraseIndexRef = React.useRef(0);
+  phraseIndexRef.current = phraseIndex;
 
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -149,26 +160,54 @@ export function ScenarioLoader({
     setIsFadingOut(false);
   }
 
-  // Stamp / reset the per-session bookkeeping in an effect (ref mutations in
-  // render are forbidden by the React 19 lint rule). Declared BEFORE the
-  // analytics effects so it commits first — by the time completion/error
-  // /warning effects re-run for the new phrases-key, the emission flags are
-  // already false.
+  // Stamp / reset the per-session bookkeeping. Declared BEFORE the analytics
+  // effects so it commits first — by the time completion/warning effects
+  // re-run for the new phrases-key, their emission flags are already false.
+  //
+  // H4 + M8 — `!isError` gate: an in-flight error must not have its emission
+  // latch cleared by an upstream phrases-swap (otherwise the error effect
+  // re-emits `scenario_loader_errored` a second time). The error recovery
+  // effect below handles the legitimate `isError: true → false` transition.
   React.useEffect(() => {
+    if (isError) return;
     startedAtRef.current = Date.now();
     completedEmittedRef.current = false;
-    erroredEmittedRef.current = false;
+    // erroredEmittedRef is intentionally NOT cleared here — it is owned by
+    // the recovery effect below, which needs to detect the prior-error →
+    // recovered transition (`erroredEmittedRef.current === true && !isError`)
+    // and only then re-arm the latch. Clearing it here would race with that
+    // detection and leave `isFadingOut` stuck at true after recovery (M8).
     warningEmittedRef.current = false;
-  }, [phrasesKey]);
+  }, [phrasesKey, isError]);
+
+  // H1 — bar fill animation. Seed to 0 on mount / phrases-swap, then RAF to
+  // 100 so the CSS transition runs over `safeSeconds`. On isComplete, snap
+  // to 100 in motion-quick. On isError, freeze where we are so the fade-out
+  // shows the progress reached when the error happened.
+  React.useEffect(() => {
+    if (isError) return;
+    if (isComplete) {
+      setBarWidth(100);
+      return;
+    }
+    setBarWidth(0);
+    const raf = requestAnimationFrame(() => setBarWidth(100));
+    return () => cancelAnimationFrame(raf);
+  }, [phrasesKey, isComplete, isError]);
 
   // Chained setTimeout for phrase advancement — prefer over setInterval to
   // avoid drift on throttled tabs and mobile (Story 2.8 §4.2).
+  //
+  // H2 — seed local `index` from the current `phraseIndexRef` so a mid-flight
+  // dep change (caller revises `estimatedSeconds`) RESUMES from the current
+  // phrase instead of restarting at 0. The previous closure-local `let index
+  // = 0` jumped users BACKWARDS, violating the anti-cirque invariant.
   React.useEffect(() => {
     if (safePhrases.length <= 1) return;
     if (isComplete || isError) return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let index = 0;
+    let index = phraseIndexRef.current;
     const tick = () => {
       if (cancelled) return;
       if (index >= safePhrases.length - 1) return;
@@ -189,14 +228,21 @@ export function ScenarioLoader({
   React.useEffect(() => {
     if (isComplete || isError) return;
     const timer = setTimeout(() => {
+      // M7 — re-check at firing time: a completion/error landing on the same
+      // tick as this timer would otherwise leak a false "exceeded" event.
+      if (completedEmittedRef.current || erroredEmittedRef.current) return;
       setShowWarning(true);
       if (!warningEmittedRef.current) {
         warningEmittedRef.current = true;
+        const startedAt = startedAtRef.current ?? Date.now();
         track({
           name: "scenario_loader_estimation_exceeded",
           context,
           estimated_seconds: safeSeconds,
-          actual_seconds_at_warning: safeSeconds,
+          // M6 — true wall-clock elapsed, not the estimate. Under throttled
+          // tabs / mobile background-timer slippage the two diverge by
+          // several seconds — using the estimate hid real OCR overruns.
+          actual_seconds_at_warning: (Date.now() - startedAt) / 1000,
         });
       }
     }, safeSeconds * 1000);
@@ -219,6 +265,11 @@ export function ScenarioLoader({
   }, [isComplete, isError, context, safeSeconds, safePhrases.length, phrasesKey]);
 
   // Error side-effects (idempotent per session). `isError` wins over `isComplete`.
+  //
+  // H4 — `phrasesKey` intentionally NOT in deps: a phrases-swap during an
+  // active error state must not retrigger this effect (it would re-emit a
+  // duplicate `scenario_loader_errored` because the start-stamp effect's
+  // !isError gate keeps `erroredEmittedRef` true through the swap).
   React.useEffect(() => {
     if (!isError) return;
     if (erroredEmittedRef.current) return;
@@ -230,12 +281,21 @@ export function ScenarioLoader({
       context,
       actual_seconds: (Date.now() - startedAt) / 1000,
     });
-  }, [isError, context, phrasesKey]);
+  }, [isError, context]);
+
+  // M8 — in-place error recovery: when isError transitions back to false
+  // (transient network blip followed by automatic retry without unmount),
+  // reverse the fade-out and re-arm the emission latch so a subsequent
+  // error re-emits analytics correctly.
+  React.useEffect(() => {
+    if (isError) return;
+    if (!erroredEmittedRef.current) return;
+    setIsFadingOut(false);
+    erroredEmittedRef.current = false;
+  }, [isError]);
 
   const { icon: Icon, srLabel } = CONTEXT_MAP[context];
-  const currentPhrase = safePhrases[phraseIndex] ?? "";
-  const barWidth = isComplete ? 100 : 0;
-  const showParticle = !prefersReducedMotion && !isComplete && !isError;
+  const particleAnimating = !isComplete && !isError;
   const dataState = isError
     ? "error"
     : isComplete
@@ -265,21 +325,44 @@ export function ScenarioLoader({
         >
           <Icon className="h-10 w-10 text-text-muted" aria-hidden />
         </div>
-        {showParticle ? (
+        {/* M5 — particle stays MOUNTED (anti-cirque). On isComplete / isError,
+            data-animating="false" pauses the keyframe in place via the Tailwind
+            `animation-play-state: paused` utility — "stoppe sur sa frame
+            visible" (AC3), not a brutal DOM removal. Reduced-motion still
+            unmounts since the keyframe never starts. */}
+        {!prefersReducedMotion ? (
           <span
             aria-hidden
             data-testid="scenario-loader-particle"
-            className="absolute right-0 top-0 h-[10px] w-[10px] animate-scenario-loader-particle rounded-full bg-brand"
+            data-animating={particleAnimating}
+            className={cn(
+              "absolute right-0 top-0 h-[10px] w-[10px] animate-scenario-loader-particle rounded-full bg-brand",
+              !particleAnimating && "[animation-play-state:paused]",
+            )}
           />
         ) : null}
       </div>
 
-      <p
-        data-testid="scenario-loader-phrase"
-        className="min-h-7 text-center text-h2 font-semibold text-text transition-opacity duration-quick ease-standard"
-      >
-        {currentPhrase}
-      </p>
+      {/* H3 — crossfade between phrases. Two stacked `<p>` (absolute) with
+          opacity toggle — `motion-quick` (200 ms) on both sides means the
+          outgoing fade-out and incoming fade-in overlap for the full
+          transition window, well over the spec's 100 ms overlap target. */}
+      <div className="relative min-h-7 w-full">
+        {safePhrases.map((phrase, idx) => (
+          <p
+            key={`${idx}-${phrase}`}
+            data-testid={idx === phraseIndex ? "scenario-loader-phrase" : undefined}
+            aria-hidden={idx !== phraseIndex}
+            className={cn(
+              "absolute inset-x-0 text-center text-h2 font-semibold text-text",
+              "transition-opacity duration-quick ease-standard",
+              idx === phraseIndex ? "opacity-100" : "opacity-0",
+            )}
+          >
+            {phrase}
+          </p>
+        ))}
+      </div>
 
       <div className="flex w-full max-w-[280px] flex-col gap-3">
         <div
@@ -290,6 +373,10 @@ export function ScenarioLoader({
           <div
             className="h-full rounded-full bg-brand"
             style={{
+              // H1 — width is now driven by `barWidth` STATE seeded to 0 on
+              // mount and RAF'd to 100 in the bar-animation effect, so the
+              // CSS transition over `safeSeconds` actually runs. The old
+              // `isComplete ? 100 : 0` left the bar empty for the full wait.
               width: `${barWidth}%`,
               transitionProperty: "width",
               transitionTimingFunction: "linear",
@@ -306,9 +393,12 @@ export function ScenarioLoader({
         <EstimationWarning onFallback={onFallback} fallbackLabel={fallbackLabel} />
       ) : null}
 
-      {/* Final-state announcer — separate from the running region so SRs
-          announce "Terminé" / error message exactly once. */}
-      <span role="status" aria-live="polite" className="sr-only">
+      {/* M10 — final-state announcer is intentionally NOT `role="status"`:
+          the outer section already carries `role="status"` + `aria-live="polite"`,
+          so a nested second status region produced duplicate announcements on
+          NVDA / JAWS. A plain `aria-live="polite"` span is still a live region
+          for content updates without re-introducing the status role. */}
+      <span aria-live="polite" className="sr-only">
         {isComplete && !isError ? "Terminé." : ""}
         {isError ? "Un problème est survenu, options disponibles ci-dessous." : ""}
       </span>
@@ -324,7 +414,10 @@ function EstimationWarning({
   fallbackLabel: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-2" data-testid="scenario-loader-warning">
+    <div
+      className="flex animate-scenario-warning-in flex-col items-center gap-2"
+      data-testid="scenario-loader-warning"
+    >
       <div
         role="status"
         className="flex max-w-[320px] items-center gap-2 rounded-lg border border-warning bg-warning-bg px-4 py-3 text-body-sm text-text"

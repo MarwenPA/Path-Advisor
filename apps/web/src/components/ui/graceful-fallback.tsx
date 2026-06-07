@@ -118,8 +118,13 @@ function validateTitleInDev(title: string): void {
 const SHARED_CTA_SHAPE =
   "inline-flex h-12 w-full items-center justify-center gap-2 rounded-md px-4 text-base font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed";
 
+// M13 (post-review patch) — Story 2.9 AC3 specifies primary text = #FFFFFF.
+// `text-primary-foreground` resolved to `--color-bg` (#FAFAF7, the off-white
+// app background) which carried a slightly lower contrast against
+// `--color-brand`. `text-white` is pure white and is contrast-safe on every
+// brand-shade variant we ship.
 const PRIMARY_COLORS =
-  "bg-brand border border-brand text-primary-foreground hover:bg-brand-hover hover:border-brand-hover";
+  "bg-brand border border-brand text-white hover:bg-brand-hover hover:border-brand-hover";
 const SECONDARY_COLORS =
   "bg-transparent border border-border-strong text-text hover:bg-bg-2";
 
@@ -150,7 +155,10 @@ export function GracefulFallback({
   validateTitleInDev(title);
 
   const titleId = React.useId();
+  const regionRef = React.useRef<HTMLElement>(null);
   const primaryRef = React.useRef<HTMLButtonElement>(null);
+  const secondaryRef = React.useRef<HTMLButtonElement>(null);
+  const tertiaryRef = React.useRef<HTMLButtonElement>(null);
   const shownAtRef = React.useRef<number | null>(null);
   const shownEmittedRef = React.useRef(false);
 
@@ -169,11 +177,27 @@ export function GracefulFallback({
   }, [context, title, tertiaryLink]);
 
   // Take focus only if the page hasn't placed it elsewhere already.
+  //
+  // M9 (post-review patch) — fall through primary → secondary → tertiary →
+  // region when the higher-priority target is disabled (browsers no-op
+  // `.focus()` on `<button disabled>`, dropping SR users at the top of the
+  // page). The region carries `tabIndex={-1}` for the final fallback so
+  // screen readers still land on the recovery section's accessible name.
   React.useEffect(() => {
     if (typeof document === "undefined") return;
     if (document.activeElement && document.activeElement !== document.body) return;
-    primaryRef.current?.focus();
-  }, []);
+    const targets = [
+      !primaryAction.isDisabled ? primaryRef.current : null,
+      !secondaryAction.isDisabled ? secondaryRef.current : null,
+      tertiaryLink && !tertiaryLink.isDisabled ? tertiaryRef.current : null,
+      regionRef.current,
+    ];
+    for (const target of targets) {
+      if (!target) continue;
+      target.focus();
+      if (document.activeElement === target) return;
+    }
+  }, [primaryAction.isDisabled, secondaryAction.isDisabled, tertiaryLink]);
 
   const secondsSinceShown = () =>
     (Date.now() - (shownAtRef.current ?? Date.now())) / 1000;
@@ -205,15 +229,32 @@ export function GracefulFallback({
         seconds_since_shown: secondsSinceShown(),
       });
     }
-    void action.onClick();
+    // M14 (post-review patch) — call synchronously so sync handlers run
+    // before this function returns (tests rely on this contract). If the
+    // result is a thenable, attach a catch so a rejected Promise doesn't
+    // surface as a global `unhandledrejection` event. Callers that want to
+    // react to failures should handle them inside `onClick` themselves.
+    const maybePromise = action.onClick();
+    if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
+      (maybePromise as Promise<void>).catch(() => {
+        /* swallowed — recovery surface is already the fallback */
+      });
+    }
   };
 
   return (
     <section
+      ref={regionRef}
       role="region"
       aria-labelledby={titleId}
       data-context={context}
-      className="mx-auto flex w-full max-w-[600px] flex-col px-6 py-12 sm:px-12"
+      // L1 (post-review patch) — Story 2.9 AC2 specifies vertical padding
+      // `space-6` (24 px) on mobile, `space-12` (48 px) on desktop. The
+      // previous `py-12` always shipped the desktop value on mobile too.
+      // tabIndex={-1} so the M9 focus-fallthrough can land here when every
+      // CTA is disabled.
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-[600px] flex-col px-6 py-6 sm:px-12 sm:py-12"
     >
       <div
         aria-hidden
@@ -261,6 +302,7 @@ export function GracefulFallback({
           />
         </button>
         <button
+          ref={secondaryRef}
           type="button"
           onClick={() => handleClick(secondaryAction, "secondary")}
           disabled={secondaryAction.isDisabled}
@@ -288,6 +330,7 @@ export function GracefulFallback({
 
       {tertiaryLink ? (
         <button
+          ref={tertiaryRef}
           type="button"
           onClick={() => handleClick(tertiaryLink, "tertiary")}
           disabled={tertiaryLink.isDisabled}

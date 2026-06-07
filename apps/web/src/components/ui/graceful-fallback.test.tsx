@@ -177,4 +177,78 @@ describe("GracefulFallback", () => {
     expect(document.activeElement).toBe(input);
     input.remove();
   });
+
+  // M9 (post-review patch) — when the primary CTA is disabled at mount,
+  // browsers no-op `.focus()` on `<button disabled>`. The fix falls through
+  // to the secondary CTA so screen reader users land somewhere actionable.
+  it("falls through to the secondary CTA when primary is disabled at mount (M9)", () => {
+    render(
+      <GracefulFallback
+        {...baseProps}
+        primaryAction={{ ...baseProps.primaryAction, isDisabled: true }}
+      />,
+    );
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: /Réessayer avec une autre photo/ }),
+    );
+  });
+
+  // M9 — when every CTA is disabled, focus lands on the region wrapper
+  // (tabIndex={-1}) so the accessible name still reaches the SR user.
+  it("falls through to the region when every CTA is disabled (M9)", () => {
+    render(
+      <GracefulFallback
+        {...baseProps}
+        primaryAction={{ ...baseProps.primaryAction, isDisabled: true }}
+        secondaryAction={{ ...baseProps.secondaryAction, isDisabled: true }}
+      />,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("region"));
+  });
+
+  // M13 (post-review patch) — Story 2.9 AC3 requires #FFFFFF on the primary
+  // text. `text-primary-foreground` resolved to the off-white app bg
+  // (#FAFAF7) which carried slightly lower contrast.
+  it("uses pure white (`text-white`) on the primary CTA (M13)", () => {
+    render(<GracefulFallback {...baseProps} />);
+    const primary = document.querySelector<HTMLButtonElement>('[data-action="primary"]')!;
+    expect(primary.className).toContain("text-white");
+    expect(primary.className).not.toContain("text-primary-foreground");
+  });
+
+  // L1 (post-review patch) — Story 2.9 AC2 specifies vertical padding
+  // `space-6` (24px) on mobile, `space-12` (48px) on desktop. The previous
+  // `py-12` always shipped the desktop value.
+  it("uses mobile-first vertical padding `py-6 sm:py-12` (L1)", () => {
+    render(<GracefulFallback {...baseProps} />);
+    const region = screen.getByRole("region");
+    expect(region.className).toContain("py-6");
+    expect(region.className).toContain("sm:py-12");
+  });
+
+  // M14 (post-review patch) — a rejected Promise from `onClick` must NOT
+  // surface as an unhandledrejection on the global. We check by spying on
+  // the unhandledrejection listener registration and confirming the
+  // rejection settles silently.
+  it("swallows rejected Promises returned by action handlers (M14)", async () => {
+    const failingPrimary = vi.fn().mockRejectedValue(new Error("network down"));
+    const onUnhandled = vi.fn();
+    window.addEventListener("unhandledrejection", onUnhandled);
+    try {
+      render(
+        <GracefulFallback
+          {...baseProps}
+          primaryAction={{ ...baseProps.primaryAction, onClick: failingPrimary }}
+        />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /Saisir à la main/ }));
+      expect(failingPrimary).toHaveBeenCalledOnce();
+      // Flush microtasks so the rejection has a chance to bubble.
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(onUnhandled).not.toHaveBeenCalled();
+    } finally {
+      window.removeEventListener("unhandledrejection", onUnhandled);
+    }
+  });
 });

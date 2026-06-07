@@ -251,9 +251,34 @@ export type ScenarioLoaderProps = {
 - Ajout entrée `docs/components/scenario-loader.md` : API + 6 exemples + a11y notes
 - Mockup HTML de référence : `_bmad-output/planning-artifacts/mockups/2-3-ocr-loader-and-fallback.html` (scènes A et B)
 
----
+### Review Findings (2026-06-08, BMad adversarial review)
 
-## 4. Dev Notes
+Triple-layer review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on commit `58b4de1`. 22 findings retained for 2.8 (4 High, 7 Medium, 1 Low patch, 5 Low defer). Cross-confirmation in brackets: `[B]` blind, `[E]` edge, `[A]` auditor.
+
+**HIGH — block merge:**
+
+- [x] [Review][Patch][H] Progress bar never animates 0→100% during the wait `[B+E+A]` — `barWidth = isComplete ? 100 : 0` keeps width at 0% the whole `safeSeconds`; CSS transition never fires because the value never changes. Fix: `useEffect`+`requestAnimationFrame` to flip width state from 0→100 after mount so the long transition runs. [scenario-loader.tsx:237, 290-298]
+- [x] [Review][Patch][H] Phrase rotation jumps BACKWARDS when `estimatedSeconds`/`phraseDurationMs` changes mid-flight `[B+E]` — effect closure has `let index = 0`; re-running on dep change overwrites `phraseIndex` to 1 even if state was at 3. Violates the explicit "no return to phrase 1" anti-cirque invariant (line 36). Fix: seed local `index` from current `phraseIndex` via ref. [scenario-loader.tsx:166-184]
+- [x] [Review][Patch][H] No crossfade between phrases — text is replaced without opacity toggle `[A]` — AC3 specifies "crossfade `motion-quick` (200 ms) avec 100 ms de chevauchement (anti-trou visuel)". Code uses single `<p>` with `transition-opacity` class but opacity never toggles. Fix: stack two `<p>` elements with opacity toggle, or use AnimatePresence. [scenario-loader.tsx:277-282]
+- [x] [Review][Patch][H] Duplicate `scenario_loader_errored` analytics on phrases swap during error `[E]` — `phrasesKey` reset effect clears `erroredEmittedRef`, then error effect re-emits because `phrasesKey` is in its deps. One error → two events on swap. Fix: drop `phrasesKey` from error effect deps, OR gate start-stamp effect on `!isError`. [scenario-loader.tsx:144-150, 157-162, 222-233]
+
+**MEDIUM — fix before merge:**
+
+- [x] [Review][Patch][M] Particle disappears abruptly on `isComplete` instead of freezing on visible frame `[B+A]` — AC3 explicit: "stoppe sur sa frame visible (pas de fade out brutal)". Code unmounts DOM via `showParticle=false` — the literal anti-pattern proscribed. Fix: keep `<span>` mounted, toggle animation class off via `data-animating` or class swap. [scenario-loader.tsx:238, 268-274]
+- [x] [Review][Patch][M] `actual_seconds_at_warning` payload sends estimated value, not actual `[B+A]` — `actual_seconds_at_warning: safeSeconds` passes the estimate. Under throttled tabs / mobile background timer slippage, real OCR overruns get under-reported. Fix: `(Date.now() - (startedAtRef.current ?? Date.now())) / 1000`. [scenario-loader.tsx:198-199]
+- [x] [Review][Patch][M] `scenario_loader_estimation_exceeded` can fire after completion (timer race) `[E]` — effect guards `isComplete||isError` at setup but not inside the timer callback. If completion lands on the same tick as the warning timer, analytics fires for an on-time wait. Fix: inside callback, check `if (completedEmittedRef.current || erroredEmittedRef.current) return;` before tracking. [scenario-loader.tsx:189-204]
+- [x] [Review][Patch][M] `isError` flipped back to `false` leaves loader permanently faded out `[E]` — `setIsFadingOut(true)` is set on error but never reset; `erroredEmittedRef` also stays true so a future error never re-emits analytics. In-place recovery (rare but valid for transient errors) is broken. Fix: effect that resets `isFadingOut(false)` + `erroredEmittedRef.current = false` when `!isError`. [scenario-loader.tsx:222-233]
+- [x] [Review][Patch][M] Two nested `role="status"` regions cause duplicate SR announcements `[B]` — outer `<section role="status" aria-live="polite">` contains inner `<span role="status" aria-live="polite">` for completion announcer. NVDA/JAWS variants read both. AC6 wants a *separate* aria-live zone, must be sibling not descendant. Fix: hoist the announcer above/after the section, OR drop role from inner span. [scenario-loader.tsx:248-249, 311]
+- [x] [Review][Patch][M] EstimationWarning banner has no fade + slide-up animation `[A]` — AC4 explicit: "motion-quick (200 ms fade + slide-up 8 px)". Banner pops in instantly. Fix: CSS transition on opacity + translateY 8px on mount of the banner sub-tree. [scenario-loader.tsx:319-345]
+- [x] [Review][Patch][M] `phrasesKey` collision via naive `join("")` `[B+E]` — `["AB","C"]` and `["A","BC"]` both yield `"ABC"`. On collision, reset path silently fails: prevPhrasesKey check stays true, state not cleared. Fix: `safePhrases.join(" ")` or any sentinel that can't appear in copy. [scenario-loader.tsx:123]
+
+**LOW — deferred (recorded in `deferred-work.md`):**
+
+- [x] [Review][Defer][L] Bar timing-function `linear` for complete-snap vs implicit `ease-out` of `motion-quick` `[A]` — subsumed by the bar-animation High; once that lands, the snap delta is imperceptible. Deferred, cosmetic.
+- [x] [Review][Defer][L] `mockMatchMedia` test helper omits `media`, `onchange`, legacy `addListener` `[B]` — brittle if a future dep starts using those properties; no actual bug today. Deferred.
+- [x] [Review][Defer][L] Analytics types coupled to component package (inverted ownership) `[B]` — `ScenarioLoaderContext` lives in `lib/analytics/events.ts` rather than the component file. Refactor when adding a new context. Deferred, architectural.
+
+
 
 ### 4.1 Mockup HTML de référence
 

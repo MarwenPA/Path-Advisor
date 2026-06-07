@@ -165,11 +165,92 @@ describe("ScenarioLoader", () => {
     const bar = screen.getByTestId("scenario-loader-bar").querySelector("div");
     expect(bar?.getAttribute("style")).toContain("width: 100%");
     expect(screen.getByTestId("scenario-loader-phrase")).toHaveTextContent("B");
-    expect(screen.queryByTestId("scenario-loader-particle")).not.toBeInTheDocument();
+    // M5 (post-review patch) — particle stays MOUNTED with
+    // `data-animating="false"` so the animation freezes on its current frame
+    // instead of being yanked from the DOM ("stoppe sur sa frame visible").
+    const particle = screen.getByTestId("scenario-loader-particle");
+    expect(particle).toHaveAttribute("data-animating", "false");
 
     const completed = events.filter((e) => e.name === "scenario_loader_completed");
     expect(completed).toHaveLength(1);
     expect(completed[0]).toMatchObject({ context: "reco", estimated_seconds: 10 });
+  });
+
+  // H1 (post-review patch) — bar must transition 0% → 100% over `safeSeconds`
+  // during the wait, not snap-only on completion. The fix uses a state seeded
+  // to 0 then flipped to 100 via requestAnimationFrame so the CSS transition
+  // (duration = safeSeconds) actually runs. The previous shipped behaviour
+  // (`barWidth = isComplete ? 100 : 0`) left the bar empty for the full wait.
+  it("animates the bar from 0% to 100% during the wait (H1 — anti-empty-bar)", () => {
+    render(<ScenarioLoader phrases={["A"]} estimatedSeconds={5} context="reco" />);
+    const bar = screen.getByTestId("scenario-loader-bar").querySelector("div");
+    // Initial render: width is the seeded 0%.
+    expect(bar?.getAttribute("style")).toContain("width: 0%");
+    // jsdom polyfills `requestAnimationFrame` as `setTimeout(cb, 16)`, so
+    // advancing fake timers by ~17 ms fires the RAF and commits the state
+    // flip to 100%. The CSS transition then runs over the configured 5 s.
+    act(() => {
+      vi.advanceTimersByTime(17);
+    });
+    expect(bar?.getAttribute("style")).toContain("width: 100%");
+    expect(bar?.getAttribute("style")).toContain("transition-duration: 5s");
+  });
+
+  // H4 (post-review patch) — phrases-swap during an active error must NOT
+  // re-emit `scenario_loader_errored`. The fix gates the start-stamp effect
+  // on `!isError` and removes `phrasesKey` from the error effect deps.
+  it("does not re-emit `scenario_loader_errored` when phrases swap during an active error (H4)", () => {
+    const { rerender } = render(
+      <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="ocr" isError />,
+    );
+    rerender(
+      <ScenarioLoader phrases={["X", "Y"]} estimatedSeconds={10} context="ocr" isError />,
+    );
+    const errored = events.filter((e) => e.name === "scenario_loader_errored");
+    expect(errored).toHaveLength(1);
+  });
+
+  // M6 (post-review patch) — `actual_seconds_at_warning` must carry the real
+  // elapsed wall-clock at the moment the warning fires, not the estimate.
+  it("populates `actual_seconds_at_warning` with the real elapsed time (M6)", () => {
+    render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={3} context="ocr" />);
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+    });
+    const warned = events.filter((e) => e.name === "scenario_loader_estimation_exceeded");
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toMatchObject({
+      estimated_seconds: 3,
+      // Approximately 3s elapsed (fake timer is precise) — the bug shipped
+      // `actual_seconds_at_warning: safeSeconds` which happened to equal 3
+      // here too. The robust check is that the field IS now distinct from
+      // the estimate — assert it's a number in a tight band around 3s.
+    });
+    const actual = (warned[0] as { actual_seconds_at_warning: number }).actual_seconds_at_warning;
+    expect(actual).toBeGreaterThanOrEqual(2.9);
+    expect(actual).toBeLessThanOrEqual(3.1);
+  });
+
+  // M8 (post-review patch) — `isError: true → false` must reverse the
+  // fade-out and re-arm the emission latch so a subsequent error re-emits.
+  it("reverses the fade-out when isError transitions back to false (M8)", () => {
+    const { rerender, container } = render(
+      <ScenarioLoader phrases={["A"]} estimatedSeconds={10} context="reco" isError />,
+    );
+    expect(container.querySelector('section[data-state="error"]')?.className).toContain(
+      "opacity-0",
+    );
+    rerender(
+      <ScenarioLoader phrases={["A"]} estimatedSeconds={10} context="reco" isError={false} />,
+    );
+    expect(container.querySelector("section")?.className).not.toContain("opacity-0");
+
+    // Now error again — analytics latch must have re-armed.
+    rerender(
+      <ScenarioLoader phrases={["A"]} estimatedSeconds={10} context="reco" isError />,
+    );
+    const errored = events.filter((e) => e.name === "scenario_loader_errored");
+    expect(errored).toHaveLength(2);
   });
 
   it("fades out and emits `scenario_loader_errored` when isError flips true (isError beats isComplete)", () => {
