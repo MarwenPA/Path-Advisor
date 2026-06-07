@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-07  # Story 1.6 done (code-review applied)
+last_updated: 2026-06-08  # Epic 2 specs sync: 9 stories backlog→ready-for-dev, epic-2 backlog→in-progress
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -61,16 +61,16 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2 — Profil élève & Onboarding
-  epic-2: backlog
-  2-1-onboarding-passions-interets-valeurs: backlog
-  2-2-onboarding-niveau-filiere-specialites: backlog
-  2-3-import-bulletins-pdf-ocr: backlog
-  2-4-saisie-manuelle-notes: backlog
-  2-5-mode-degrade-plus-tard-bulletins: backlog
-  2-6-mise-a-jour-profil: backlog
-  2-7-score-completude-profil: backlog
-  2-8-composant-scenario-loader: backlog
-  2-9-composant-graceful-fallback: backlog
+  epic-2: in-progress
+  2-1-onboarding-passions-interets-valeurs: ready-for-dev
+  2-2-onboarding-niveau-filiere-specialites: ready-for-dev
+  2-3-import-bulletins-pdf-ocr: ready-for-dev
+  2-4-saisie-manuelle-notes: ready-for-dev
+  2-5-mode-degrade-plus-tard-bulletins: ready-for-dev
+  2-6-mise-a-jour-profil: ready-for-dev
+  2-7-score-completude-profil: ready-for-dev
+  2-8-composant-scenario-loader: ready-for-dev
+  2-9-composant-graceful-fallback: ready-for-dev
   epic-2-retrospective: optional
 
   # Epic 3 — Recommandation vocationnelle (1er aha)
