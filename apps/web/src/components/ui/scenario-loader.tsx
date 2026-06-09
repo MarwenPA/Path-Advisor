@@ -144,8 +144,16 @@ export function ScenarioLoader({
   // the current phrase when its deps change mid-flight (e.g. caller revises
   // estimatedSeconds). Without this, the effect's closure restarts at 0
   // and jumps the user BACKWARDS — violating the anti-cirque invariant.
+  //
+  // Pass 2 PR3 — the sync runs as an unkeyed `useEffect` (post-commit, every
+  // render) rather than a render-time `phraseIndexRef.current = phraseIndex`
+  // mutation. React 19's `react-hooks/refs` lint forbids ref writes during
+  // render; the unkeyed effect is the supported pattern and is declared
+  // FIRST so it commits before any other effect that reads the ref.
   const phraseIndexRef = React.useRef(0);
-  phraseIndexRef.current = phraseIndex;
+  React.useEffect(() => {
+    phraseIndexRef.current = phraseIndex;
+  });
 
   const prefersReducedMotion = usePrefersReducedMotion();
 
@@ -305,19 +313,26 @@ export function ScenarioLoader({
         : "running";
 
   return (
-    <section
-      role="status"
-      aria-live="polite"
-      aria-busy={!isComplete && !isError}
-      aria-label={srLabel}
-      data-context={context}
-      data-state={dataState}
-      className={cn(
-        "flex w-full flex-col items-center justify-center gap-8 px-4 py-12",
-        "transition-opacity duration-quick ease-standard",
-        isFadingOut ? "scale-[0.98] opacity-0" : "opacity-100",
-      )}
-    >
+    <>
+      {/* Pass 2 PR2 — the final-state announcer (after </section>) is a
+          SIBLING of the running-state region, not a descendant. AC6 spells
+          out "une seconde zone `aria-live` SÉPARÉE". Two live regions
+          nested inside each other (the section's `role="status"` implies
+          polite + the inner span's `aria-live="polite"`) caused
+          double-announcements on NVDA/JAWS in Pass 1 review. */}
+      <section
+        role="status"
+        aria-live="polite"
+        aria-busy={!isComplete && !isError}
+        aria-label={srLabel}
+        data-context={context}
+        data-state={dataState}
+        className={cn(
+          "flex w-full flex-col items-center justify-center gap-8 px-4 py-12",
+          "transition-opacity duration-quick ease-standard",
+          isFadingOut ? "scale-[0.98] opacity-0" : "opacity-100",
+        )}
+      >
       <div className="relative">
         <div
           aria-hidden
@@ -343,18 +358,22 @@ export function ScenarioLoader({
         ) : null}
       </div>
 
-      {/* H3 — crossfade between phrases. Two stacked `<p>` (absolute) with
-          opacity toggle — `motion-quick` (200 ms) on both sides means the
-          outgoing fade-out and incoming fade-in overlap for the full
-          transition window, well over the spec's 100 ms overlap target. */}
-      <div className="relative min-h-7 w-full">
+      {/* H3 (Pass 2 PR1) — crossfade via CSS grid stack: every `<p>` shares
+          the same grid cell (col-start-1 row-start-1) so the container
+          auto-sizes to the TALLEST phrase. The previous absolute-positioned
+          stack capped the height at `min-h-7` (28 px) and let multi-line
+          phrases (e.g. lycée variant "Qu'est-ce qui te plaît, vraiment ?"
+          on a 375 px mobile) overflow into the progress bar below. Grid
+          stack keeps the crossfade overlap (both `<p>` mounted with
+          opacity transition) without breaking layout. */}
+      <div className="grid w-full">
         {safePhrases.map((phrase, idx) => (
           <p
-            key={`${idx}-${phrase}`}
+            key={idx}
             data-testid={idx === phraseIndex ? "scenario-loader-phrase" : undefined}
             aria-hidden={idx !== phraseIndex}
             className={cn(
-              "absolute inset-x-0 text-center text-h2 font-semibold text-text",
+              "col-start-1 row-start-1 text-center text-h2 font-semibold text-text",
               "transition-opacity duration-quick ease-standard",
               idx === phraseIndex ? "opacity-100" : "opacity-0",
             )}
@@ -392,17 +411,17 @@ export function ScenarioLoader({
       {showWarning && !isComplete && !isError ? (
         <EstimationWarning onFallback={onFallback} fallbackLabel={fallbackLabel} />
       ) : null}
-
-      {/* M10 — final-state announcer is intentionally NOT `role="status"`:
-          the outer section already carries `role="status"` + `aria-live="polite"`,
-          so a nested second status region produced duplicate announcements on
-          NVDA / JAWS. A plain `aria-live="polite"` span is still a live region
-          for content updates without re-introducing the status role. */}
+      </section>
+      {/* Final-state announcer — sibling of the section, NOT a descendant.
+          Empty `role="status"` (implicit) container that only ever holds
+          the completion/error string; SRs read each transient state
+          exactly once without double-counting through the section's own
+          live region. */}
       <span aria-live="polite" className="sr-only">
         {isComplete && !isError ? "Terminé." : ""}
         {isError ? "Un problème est survenu, options disponibles ci-dessous." : ""}
       </span>
-    </section>
+    </>
   );
 }
 

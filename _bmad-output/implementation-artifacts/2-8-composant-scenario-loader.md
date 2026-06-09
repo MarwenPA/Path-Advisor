@@ -278,6 +278,28 @@ Triple-layer review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on co
 - [x] [Review][Defer][L] `mockMatchMedia` test helper omits `media`, `onchange`, legacy `addListener` `[B]` — brittle if a future dep starts using those properties; no actual bug today. Deferred.
 - [x] [Review][Defer][L] Analytics types coupled to component package (inverted ownership) `[B]` — `ScenarioLoaderContext` lives in `lib/analytics/events.ts` rather than the component file. Refactor when adding a new context. Deferred, architectural.
 
+### Review Findings — Pass 2 (2026-06-09, self-review on commit `2849c1d`)
+
+3-agent dispatch stalled out (infrastructure watchdog); review was performed
+in-context as a disciplined re-read. 6 new findings raised (1 H regression
+introduced by Pass 1, 3 M, 2 L). Patched: PR1, PR2, PR3. Deferred: PR4, PR5,
+PR6.
+
+**HIGH — regression introduced by Pass 1's H3 fix:**
+
+- [x] [Review][Patch][H] (PR1) Crossfade absolute positioning collapses container height on multi-line phrases — Pass 1's H3 fix wrapped phrases in `<div className="relative min-h-7">` with `<p className="absolute inset-x-0">` children. The 28 px cap is fine for "A"/"B" test fixtures but breaks on the real lycée copy ("Qu'est-ce qui te plaît, vraiment ?") which wraps to 2 lines on 375 px mobile (~58 px). Absolute children don't grow the container, so the second line overflows into the progress bar. Re-fixed to a CSS grid stack (every `<p>` shares `col-start-1 row-start-1`) which auto-sizes to the tallest phrase while preserving the crossfade overlap. New regression test in `scenario-loader.test.tsx` asserts `grid` class + absence of `min-h-7` with a real-length French phrase.
+
+**MEDIUM:**
+
+- [x] [Review][Patch][M] (PR2) M10 fix incomplete — Pass 1 only dropped `role="status"` from the inner span; it kept `aria-live="polite"`, which is still a live region. Nested with the outer `<section role="status">` (status implies polite-live), the configuration produced the same double-announcement problem the original M10 was trying to eliminate. AC6 says "une seconde zone `aria-live` SÉPARÉE" — séparée means sibling. The wrapper now returns a Fragment with the section + the announcer as siblings. New test asserts `!section.contains(announcer)`.
+- [x] [Review][Patch][M] (PR3) `phraseIndexRef.current = phraseIndex` mutation in render — violates `react-hooks/refs` lint, which the Dev Agent Record on this branch (Pass 1, §Debug Log References) explicitly says the project enforces. Switched to an unkeyed `useEffect(() => { phraseIndexRef.current = phraseIndex; })` placed FIRST so it commits before the chain-advancement effect reads the ref on dep changes.
+
+**LOW — deferred (recorded in `deferred-work.md`):**
+
+- [x] [Review][Defer][L] (PR4) Crossfade aria-live cascade may over-announce on some screen readers — the outer section is a `role="status"` live region; when `phraseIndex` changes the section's text content changes, and SR behavior on the resulting announcement is implementation-specific (VoiceOver reads only the diff, NVDA may read the whole region including `aria-label` + caption). Not testable in jsdom; deferred to the AC6 VoiceOver/NVDA manual checklist (Story 2.3+).
+- [x] [Review][Defer][L] (PR5) `tertiaryLink` object identity in M9 focus effect deps — passing a fresh `{label, onClick}` literal every render makes the effect re-run constantly. The `document.activeElement === document.body` guard prevents focus theft in the normal path, but narrowing the deps to `[primary.isDisabled, secondary.isDisabled, tertiary?.isDisabled, Boolean(tertiary)]` would skip unnecessary re-runs. Deferred — low impact.
+- [x] [Review][Defer][L] (PR6) Rapid `isError: true → false → true` batched into one render may miss the recovery — if React batches the renders, the recovery effect never sees `isError === false` between the two flips, leaving `erroredEmittedRef` set and the second error silent. Realistic only for caller code that programmatically toggles `isError` synchronously back-to-back, which the API surface does not encourage. Deferred — narrow trigger surface.
+
 
 
 ### 4.1 Mockup HTML de référence

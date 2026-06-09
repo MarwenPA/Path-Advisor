@@ -231,6 +231,53 @@ describe("ScenarioLoader", () => {
     expect(actual).toBeLessThanOrEqual(3.1);
   });
 
+  // Pass 2 PR1 — the crossfade container must NOT use absolute positioning
+  // with a fixed min-height, because long French phrases ("Qu'est-ce qui te
+  // plaît, vraiment ?") wrap to multiple lines on mobile and would overflow.
+  // The fixed implementation uses CSS grid stack (every `<p>` shares
+  // col-start-1 row-start-1) so the container auto-sizes to the tallest
+  // phrase.
+  it("uses CSS grid stack for crossfade (not absolute) so the container auto-sizes (Pass 2 PR1)", () => {
+    const longPhrase = "Qu'est-ce qui te plaît, vraiment ? Pas de pression, choisis ce qui te branche.";
+    const { container } = render(
+      <ScenarioLoader phrases={[longPhrase, "Short"]} estimatedSeconds={10} context="ocr" />,
+    );
+    // Find the wrapper that contains the phrase paragraphs.
+    const phraseWrapper = screen.getByTestId("scenario-loader-phrase").parentElement;
+    expect(phraseWrapper).not.toBeNull();
+    expect(phraseWrapper!.className).toContain("grid");
+    // No legacy `min-h-7` cap, no `relative`+absolute kids.
+    expect(phraseWrapper!.className).not.toContain("min-h-7");
+    // Every phrase shares the same grid cell.
+    const phrasesInside = phraseWrapper!.querySelectorAll("p");
+    expect(phrasesInside.length).toBe(2);
+    phrasesInside.forEach((p) => {
+      expect(p.className).toContain("col-start-1");
+      expect(p.className).toContain("row-start-1");
+    });
+    // Sanity: the long phrase is the one we passed in (no truncation).
+    expect(phrasesInside[0]?.textContent).toBe(longPhrase);
+    void container; // satisfy unused lint
+  });
+
+  // Pass 2 PR2 — the final-state announcer is a SIBLING of the section, not
+  // a descendant. AC6 says "une seconde zone `aria-live` SÉPARÉE"; nesting
+  // two live regions caused double-announcements in Pass 1's M10 partial fix.
+  it("renders the completion announcer as a SIBLING of the section (Pass 2 PR2)", () => {
+    const { container } = render(
+      <ScenarioLoader phrases={["A"]} estimatedSeconds={5} context="reco" isComplete />,
+    );
+    // The announcer span carries "Terminé." and lives directly under the
+    // wrapper, NOT inside the section.
+    const section = container.querySelector("section[role=status]");
+    const announcer = container.querySelector("span[aria-live=polite]");
+    expect(section).not.toBeNull();
+    expect(announcer).not.toBeNull();
+    expect(announcer!.textContent).toContain("Terminé.");
+    // The announcer must NOT be a descendant of the section.
+    expect(section!.contains(announcer)).toBe(false);
+  });
+
   // M8 (post-review patch) — `isError: true → false` must reverse the
   // fade-out and re-arm the emission latch so a subsequent error re-emits.
   it("reverses the fade-out when isError transitions back to false (M8)", () => {
