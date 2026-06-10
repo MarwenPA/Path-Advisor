@@ -40,12 +40,8 @@ export default function ConfidentialitePage() {
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-6">
-        <h2 className="text-h2 font-semibold text-text">
-          {ACCESS_LIST_COPY.parentSectionTitle}
-        </h2>
-        <p className="text-body text-text-muted">
-          {ACCESS_LIST_COPY.parentSectionDescription}
-        </p>
+        <h2 className="text-h2 font-semibold text-text">{ACCESS_LIST_COPY.parentSectionTitle}</h2>
+        <p className="text-body text-text-muted">{ACCESS_LIST_COPY.parentSectionDescription}</p>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Button asChild>
             <Link href="/parametres/confidentialite/acces-tiers">

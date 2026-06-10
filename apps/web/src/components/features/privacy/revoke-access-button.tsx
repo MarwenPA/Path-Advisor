@@ -73,7 +73,11 @@ export function RevokeAccessButton({ entry }: { entry: AccessListEntry }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button variant="ghost" onClick={() => handleOpenChange(true)} disabled={status === "submitting"}>
+      <Button
+        variant="ghost"
+        onClick={() => handleOpenChange(true)}
+        disabled={status === "submitting"}
+      >
         {ACCESS_LIST_COPY.revokeButtonLabel}
       </Button>
 
