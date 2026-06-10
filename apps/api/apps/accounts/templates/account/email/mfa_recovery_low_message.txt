@@ -1,0 +1,15 @@
+Salut,
+
+Tu viens d'utiliser un code de récupération pour te connecter sur
+Path-Advisor. Il te reste {{ remaining }} code{{ remaining|pluralize }} de
+récupération sur les 8 émis à ton enrôlement.
+
+Quand tu as un instant, génère une nouvelle série de 8 codes depuis
+Paramètres → Sécurité → MFA. La nouvelle série annule les codes restants
+— pense à les imprimer ou à les sauvegarder dans ton gestionnaire de mots
+de passe.
+
+Si tu n'as pas utilisé de code de récupération, contacte immédiatement
+le DPO à dpo@path-advisor.fr — quelqu'un a peut-être accès à tes codes.
+
+L'équipe Path-Advisor

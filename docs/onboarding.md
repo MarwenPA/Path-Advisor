@@ -233,6 +233,30 @@ Status-aware rejections (suspended, email unverified, deleted) and the lockout s
 
 DPO playbooks for the two common support escalations ("I'm locked out", "I lost email access — please reset my password") live in [`docs/runbooks/login-and-password-reset.md`](./runbooks/login-and-password-reset.md).
 
+## 9d. MFA TOTP — flow + lockout interaction (Story 1.6)
+
+Mandatory for `counselor` / `school_admin` / `path_admin` (NFR-S2), opt-in for `student` / `parent`. Stack: `django-otp` 1.7 (`TOTPDevice` + `StaticDevice` + `StaticToken`) + a 5-min IP-bound `mfa_session` JWT minted at password-success.
+
+**Login flow with MFA:**
+
+1. `POST /api/v1/auth/login/` with email + password → server-side serializer authenticates.
+2. **Hook in `ThrottledLoginView`:** if `user.requires_mfa` (staff OR already enrolled), the response is `200` with `{"mfa_required": true, "mfa_enrollment_required": <bool>, "mfa_session": "<JWT>", "user": {...}}` and the session cookie is NOT set. `request.session.flush()` is called so `SessionMiddleware` doesn't re-emit the cookie.
+3. Frontend stashes `mfa_session` in `sessionStorage` → routes to `/auth/mfa/enroll` or `/auth/mfa/challenge`.
+4. Enrollment flow: `POST /api/v1/auth/mfa/enroll/start/` → QR code → `POST /api/v1/auth/mfa/enroll/confirm/` with first 6-digit TOTP code → 200 + 8 recovery codes + session cookie posted.
+5. Challenge flow: `POST /api/v1/auth/mfa/challenge/` with TOTP (or recovery code) → 200 + session cookie posted.
+
+**Critical lockout-clear semantic (Story 1.6 moved this from Story 1.5):**
+
+The per-account failed-attempt counter (Story 1.5's `login_security` service) is **NOT** cleared on password-only success when the user has MFA. It is only cleared on:
+- The non-MFA happy path (B2C non-enrolé) inside `ThrottledLoginView.post`.
+- A successful MFA challenge / enrollment-confirm.
+
+If we cleared on password-only success, an attacker who guesses the password but can't pass MFA could reset the lockout on every guess, defeating the 5-failures-in-15-min cap for the password leg.
+
+**MFA failures fill the SAME lockout counter** as password failures — 5 wrong TOTP codes in 15 min lock the account for 10 min, identical to 5 wrong passwords.
+
+**DPO playbook** for users who lost both their authenticator AND their 8 recovery codes lives in [`docs/runbooks/mfa-lost-device.md`](./runbooks/mfa-lost-device.md).
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in

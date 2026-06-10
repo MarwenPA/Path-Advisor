@@ -1,0 +1,14 @@
+Salut,
+
+La double authentification (MFA) vient d'être désactivée sur ton compte
+Path-Advisor. Tes prochains logins se feront avec ton email + mot de
+passe uniquement.
+
+Si ce n'est pas toi qui l'as désactivée, contacte immédiatement le DPO
+à dpo@path-advisor.fr — quelqu'un a peut-être eu accès à ton compte ET à
+ton authenticator. Pense aussi à changer ton mot de passe via le flow
+« Mot de passe oublié ».
+
+Pour ré-activer la MFA, va dans Paramètres → Sécurité → MFA.
+
+L'équipe Path-Advisor

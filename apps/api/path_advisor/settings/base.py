@@ -43,6 +43,13 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "dj_rest_auth",
     "dj_rest_auth.registration",
+    # Story 1.6 — TOTP MFA for staff (mandatory) + B2C (opt-in). Loaded BEFORE
+    # `apps.accounts` so the migration graph resolves deterministically.
+    # `otp_totp` carries the device + secret + TOTP verification logic;
+    # `otp_static` holds the 8 single-use recovery codes per enrolled user.
+    "django_otp",
+    "django_otp.plugins.otp_totp",
+    "django_otp.plugins.otp_static",
     # Local apps
     "apps.core",
     "apps.accounts",
@@ -56,6 +63,13 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Story 1.6 — `OTPMiddleware` sets `request.user.is_verified()` after
+    # AuthenticationMiddleware has resolved `request.user`. RBAC code in
+    # Story 1.7 will consume `is_verified()` to gate sensitive endpoints
+    # behind the MFA challenge. MUST be AFTER `AuthenticationMiddleware`
+    # so `request.user` exists, and BEFORE `TenantSessionMiddleware` so
+    # the RLS GUC writes see a (possibly) verified user.
+    "django_otp.middleware.OTPMiddleware",
     # Story 1.8: pushes (user_id, tenant_id, role) into PG session GUCs so
     # the RLS policies on `users` / `parental_consents` filter at the DB
     # layer. MUST be AFTER AuthenticationMiddleware (request.user must be
@@ -240,6 +254,19 @@ LOGIN_LOCK_DURATION_SECONDS = int(os.environ.get("LOGIN_LOCK_DURATION_SECONDS", 
 # in seconds). Story 1.5 §AC5 mandates 1 hour for tighter security on the
 # only credential-recovery surface.
 PASSWORD_RESET_TIMEOUT = int(os.environ.get("PASSWORD_RESET_TIMEOUT", 3600))
+
+# --- Story 1.6 — MFA (TOTP) ---
+# Issuer string shown in authenticator apps (Google Authenticator, Authy, 1Password)
+# next to the account name. Embedded in the `otpauth://` URL the QR code encodes.
+OTP_TOTP_ISSUER = "Path-Advisor"
+# Short-lived JWT TTL for the `mfa_session` token issued between password-success
+# and the MFA challenge. 5 minutes balances QR-scan UX against shoulder-surfing
+# of the URL hash from a co-worker's screen. Tests override to a few seconds.
+MFA_SESSION_TTL_SECONDS = int(os.environ.get("MFA_SESSION_TTL_SECONDS", 300))
+# Number of recovery codes issued at enrollment-confirm. Story 1.6 §AC1 mandates 8.
+MFA_RECOVERY_CODES_COUNT = int(os.environ.get("MFA_RECOVERY_CODES_COUNT", 8))
+# Threshold (codes remaining) at which the "low-recovery-codes" email triggers.
+MFA_RECOVERY_LOW_THRESHOLD = int(os.environ.get("MFA_RECOVERY_LOW_THRESHOLD", 2))
 
 # --- Audit log (Story 1.13) ---
 # Salt used to hash client IPs before storing in `audit_logs.ip_address_hash`.

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-10  # Stories 2.8 + 2.9 done (Pass 2 review applied, PR #12 merged)
+last_updated: 2026-06-10  # Stories 2.8 + 2.9 done (Pass 2 review applied, PR #12 merging)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -49,7 +49,7 @@ development_status:
   1-3-inscription-eleve-15-ans-rgpd: done
   1-4-inscription-eleve-moins-15-ans-parental: done
   1-5-connexion-email-password: done
-  1-6-mfa-staff: backlog
+  1-6-mfa-staff: done
   1-7-rbac-middleware-autorisation: backlog
   1-8-multi-tenant-rls-postgresql: done
   1-9-liste-tiers-acces-profil: backlog
@@ -61,14 +61,14 @@ development_status:
   epic-1-retrospective: optional
 
   # Epic 2 — Profil élève & Onboarding
-  epic-2: backlog
-  2-1-onboarding-passions-interets-valeurs: backlog
-  2-2-onboarding-niveau-filiere-specialites: backlog
-  2-3-import-bulletins-pdf-ocr: backlog
-  2-4-saisie-manuelle-notes: backlog
-  2-5-mode-degrade-plus-tard-bulletins: backlog
-  2-6-mise-a-jour-profil: backlog
-  2-7-score-completude-profil: backlog
+  epic-2: in-progress
+  2-1-onboarding-passions-interets-valeurs: ready-for-dev
+  2-2-onboarding-niveau-filiere-specialites: ready-for-dev
+  2-3-import-bulletins-pdf-ocr: ready-for-dev
+  2-4-saisie-manuelle-notes: ready-for-dev
+  2-5-mode-degrade-plus-tard-bulletins: ready-for-dev
+  2-6-mise-a-jour-profil: ready-for-dev
+  2-7-score-completude-profil: ready-for-dev
   2-8-composant-scenario-loader: done
   2-9-composant-graceful-fallback: done
   epic-2-retrospective: optional

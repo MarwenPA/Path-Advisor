@@ -92,6 +92,14 @@ export interface CurrentUser {
   role: UserRole;
   status: UserStatus;
   is_fully_active: boolean;
+  // Story 1.6 — MFA dashboard signals. `mfa_required_by_role` is the static
+  // NFR-S2 flag (true for staff). `mfa_enrolled` is the actual state.
+  // `mfa_recovery_codes_remaining` is the count of unused codes (the codes
+  // themselves are NEVER returned outside the enrollment-confirm /
+  // regenerate response).
+  mfa_required_by_role: boolean;
+  mfa_enrolled: boolean;
+  mfa_recovery_codes_remaining: number;
 }
 
 /**
@@ -154,6 +162,15 @@ export async function resendParentalConsentEmail(): Promise<{ detail: string }> 
 
 export interface LoginResponse {
   user: CurrentUser;
+  // Story 1.6 — MFA branch. When `mfa_required` is true, the response body
+  // does NOT come with a session cookie. The frontend stores `mfa_session`
+  // in `sessionStorage` and routes to `/auth/mfa/enroll` (if
+  // `mfa_enrollment_required`) or `/auth/mfa/challenge` (otherwise). The
+  // challenge / enrollment-confirm endpoint completes the login and posts
+  // the cookie.
+  mfa_required?: boolean;
+  mfa_enrollment_required?: boolean;
+  mfa_session?: string;
 }
 
 export async function loginUser(email: string, password: string): Promise<LoginResponse> {
