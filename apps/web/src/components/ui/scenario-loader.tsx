@@ -194,10 +194,11 @@ export function ScenarioLoader({
   // shows the progress reached when the error happened.
   React.useEffect(() => {
     if (isError) return;
+    // Animation sync from props: `barWidth` must remain state so the RAF
+    // transition (else branch) and the freeze-on-error semantics work — the
+    // rule's "derive during render" alternative doesn't fit here.
     if (isComplete) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation
-      // sync: derive bar width from `isComplete` prop. The "freeze on error"
-      // semantics + RAF transition below require keeping `barWidth` as state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBarWidth(100);
       return;
     }
