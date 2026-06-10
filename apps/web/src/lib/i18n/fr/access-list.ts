@@ -9,6 +9,14 @@ export const ACCESS_LIST_COPY = {
   pageTitle: "Accès tiers",
   pageDescription:
     "Voici la liste des personnes et institutions qui ont actuellement accès à ton profil. Tu peux contrôler à tout moment qui voit quoi.",
+  // Review P11 — copy referenced from the parent `/parametres/confidentialite`
+  // page (was hardcoded there, AC9 i18n violation).
+  parentSectionTitle: "Accès tiers",
+  parentSectionDescription:
+    "Voici la liste des personnes et institutions (parent, conseillère, école partenaire) qui ont actuellement accès à ton profil — avec ce qu'elles voient et ce qui leur reste masqué.",
+  parentSectionCta: "Voir mes accès tiers",
+  // Review P8 — inline success message after revocation (aria-live, SR-friendly).
+  revokeSuccessInline: "Accès révoqué.",
   emptyState:
     "Aucun tiers n'a accès à ton profil pour le moment. Tu peux inviter un parent, accepter une demande de ta conseillère, ou envoyer ton profil à une école.",
   tierBadge: {

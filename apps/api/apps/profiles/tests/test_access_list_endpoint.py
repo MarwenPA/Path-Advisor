@@ -39,10 +39,11 @@ def _granted_consent(student, parent_email: str = "parent@example.test"):
     )
 
 
-def test_anonymous_user_refused_with_403():
+def test_anonymous_user_refused_with_401():
+    """Review P14 — lock the contract. 401 for unauthenticated, 403 for wrong-role."""
     client = APIClient(REMOTE_ADDR="127.0.0.1")
     response = client.get("/api/v1/profile/access-list/")
-    assert response.status_code in {401, 403}
+    assert response.status_code == 401
 
 
 def test_student_with_no_grants_returns_empty_list():
@@ -153,3 +154,71 @@ def test_only_own_consents_visible_no_cross_student_leak():
     results = response.json()["results"]
     assert len(results) == 1
     assert results[0]["display_name"] == "parent-a@example.test"
+
+
+def test_truncated_flag_emitted_when_cap_is_hit():
+    """Review P7 / Story 1.9 §AC8 — response carries `truncated: true` when
+    the aggregator hits MAX_ENTRIES."""
+    from unittest.mock import patch
+
+    student = _make_student()
+    client = APIClient(REMOTE_ADDR="127.0.0.1")
+    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+
+    # Mock aggregator to return exactly MAX_ENTRIES entries.
+    from datetime import UTC, datetime
+
+    from apps.profiles.access_list.aggregator import MAX_ENTRIES
+    from apps.profiles.access_list.dto import AccessListEntry
+
+    def _make_entry(i: int) -> AccessListEntry:
+        return AccessListEntry(
+            id=f"fake:{i}",
+            tier_type="parent",
+            display_name=f"fake-{i}@example.test",
+            granted_at=datetime(2026, 1, 1, i % 24, tzinfo=UTC),
+            visible_data=("metiers_explores",),
+            masked_data=(),
+            revocable=True,
+            source_name="fake",
+            source_pk=str(i),
+        )
+
+    entries = [_make_entry(i) for i in range(MAX_ENTRIES)]
+    with patch(
+        "apps.profiles.views.access_list.AccessListAggregator.list_for_user",
+        return_value=entries,
+    ):
+        response = client.get("/api/v1/profile/access-list/")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["truncated"] is True
+    assert len(body["results"]) == MAX_ENTRIES
+
+
+def test_truncated_flag_absent_when_below_cap():
+    student = _make_student()
+    client = APIClient(REMOTE_ADDR="127.0.0.1")
+    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    response = client.get("/api/v1/profile/access-list/")
+    assert response.status_code == 200
+    assert "truncated" not in response.json()
+
+
+def test_audit_failure_does_not_break_read_path():
+    """Review P6 — record_audit raising on the read path must NOT 500 the user
+    (RGPD Article 15 right to know who sees their data > audit table reliability)."""
+    from unittest.mock import patch
+
+    student = _make_student()
+    _granted_consent(student)
+    client = APIClient(REMOTE_ADDR="127.0.0.1")
+    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+
+    with patch(
+        "apps.profiles.views.access_list.record_audit",
+        side_effect=RuntimeError("audit DB outage"),
+    ):
+        response = client.get("/api/v1/profile/access-list/")
+    assert response.status_code == 200
+    assert len(response.json()["results"]) == 1

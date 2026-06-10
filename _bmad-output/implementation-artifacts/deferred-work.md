@@ -226,3 +226,26 @@ Pass 2 re-review on commit `2849c1d` of the Pass 1 fix. 3 new defers (the 1 H + 
 - **(PR4) Crossfade aria-live cascade may over-announce on some screen readers** — Outer `<section role="status">` is a live region; phraseIndex changes mutate its text content, and SR behavior on the resulting announcement is implementation-specific (VoiceOver tends to read only the diff, NVDA may read the whole region including `aria-label` + caption). Not testable in jsdom. Address in the Story 2.3+ VoiceOver/NVDA manual a11y checklist when consuming `ScenarioLoader` for the real OCR wait.
 - **(PR5) `tertiaryLink` object identity in M9 focus effect deps** — Passing a fresh `{label, onClick}` literal every render makes the focus effect re-run constantly. The `document.activeElement === document.body` guard prevents focus theft in the normal path, but narrowing the deps to `[primary.isDisabled, secondary.isDisabled, tertiary?.isDisabled, Boolean(tertiary)]` (or memoising the prop in the caller) would skip unnecessary re-runs. Low impact.
 - **(PR6) Rapid `isError: true → false → true` batched into one render may miss the recovery emission** — If React batches the renders, the recovery effect never sees `isError === false` between the two flips, leaving `erroredEmittedRef` set and the second error silent on analytics. Realistic only for caller code that programmatically toggles `isError` synchronously back-to-back, which the API surface does not encourage. Narrow trigger surface; revisit if production analytics show a gap.
+
+## Deferred from: code review of 2-1-onboarding-passions-interets-valeurs (2026-06-11)
+
+Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR. 13 L deferred:
+
+- **AC9 `aria-current="step"` placed on `<button>` instead of `<li>`** — both forms are valid ARIA, but the spec is literal about the `<li>`. Cosmetic.
+- **valeurs group `aria-describedby` points at the counter ("3 / 3 minimum") rather than a dedicated "3 à 5 valeurs" helper** — functionally equivalent (both convey cardinality), spec is literal about the helper text.
+- **Suggestion chips not built as `Toggle` shadcn primitives** — bare `<button>` works because suggestions are inject-then-exit, not stateful. Reconsider if a future story makes them sticky.
+- **Continue button label swaps to "Enregistrement…" while submitting** — not in spec, reasonable progressive-disclosure UX. Keep unless the UX team rejects.
+- **Custom-passion slug stricter than spec (ASCII-only after slugification vs spec's "Unicode L/N" which keeps accented letters)** — ASCII is safer for analytics + future i18n; revisit if support tickets surface.
+- **4+ `aria-live="polite"` regions per screen** — will collapse to one when M3 (AC9 announcer hoist) lands, leaving the counters as non-live visual feedback.
+- **AC10 double-redirect on happy-path completion** — orchestrator's `useEffect` and `handleFinishInterets` both `router.replace`/`router.push` to step-2 on the same tick. Harmless duplicate navigation (same URL). Low priority.
+- **InteretsFreeForm labels were authored rather than lifted from the spec** — semantically aligned ("Une chaîne, un podcast…", "Un livre, un film…", "Une matière, un TP…"). Spec doesn't enumerate label copy. Validate in sprint review.
+- **Substep state can desync when another tab regresses `snapshot.passions` to `[]`** — multi-tab cross-pollination. Requires explicit storage event listening; defer until support tickets surface.
+- **Suggestion append on whitespace-only field produces leading " · "** — `"   ".trimEnd()` returns `"   "`, append yields `"   · YouTube"`. Cosmetic.
+- **In-flight PATCH overwrites draft when user navigates to past substep mid-flight** — narrow race: requires the user to use the dot-jump while a PATCH is pending. Defer; can address with a `ProgressDots` `disabled` prop tied to `isSubmitting`.
+- **`Storage` shim in `test-setup.ts` doesn't support indexed / named property access (`localStorage.foo = "x"` or `localStorage[0]`)** — current production code uses methods only. Add a `Proxy` wrap if any future consumer needs the index form.
+- **`useOnboardingStep1` return docstring claims a stable object but `reset` is a fresh arrow every render** — docstring fix or `useCallback` wrap. Low impact (current consumers destructure individual fields).
+
+## Deferred from: code review of 1-9 + 1-10 (2026-06-11)
+
+- **`aria-label="Révocation à venir"` documented but never observable** — Story 1.9's disabled-button contract (§AC5) was overwritten by Story 1.10's active button in the same merge. The 1.9 surface in isolation was never reviewable.
+- **`error.tsx` Next.js boundary missing for `/parametres/confidentialite/acces-tiers`** — acknowledged in the page comment ("added Q3"). Fallback to default Next 500 page is acceptable for MVP.

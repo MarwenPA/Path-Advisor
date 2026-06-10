@@ -64,24 +64,48 @@ def test_multi_source_concatenated_and_sorted_by_granted_at_desc():
     assert agg.list_for_user(Mock()) == [newer, older]
 
 
-def test_broken_source_does_not_block_other_sources(caplog):
-    """One source raising MUST NOT lose the entries of the others."""
+def test_broken_source_does_not_block_other_sources_on_transient_error(caplog):
+    """Review D3 — transient/IO errors (DatabaseError, ConnectionError, etc.)
+    are caught so the user still sees the good sources. Programming bugs are
+    NOT caught (see next test).
+    """
+    from django.db import DatabaseError
 
-    class _BrokenSource:
-        name = "broken"
+    class _DbOutageSource:
+        name = "db_outage"
 
         def list_for_user(self, user):
-            raise RuntimeError("simulated DB outage")
+            raise DatabaseError("simulated DB outage")
 
         def revoke(self, user, source_pk):
             raise NotImplementedError
 
     good = _entry()
-    agg = AccessListAggregator(sources=[_BrokenSource(), _FakeSource("parental_consent", [good])])
+    agg = AccessListAggregator(sources=[_DbOutageSource(), _FakeSource("parental_consent", [good])])
     with caplog.at_level("ERROR"):
         result = agg.list_for_user(Mock())
     assert result == [good]
-    assert any("access_list source raised" in m for m in caplog.messages)
+    assert any("transient error" in m for m in caplog.messages)
+
+
+def test_programming_bug_in_source_bubbles_up_review_D3():
+    """Review D3 — AttributeError / KeyError / TypeError are NOT silently
+    swallowed. They bubble to a 500 so Sentry catches the bug instead of the
+    user seeing a partial list with no signal.
+    """
+
+    class _BuggySource:
+        name = "buggy"
+
+        def list_for_user(self, user):
+            raise AttributeError("dev typo in source adapter")
+
+        def revoke(self, user, source_pk):
+            raise NotImplementedError
+
+    agg = AccessListAggregator(sources=[_BuggySource()])
+    with pytest.raises(AttributeError):
+        agg.list_for_user(Mock())
 
 
 def test_truncation_at_max_entries():
@@ -94,6 +118,8 @@ def test_truncation_at_max_entries():
 @pytest.mark.django_db
 def test_aggregator_with_live_registry_does_not_crash():
     """Smoke test against the actual registered sources (just `parental_consent`)."""
+    from apps.accounts.tests.factories import UserFactory
+
     agg = AccessListAggregator()
-    fake_user = Mock(id=1)
-    assert agg.list_for_user(fake_user) == []  # No data in fresh DB
+    real_user = UserFactory()
+    assert agg.list_for_user(real_user) == []  # No data in fresh DB

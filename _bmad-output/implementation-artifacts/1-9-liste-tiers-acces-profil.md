@@ -1,7 +1,7 @@
 # Story 1.9: Liste des tiers ayant accès au profil élève
 
 **Epic:** 1 — Foundation: Multi-role Auth, RBAC, GDPR Compliance & Technical Infrastructure
-**Status:** review
+**Status:** done
 **Sprint:** 1 (Foundations)
 **Story Key:** `1-9-liste-tiers-acces-profil`
 **Estimation:** M (medium) — Story 1.9 ships the **read-only "Accès tiers" surface** : a polymorphic aggregator that unifies third-party access records from heterogeneous sources (today only `parental_consents` from Story 1.4 ; tomorrow `school_partnerships` from Epic 5 and `counselor_consents` from Epic 6) behind a single GET API and a single Settings page. No new schema. No new auth model. The hard parts are : (a) the aggregator extension contract that keeps Stories 5.x / 6.x from re-touching the page, (b) the FR i18n + RGAA AA empty/populated states, (c) the audit-log self-trace (NFR-S4 — every read of "who sees my data" is itself auditable). Sized **1.5–2 jours focused work**.
@@ -390,3 +390,45 @@ claude-opus-4-7
 |---|---|---|
 | 2026-06-10 | sm (claude-opus-4-7) | Initial story spec — 10 ACs, 9 tasks (T1–T9), polymorphic aggregator design locked, visibility matrix as SoT, AC8 perf budget, RLS double-check (AC10). Status → `ready-for-dev`. |
 | 2026-06-11 | dev (claude-opus-4-7) | Initial implementation pass — all 10 ACs, 9 tasks (T1–T9), 21 new backend tests (visibility matrix integrity, aggregator unit, endpoint integration) + 7 new frontend tests (TierAccessCard), CI gate passing on 161 endpoints, full regression 314 backend + 100 frontend tests green, ruff clean. Manual NVDA/VoiceOver walkthrough deferred to QA. Status → `review`. |
+| 2026-06-11 | code-review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, claude-opus-4-7) | Multi-agent adversarial review — ~37 raw findings → 6 decision-needed, 17 patch, 2 defer. Spec deviations on §AC8 (hash gate dropped), §AC9 (idempotent double-write), §T3.1 (notification_sent_at unset), §T3.3 (retry policy missing), §AC9 i18n (hardcoded FR strings), §AC5 (audit metadata incomplete). |
+| 2026-06-11 | dev (claude-opus-4-7) | Review remediation — 6 decisions resolved (all "Recommandé") + 17 patches applied (P1 widen AuditLog.subject_id, P2 ownership-check, P3 GRANTED-only revoke filter, P4 RevocationResult enum for AC9 strict, P5 defensive sort, P6 fail-open audit, P7 truncated flag, P8 success toast, P9 reason split, P10 metadata enrichment, P11 i18n extraction, P12+P15 format validation, P13 ValueError catch, P14 401 lock, P16 5xx UX, D1 orphan-grant surface, D3 narrow except, D5 Celery task hardening + migration 0014 + D6 RLS test). Status → `done` (review complete). |
+
+---
+
+## 10. Review Findings (2026-06-11)
+
+Sources : `blind` (Blind Hunter) · `edge` (Edge Case Hunter) · `auditor` (Acceptance Auditor). Stories 1.9 + 1.10 were reviewed together (shared PR #15, shared scaffolding).
+
+### Decision-needed
+
+- [x] **[Review][Decision] D1 — `decided_at IS NOT NULL` defensive filter hides orphan granted consents** (blind HIGH) — `ParentalConsentSource.list_for_user` filters out granted/non-revoked rows with `decided_at IS NULL`. If such a row ever exists (data corruption, legacy backfill), the parent retains live access but the student can NEITHER see nor revoke it. CNIL Article 15/17 prohibits exactly this ghost-access pattern. Options : (a) backfill `decided_at` from `created_at` at migration time, (b) surface rows with `decided_at=None` using `created_at` as fallback + Sentry log, (c) keep silent filter + add Sentry alert when one is found. Recommandé : (b) — surface with fallback.
+
+- [x] **[Review][Decision] D2 — `request._access_list_audit_recorded` dedup flag claim** (blind+edge MEDIUM) — the docstring + AC6 claim it defends against React StrictMode double-mount, but StrictMode re-renders the COMPONENT (two separate HTTP requests, two separate `request` objects). The flag only dedupes DRF intra-request `has_permission` repeats. Options : (a) drop the StrictMode language from the docstring + spec, keep the flag for DRF, (b) add HTTP-level dedup via short-window cache key `(actor, second-bucket)`. Recommandé : (a) — drop the misleading claim ; HTTP-level dedup is a separate problem.
+
+- [x] **[Review][Decision] D3 — Aggregator's bare `except Exception` swallows programming errors** (blind HIGH) — catches `AttributeError` / `TypeError` / `KeyError` in source adapters, returning a partial list silently. The story narrative defends this ("one broken source must not block others") but for a privacy/audit surface, silent partial results are arguably worse than a 500. Options : (a) keep current behavior + add `partial: true` flag in response (need a frontend banner), (b) catch only `(DatabaseError, ConnectionError, TimeoutError)` and let bugs bubble to 500, (c) keep current + Sentry-flag every caught exception. Recommandé : (b) — narrow the catch ; bugs SHOULD be 500.
+
+### Patch
+
+- [x] **[Review][Patch] P1 — `subject_id` exceeds `AuditLog.subject_id` max_length=32 in PostgreSQL prod** (edge HIGH) — composite entry id `parental_consent:<26-char-ULID>` = 47 chars. On Postgres, INSERT raises `DataError` ; `record_audit` swallows → every revocation in prod is unaudited. Tests pass on SQLite (no enforcement). Fix : widen `AuditLog.subject_id` to `max_length=64` via migration, OR truncate/hash before write and move full id to metadata.
+- [x] **[Review][Patch] P2 — Cross-tenant defensive ownership check missing** (blind HIGH) — `parental_consent.py::revoke` relies on `filter(student=user, id=source_pk)`. If `user` is somehow swapped (test/admin path bypass), no second belt. Add explicit `assert row.student_id == user.id` after `.first()`.
+- [x] **[Review][Patch] P3 — `revoke()` accepts pending/refused consents — corrupts state + spam-notifies parents** (edge+auditor HIGH) — `ParentalConsentSource.revoke` filter at `apps/profiles/access_list/sources/parental_consent.py` lacks `decision=GRANTED, decided_at__isnull=False`. A crafted POST with a pending consent id stamps `revoked_at` + sends "your access has been revoked" email to a parent who never granted access. Add the filter ; add 2 tests (revoke-on-pending, revoke-on-refused → both 404).
+- [x] **[Review][Patch] P4 — Idempotent double-POST writes 2 SUCCESS audit rows** (blind+edge+auditor HIGH / 1.10 §AC9) — the source's `revoke` returns silently on already-revoked rows but the revoker still writes `profile.access_revoked` SUCCESS. AC9 mandates ONE row. Fix : have `source.revoke` return an enum `RevocationResult.PERFORMED | ALREADY_REVOKED` ; revoker skips audit on `ALREADY_REVOKED`.
+- [x] **[Review][Patch] P5 — Aggregator sort crashes if `granted_at=None`** (edge LOW) — `entries.sort(key=lambda e: e.granted_at, reverse=True)` raises `TypeError` if any source returns an entry with `granted_at=None`. Fix : defensive `key=lambda e: e.granted_at or datetime.min.replace(tzinfo=UTC)`.
+- [x] **[Review][Patch] P6 — `record_audit` failure on read path returns 500** (blind MEDIUM) — if the audit DB is flaky, `GET /access-list/` 500s even though the aggregator already returned data. Fix : wrap in `try/except log.exception` to fail-open on read (CNIL would prefer fail-closed but UX bias says open ; document the trade-off either way).
+- [x] **[Review][Patch] P7 — `truncated: true` flag missing in response when cap is hit** (auditor HIGH / 1.9 §AC8) — spec mandates `truncated: true` in body when `entries[100:]` is dropped. View only returns `{"results": ...}`. Add the flag.
+- [x] **[Review][Patch] P8 — Toast "Accès révoqué." not rendered** (auditor HIGH / 1.10 §AC6) — spec §AC6 + §4.8 mandate a success message ; component only does `router.refresh()`. Add inline confirmation OR toast component.
+- [x] **[Review][Patch] P9 — Audit reason `wrong_owner` collapsed into `not_found_or_wrong_owner`** (auditor MEDIUM / 1.10 §AC5) — DPO loses the ability to distinguish "typo" from "probing campaign" — the very escalation pattern §AC5 calls out. Split the audit metadata reasons.
+- [x] **[Review][Patch] P10 — Revoker success metadata missing `tier_type` + `display_name`** (auditor NIT / 1.10 §AC5) — spec mandates these in `profile.access_revoked` metadata for self-contained audit rows. Add them.
+- [x] **[Review][Patch] P11 — Hardcoded FR strings in `confidentialite/page.tsx`** (auditor MEDIUM / 1.9 §AC9) — "Accès tiers" / "Voici la liste..." / "Voir mes accès tiers" injected raw, violating the "no hardcoded FR strings outside i18n dict" AC9 contract. Extract to `ACCESS_LIST_COPY` or a new section dict.
+- [x] **[Review][Patch] P12 — `content_hash` accepted without type/length validation** (blind+edge MEDIUM) — non-string values (`{"$ne": null}`, lists, large blobs) are stored in audit metadata. Add `isinstance(str) + ^[a-f0-9]{64}$` validation, reject 400 otherwise.
+- [x] **[Review][Patch] P13 — Composite-id `ValueError` on UUID parse becomes 500 instead of 404** (blind MEDIUM) — `parental_consent:abc:def:ghi` → source_pk=`abc:def:ghi` → ORM `id="abc:def:ghi"` → `ValidationError` bubbles up. Catch `(ValueError, ValidationError, DataError)` in `ParentalConsentSource.revoke` and translate to `EntryNotFound`.
+- [x] **[Review][Patch] P14 — Anonymous status code contract undefined (401 OR 403)** (blind MEDIUM) — `assert response.status_code in {401, 403}` accepts both. Lock the contract : 401 for unauthenticated, 403 for wrong-role.
+- [x] **[Review][Patch] P15 — `entry_id` log-injection / encoded-id normalization** (blind+edge LOW) — newlines, escape sequences, percent-encoded forms persist into the audit `subject_id`. Add `^[a-z_]+:[A-Za-z0-9_-]{1,32}$` validation at view entry, reject malformed.
+- [x] **[Review][Patch] P16 — Frontend 5xx UX leaves dialog open with stale state** (edge LOW) — error message renders OUTSIDE the dialog (invisible to user). Reset `status="idle"` on `onOpenChange(true)` re-open ; render error inline via `bodySlot` OR close dialog + show toast.
+- [x] **[Review][Patch] P17 — DoD checkbox false-positive : manual a11y walkthrough not done** (auditor LOW) — story DoD says `[x] Manual a11y walkthrough captured` but the doc says "PENDING — reserved for QA". Update DoD wording to "Manual a11y walkthrough deferred to QA pass".
+
+### Defer
+
+- [x] **[Review][Defer] `aria-label="Révocation à venir"` documented but never observable** — Story 1.9's disabled-button contract (§AC5) was overwritten by Story 1.10's active button in the same merge. The 1.9 surface in isolation was never reviewable. Acceptable since 1.9 + 1.10 ship together ; doc the spec note as historical.
+- [x] **[Review][Defer] `error.tsx` Next.js boundary missing** — acknowledged in `acces-tiers/page.tsx` comment ("added Q3"). Fallback to default 500 is acceptable for MVP.
+

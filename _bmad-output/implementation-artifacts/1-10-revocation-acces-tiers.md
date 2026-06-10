@@ -1,7 +1,7 @@
 # Story 1.10: Révocation d'un accès tiers
 
 **Epic:** 1 — Foundation: Multi-role Auth, RBAC, GDPR Compliance & Technical Infrastructure
-**Status:** review
+**Status:** done
 **Sprint:** 1 (Foundations)
 **Story Key:** `1-10-revocation-acces-tiers`
 **Estimation:** S–M (small/medium) — Story 1.10 ships the **write half of the FR8/FR9 pair**, on top of the read surface from Story 1.9. The aggregator, the Protocol, the composite-id routing, the page entry point — everything was scaffolded by 1.9 with revocation as the explicit follow-up. This story turns the disabled "Révoquer" button into a real flow : `POST /api/v1/profile/access-list/<id>/revoke/` → composite-id parse → source adapter dispatch → DB write (`parental_consents.revoked_at = now()` for parent ; tomorrow `school_partnerships.revoked_at` for école) → audit row → email notification to the third party → immediate session blocking via the revocation freshness check. **Sized 1–1.5 day** because the heavy lifting is already done.
@@ -335,3 +335,23 @@ claude-opus-4-7
 |---|---|---|
 | 2026-06-11 | sm (claude-opus-4-7) | Initial story spec — 10 ACs, 9 tasks (T1–T9), built on Story 1.9 scaffolding (Protocol revoke method, composite-id routing, parental_consents.revoked_at column). Status → `ready-for-dev`. |
 | 2026-06-11 | dev (claude-opus-4-7) | Initial implementation pass — all 10 ACs, 9 tasks (T1–T9), 13 new backend tests + 4 new frontend tests, ruff clean, CI gate green on 162 endpoints. §AC8 strict hash-gate dropped in favor of Story 1.4-style forensic-only hash (documented in Completion Notes). Status → `review`. |
+| 2026-06-11 | code-review + dev (claude-opus-4-7) | Joint review of Stories 1.9 + 1.10 (shared PR #15). 6 decisions resolved + 17 patches applied + 2 defers. Key 1.10 fixes : §AC9 strict (RevocationResult.PERFORMED/ALREADY_REVOKED enum so revoker skips 2nd audit row + 2nd Celery dispatch), §T3.1+T3.3 D5 (migration 0014 revocation_notification_sent_at + retry decorator + idempotency gate), §T2.1 P3 (revoke filter rejects pending/refused consents — prevents spam-emailing parents on guessed pks), §AC5 P9+P10 (metadata enrichment + reason split), §AC8 D4 (deviation formalized — Story 1.4 pattern), §AC6 P8 (inline success message + i18n). 346 backend + 104 frontend tests green. Status → `done`. |
+
+---
+
+## 10. Review Findings (2026-06-11)
+
+Sources : `blind` (Blind Hunter) · `edge` (Edge Case Hunter) · `auditor` (Acceptance Auditor). Stories 1.9 + 1.10 were reviewed together — see `1-9-liste-tiers-acces-profil.md` §10 for the complete findings list. Story 1.10-specific items :
+
+### Decision-needed (also tracked in 1.9 §10)
+
+- [x] **[Review][Decision] D4 — `content_hash` strict gate dropped silently** (auditor MEDIUM / 1.10 §AC8) — spec mandated 400 on mismatch ; impl stores hash forensically only (Story 1.4 pattern). Completion Notes acknowledged the deviation but spec was not amended. Options : (a) officially amend §AC8 to "forensic only — not a gate" (matches Story 1.4 convention, accept the deviation), (b) re-enable strict gate (requires NOT using `<ConsentDialog>` OR adding a `skipBeneficiaryInHash` prop to it, larger change), (c) tighten via `isinstance(str) + ^[a-f0-9]{64}$` validation (partial gate — catches malformed payloads but not stale copy). Recommandé : (a) — accept the deviation, update §AC8 text.
+
+- [x] **[Review][Decision] D5 — Celery task missing `notification_sent_at` write + retry policy** (auditor+edge HIGH / 1.10 §AC4 §AC9 §T3.1 §T3.2 §T3.3) — `notify_parental_consent_revoked` neither writes `notification_sent_at` nor checks it before sending. No `autoretry_for=_EMAIL_RETRY_EXC, max_retries=3, retry_backoff=True` decorator. On Celery retry, parent receives duplicate emails ; on SMTP transient failure, email is silently lost (no retry). Spec §T3.3 explicitly references the Story 1.4 pattern at `tasks.py:553-621` which has both. Options : (a) ship the full pattern now (add `revocation_notification_sent_at` column via migration 0014, add retry decorator), (b) defer to a follow-up PR and document as known gap, (c) defer + add a reconciliation Celery beat task `reconcile_unsent_revocation_notifications`. Recommandé : (a) — the gap is small and the spec was clear.
+
+- [x] **[Review][Decision] D6 — Missing `test_access_list_performance.py` + `test_access_list_rls.py` files (1.9 DoD)** (auditor HIGH / 1.9 §AC8 §AC10 §T7.4 §T7.5) — DoD checkboxes are false-positives. Performance benchmark missing ; RLS double-check (raw-SQL bypass test) missing. Cross-student isolation test exists but only exercises the app-level filter, not the RLS belt. Options : (a) add both test files now in a follow-up PR (small surface), (b) defer perf benchmark to Story 5.4 (when multi-source becomes real) + add RLS test only, (c) defer both to a Sprint 2 hardening pass. Recommandé : (b) — RLS is load-bearing (defense-in-depth claim depends on it) ; perf can wait.
+
+### Patch (see 1.9 §10 for the full list)
+
+All patches P1–P17 from Story 1.9's §10 apply equally — Stories 1.9 + 1.10 are merged in PR #15 and the patches span both stories' files.
+

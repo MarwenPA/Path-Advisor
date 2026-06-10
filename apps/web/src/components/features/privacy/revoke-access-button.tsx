@@ -1,20 +1,20 @@
 "use client";
 
 /**
- * <RevokeAccessButton> — Story 1.10 §AC6, §T6.
+ * <RevokeAccessButton> — Story 1.10 §AC6, §T6 + review patches P8 P16.
  *
  * Client Component island inside the otherwise server-rendered
  * <TierAccessCard>. Opens a <ConsentDialog> (Story 1.14) on click, sends
  * POST /api/v1/profile/access-list/<id>/revoke/ on confirm, refreshes the
  * page so the entry disappears from the server-rendered list.
  *
- * Tier-specific dialog copy lives in `ACCESS_LIST_COPY.revokeDialog` so the
- * UX writer touches one file. The Story 1.14 ConsentDialog computes the
- * content hash from the displayed props ; the backend stores it as audit
- * forensic proof (NOT a gate — see backend `revoker.py`).
+ * Review P8 — success path renders an inline "Accès révoqué." confirmation
+ * (aria-live, SR-friendly) BEFORE router.refresh swaps the card out.
+ * Review P16 — re-opening the dialog after a 5xx error resets the status so
+ * the user gets a fresh attempt instead of seeing stale state.
  */
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsentDialog, type ConsentMeta } from "@/components/ui/consent-dialog";
@@ -33,6 +33,24 @@ export function RevokeAccessButton({ entry }: { entry: AccessListEntry }) {
   const dataMentionedLabels = entry.visible_data.map(
     (area) => ACCESS_LIST_COPY.dataAreaLabels[area as DataAreaKey] ?? area,
   );
+
+  // Review P16 — when the dialog re-opens after a previous error / success,
+  // reset state so the user sees a clean attempt.
+  const handleOpenChange = (next: boolean) => {
+    if (next && (status === "error" || status === "success")) {
+      setStatus("idle");
+    }
+    setOpen(next);
+  };
+
+  // Review P8 — fade the success confirmation after a few seconds so it
+  // doesn't linger after `router.refresh` swaps the card out. Cleanup on
+  // unmount or status change.
+  useEffect(() => {
+    if (status !== "success") return;
+    const timer = setTimeout(() => setStatus("idle"), 4_000);
+    return () => clearTimeout(timer);
+  }, [status]);
 
   const handleAccept = async (meta: ConsentMeta) => {
     setStatus("submitting");
@@ -55,7 +73,7 @@ export function RevokeAccessButton({ entry }: { entry: AccessListEntry }) {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button variant="ghost" onClick={() => setOpen(true)} disabled={status === "submitting"}>
+      <Button variant="ghost" onClick={() => handleOpenChange(true)} disabled={status === "submitting"}>
         {ACCESS_LIST_COPY.revokeButtonLabel}
       </Button>
 
@@ -65,9 +83,17 @@ export function RevokeAccessButton({ entry }: { entry: AccessListEntry }) {
         </p>
       ) : null}
 
+      {/* Review P8 — inline success confirmation. `aria-live="polite"` so
+          screen-reader users hear it. Auto-fades via useEffect above. */}
+      {status === "success" ? (
+        <p className="text-sm text-text-muted" role="status" aria-live="polite">
+          {ACCESS_LIST_COPY.revokeSuccessInline}
+        </p>
+      ) : null}
+
       <ConsentDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={handleOpenChange}
         title={dialogCopy.title}
         description={dialogCopy.description}
         dataMentioned={dataMentionedLabels}

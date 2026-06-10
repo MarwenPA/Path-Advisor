@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { ACCESS_LIST_COPY } from "@/lib/i18n/fr/access-list";
 
 export const metadata: Metadata = {
   title: "Confidentialité | Path-Advisor",
@@ -39,15 +40,17 @@ export default function ConfidentialitePage() {
       </section>
 
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-6">
-        <h2 className="text-h2 font-semibold text-text">Accès tiers</h2>
+        <h2 className="text-h2 font-semibold text-text">
+          {ACCESS_LIST_COPY.parentSectionTitle}
+        </h2>
         <p className="text-body text-text-muted">
-          Voici la liste des personnes et institutions (parent, conseillère, école partenaire) qui
-          ont actuellement accès à ton profil — avec ce qu&apos;elles voient et ce qui leur reste
-          masqué.
+          {ACCESS_LIST_COPY.parentSectionDescription}
         </p>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Button asChild>
-            <Link href="/parametres/confidentialite/acces-tiers">Voir mes accès tiers</Link>
+            <Link href="/parametres/confidentialite/acces-tiers">
+              {ACCESS_LIST_COPY.parentSectionCta}
+            </Link>
           </Button>
         </div>
       </section>

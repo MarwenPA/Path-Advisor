@@ -18,7 +18,12 @@ from apps.accounts.tests.factories import UserFactory
 from apps.audit.models import AuditLog
 from apps.profiles.access_list.dialog_hashes import CANONICAL_REVOKE_DIALOG_HASHES
 
-pytestmark = pytest.mark.django_db
+# Review D5 — `ParentalConsentSource.revoke` now uses `transaction.on_commit`
+# to dispatch the Celery task. The on_commit hook only fires when the
+# transaction ACTUALLY commits, which doesn't happen under the default
+# pytest-django wrapper (rollback per test). Mark all tests with
+# `transaction=True` so commits are real and on_commit callbacks fire.
+pytestmark = pytest.mark.django_db(transaction=True)
 
 
 def _make_student(email: str = "student@example.test"):
@@ -94,7 +99,11 @@ def test_404_when_entry_id_belongs_to_another_student():
     response = client.post(_url(entry_id), data=_body(), format="json")
     assert response.status_code == 404
     rows = AuditLog.objects.filter(action="profile.access_revoke_attempted").order_by("-created_at")
-    assert rows.first().metadata["reason"] == "not_found_or_wrong_owner"
+    # Review P9 — reason is "not_found" (we deliberately collapse "row absent"
+    # and "ownership mismatch" into the same audit reason from the student's
+    # POV so the endpoint cannot be used as an oracle to probe other students'
+    # grant ids).
+    assert rows.first().metadata["reason"] == "not_found"
     # Most importantly : student B's consent was NOT touched
     consent_b.refresh_from_db()
     assert consent_b.revoked_at is None
@@ -151,14 +160,21 @@ def test_403_for_non_student_roles():
 
 
 def test_401_for_anonymous():
+    """Review P14 — lock the contract. DRF returns 401 (not 403) for
+    `IsAuthenticated` denial when no auth credentials are supplied (the
+    standard WWW-Authenticate-bearing response)."""
     client = APIClient(REMOTE_ADDR="127.0.0.1")
     response = client.post(_url("parental_consent:x"), data=_body(), format="json")
-    assert response.status_code in {401, 403}
+    assert response.status_code == 401
 
 
 @patch("apps.accounts.tasks.notify_parental_consent_revoked")
-def test_idempotent_on_double_revoke(mock_task):
-    """Second POST on already-revoked row → 200 + no second task dispatch + no second audit row."""
+def test_idempotent_on_double_revoke_writes_exactly_one_audit_row(mock_task):
+    """Story 1.10 §AC9 (review P4) — second POST on already-revoked row →
+    200 + EXACTLY ONE task dispatch + EXACTLY ONE `profile.access_revoked`
+    audit row. The revoker skips the second audit because the source returns
+    `RevocationResult.ALREADY_REVOKED`.
+    """
     student = _make_student()
     consent = _granted_consent(student)
     client = _authed_client(student)
@@ -169,15 +185,127 @@ def test_idempotent_on_double_revoke(mock_task):
     assert response_1.status_code == 200
     audit_count_after_first = AuditLog.objects.filter(action="profile.access_revoked").count()
 
-    # Second revoke (idempotent — source's revoke returns early on revoked row)
+    # Second revoke
     response_2 = client.post(_url(entry_id), data=_body(), format="json")
     assert response_2.status_code == 200
+    assert response_2.json().get("already_revoked") is True
     audit_count_after_second = AuditLog.objects.filter(action="profile.access_revoked").count()
 
-    # One extra row (the second revoke DOES write its own audit by design — it
-    # logs the revoke attempt ; the SOURCE is the idempotent layer (no second
-    # `revoked_at` write, no second Celery dispatch).
-    # The spec accepts EITHER one or two audit rows ; the load-bearing
-    # invariant is "one Celery dispatch", which the mock asserts below.
-    assert audit_count_after_second >= audit_count_after_first
+    # §AC9 strict — exactly ONE audit row + exactly ONE Celery dispatch.
+    assert audit_count_after_second == audit_count_after_first, (
+        "Story 1.10 §AC9 strict: only ONE `profile.access_revoked` row per logical revocation"
+    )
     mock_task.delay.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Review P3 — revoke filter rejects pending / refused consents
+# ---------------------------------------------------------------------------
+
+
+@patch("apps.accounts.tasks.notify_parental_consent_revoked")
+def test_404_when_revoking_a_pending_consent(mock_task):
+    """Review P3 — pending consent (decision=NULL) MUST NOT be revocable.
+    Otherwise, a crafted POST stamps `revoked_at` + spam-emails the parent."""
+    student = _make_student()
+    consent = ParentalConsent.objects.create(
+        student=student,
+        parent_email="pending@example.test",
+        token="t-pending",
+        # No decision yet
+    )
+    client = _authed_client(student)
+    response = client.post(_url(f"parental_consent:{consent.id}"), data=_body(), format="json")
+    assert response.status_code == 404
+    consent.refresh_from_db()
+    assert consent.revoked_at is None
+    mock_task.delay.assert_not_called()
+
+
+@patch("apps.accounts.tasks.notify_parental_consent_revoked")
+def test_404_when_revoking_a_refused_consent(mock_task):
+    """Review P3 — refused consent MUST NOT be revocable."""
+    student = _make_student()
+    consent = ParentalConsent.objects.create(
+        student=student,
+        parent_email="refused@example.test",
+        token="t-refused",
+        decision=ParentalConsentDecision.REFUSED,
+        decided_at=timezone.now(),
+    )
+    client = _authed_client(student)
+    response = client.post(_url(f"parental_consent:{consent.id}"), data=_body(), format="json")
+    assert response.status_code == 404
+    consent.refresh_from_db()
+    assert consent.revoked_at is None
+    mock_task.delay.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Review P15 — entry_id format validation
+# ---------------------------------------------------------------------------
+
+
+def test_404_on_malformed_entry_id_with_newline():
+    """Review P15 — entry_id with embedded newlines (log-injection attempt)
+    MUST 404 before any DB lookup or audit subject_id write."""
+    student = _make_student()
+    client = _authed_client(student)
+    response = client.post(_url("parental_consent:abc%0Aevil"), data=_body(), format="json")
+    # Django decodes %0A → \n in the URL path ; our regex rejects it.
+    assert response.status_code == 404
+
+
+def test_404_on_entry_id_without_colon():
+    student = _make_student()
+    client = _authed_client(student)
+    response = client.post(_url("no-colon-here"), data=_body(), format="json")
+    assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Review P12 — content_hash format validation
+# ---------------------------------------------------------------------------
+
+
+def test_400_when_content_hash_is_not_a_hex_string():
+    student = _make_student()
+    consent = _granted_consent(student)
+    client = _authed_client(student)
+    response = client.post(
+        _url(f"parental_consent:{consent.id}"),
+        data={"content_hash": "not-hex!"},
+        format="json",
+    )
+    assert response.status_code == 400
+    assert response.json()["type"].endswith("/content-hash-invalid")
+
+
+def test_400_when_content_hash_is_non_string():
+    student = _make_student()
+    consent = _granted_consent(student)
+    client = _authed_client(student)
+    response = client.post(
+        _url(f"parental_consent:{consent.id}"),
+        data={"content_hash": 12345},
+        format="json",
+    )
+    assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Review P10 — audit metadata enrichment (tier_type + display_name)
+# ---------------------------------------------------------------------------
+
+
+@patch("apps.accounts.tasks.notify_parental_consent_revoked")
+def test_audit_metadata_includes_tier_type_and_display_name(mock_task):
+    """Review P10 — Story 1.10 §AC5 mandates self-contained audit metadata."""
+    student = _make_student()
+    consent = _granted_consent(student, parent_email="metadata-test@example.test")
+    client = _authed_client(student)
+    response = client.post(_url(f"parental_consent:{consent.id}"), data=_body(), format="json")
+    assert response.status_code == 200
+    row = AuditLog.objects.filter(action="profile.access_revoked").order_by("-created_at").first()
+    assert row.metadata["tier_type"] == "parent"
+    assert row.metadata["display_name"] == "metadata-test@example.test"
