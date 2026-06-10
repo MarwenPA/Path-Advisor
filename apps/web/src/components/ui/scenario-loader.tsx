@@ -195,6 +195,9 @@ export function ScenarioLoader({
   React.useEffect(() => {
     if (isError) return;
     if (isComplete) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- animation
+      // sync: derive bar width from `isComplete` prop. The "freeze on error"
+      // semantics + RAF transition below require keeping `barWidth` as state.
       setBarWidth(100);
       return;
     }
