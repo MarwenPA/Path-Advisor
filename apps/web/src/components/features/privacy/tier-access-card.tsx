@@ -8,11 +8,7 @@
  * a screen-reader user knows WHAT they would revoke.
  */
 import { RevokeAccessButton } from "@/components/features/privacy/revoke-access-button";
-import {
-  ACCESS_LIST_COPY,
-  type DataAreaKey,
-  type TierType,
-} from "@/lib/i18n/fr/access-list";
+import { ACCESS_LIST_COPY, type DataAreaKey, type TierType } from "@/lib/i18n/fr/access-list";
 
 import type { AccessListEntry } from "@/lib/api/access-list";
 

@@ -25,9 +25,8 @@ vi.mock("next/navigation", () => ({
 
 const revokeMock = vi.fn();
 vi.mock("@/lib/api/access-list", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/access-list")>(
-    "@/lib/api/access-list",
-  );
+  const actual =
+    await vi.importActual<typeof import("@/lib/api/access-list")>("@/lib/api/access-list");
   return {
     ...actual,
     revokeAccessListEntry: (...args: unknown[]) => revokeMock(...args),

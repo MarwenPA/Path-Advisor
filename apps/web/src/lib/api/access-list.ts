@@ -42,11 +42,8 @@ export async function revokeAccessListEntry(
   id: string,
   contentHash: string,
 ): Promise<RevokeResponse> {
-  return apiFetch<RevokeResponse>(
-    `/api/v1/profile/access-list/${encodeURIComponent(id)}/revoke/`,
-    {
-      method: "POST",
-      body: { content_hash: contentHash },
-    },
-  );
+  return apiFetch<RevokeResponse>(`/api/v1/profile/access-list/${encodeURIComponent(id)}/revoke/`, {
+    method: "POST",
+    body: { content_hash: contentHash },
+  });
 }

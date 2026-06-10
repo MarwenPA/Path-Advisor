@@ -14,8 +14,7 @@ import { ACCESS_LIST_COPY } from "@/lib/i18n/fr/access-list";
 
 export const metadata: Metadata = {
   title: "Accès tiers | Path-Advisor",
-  description:
-    "Liste des personnes et institutions qui ont accès à ton profil Path-Advisor.",
+  description: "Liste des personnes et institutions qui ont accès à ton profil Path-Advisor.",
 };
 
 // Server-only data fetch. Errors propagate up to the Next.js error boundary

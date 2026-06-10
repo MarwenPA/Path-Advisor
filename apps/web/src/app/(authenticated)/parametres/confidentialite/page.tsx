@@ -41,9 +41,9 @@ export default function ConfidentialitePage() {
       <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-6">
         <h2 className="text-h2 font-semibold text-text">Accès tiers</h2>
         <p className="text-body text-text-muted">
-          Voici la liste des personnes et institutions (parent, conseillère, école partenaire)
-          qui ont actuellement accès à ton profil — avec ce qu&apos;elles voient et ce qui leur
-          reste masqué.
+          Voici la liste des personnes et institutions (parent, conseillère, école partenaire) qui
+          ont actuellement accès à ton profil — avec ce qu&apos;elles voient et ce qui leur reste
+          masqué.
         </p>
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           <Button asChild>
