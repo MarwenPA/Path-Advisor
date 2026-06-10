@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-08  # Epic 2 specs sync: 9 stories backlog→ready-for-dev, epic-2 backlog→in-progress
+last_updated: 2026-06-10  # Stories 2.8 + 2.9 done (Pass 2 review applied, PR #12 merging)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -69,8 +69,8 @@ development_status:
   2-5-mode-degrade-plus-tard-bulletins: ready-for-dev
   2-6-mise-a-jour-profil: ready-for-dev
   2-7-score-completude-profil: ready-for-dev
-  2-8-composant-scenario-loader: ready-for-dev
-  2-9-composant-graceful-fallback: ready-for-dev
+  2-8-composant-scenario-loader: done
+  2-9-composant-graceful-fallback: done
   epic-2-retrospective: optional
 
   # Epic 3 — Recommandation vocationnelle (1er aha)
