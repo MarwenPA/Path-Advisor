@@ -257,6 +257,29 @@ If we cleared on password-only success, an attacker who guesses the password but
 
 **DPO playbook** for users who lost both their authenticator AND their 8 recovery codes lives in [`docs/runbooks/mfa-lost-device.md`](./runbooks/mfa-lost-device.md).
 
+## 9e. RBAC — permissions, audit, CI gate (Story 1.7)
+
+Six roles (`student`, `parent`, `counselor`, `school_admin`, `path_admin`, `support`) gated via `apps.core.permissions` permission classes. Every new view MUST declare `permission_classes` explicitly — enforced by the `assert_rbac_declared.py` CI gate.
+
+**Canonical staff endpoint shape:**
+
+```python
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import IsCounselor  # requires_mfa_verified=True by default
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsCounselor])
+def cohort_dashboard(request):
+    ...
+```
+
+Every refusal writes ONE `rbac.access_denied` audit row per request (deduped). DPO triage queries on `actor_id + action="rbac.access_denied"` spot escalation patterns.
+
+**RBAC vs RLS (Story 1.7 vs Story 1.8):** orthogonal layers, both active. RBAC = "can this user TRY this action?" (view layer, 401/403). RLS = "what data can this user SEE in the result set?" (DB layer, automatic filter).
+
+Full matrix + how-to-add-a-new-endpoint walkthrough: [`docs/patterns/rbac-matrix.md`](./patterns/rbac-matrix.md).
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in

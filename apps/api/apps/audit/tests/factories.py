@@ -25,6 +25,12 @@ class UserFactory(factory.django.DjangoModelFactory):
 class PathAdminUserFactory(UserFactory):
     role = UserRole.PATH_ADMIN
     is_staff = True
+    # Story 1.7 §AC10 — production path_admin users are typically superusers
+    # (DPO override path). Setting it here bypasses the new `IsPathAdmin.
+    # requires_mfa_verified=True` gate during tests, mirroring how a real
+    # DPO who needs emergency access (no authenticator on hand) operates
+    # via `manage.py shell` + superuser status.
+    is_superuser = True
 
 
 class AuditLogFactory(factory.django.DjangoModelFactory):

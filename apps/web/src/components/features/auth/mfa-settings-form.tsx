@@ -201,7 +201,7 @@ export function MfaSettingsForm({ user }: Props) {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-text-error">
+          <p role="alert" className="text-text-error text-sm">
             {error}
           </p>
         )}
@@ -234,11 +234,7 @@ export function MfaSettingsForm({ user }: Props) {
             {COPY.regenerateCta}
           </Button>
           {!user.mfa_required_by_role && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDialog("disable")}
-            >
+            <Button type="button" variant="ghost" onClick={() => setDialog("disable")}>
               {COPY.disableCta}
             </Button>
           )}
@@ -250,10 +246,8 @@ export function MfaSettingsForm({ user }: Props) {
   // Not enrolled — split staff (banner) vs B2C (CTA)
   if (user.mfa_required_by_role) {
     return (
-      <section className="space-y-2 rounded-lg border border-text-error bg-red-50 p-6">
-        <h2 className="text-h2 font-semibold text-text-error">
-          {COPY.staffNotEnrolledTitle}
-        </h2>
+      <section className="border-text-error space-y-2 rounded-lg border bg-red-50 p-6">
+        <h2 className="text-text-error text-h2 font-semibold">{COPY.staffNotEnrolledTitle}</h2>
         <p className="text-body">{COPY.staffNotEnrolledBody}</p>
       </section>
     );
@@ -281,7 +275,7 @@ export function MfaSettingsForm({ user }: Props) {
       <h2 className="text-h2 font-semibold">{COPY.b2cNotEnrolledTitle}</h2>
       <p className="text-body text-text-muted">{COPY.b2cNotEnrolledBody}</p>
       {error && (
-        <p role="alert" className="text-sm text-text-error">
+        <p role="alert" className="text-text-error text-sm">
           {error}
         </p>
       )}

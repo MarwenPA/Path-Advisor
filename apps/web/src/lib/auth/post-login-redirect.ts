@@ -32,6 +32,7 @@ const ROLE_TO_PATH: Record<UserRole, string> = {
   // path_admin uses Django admin (separate cookie auth there) — frontend
   // opens it in a new tab rather than nav'ing the SPA.
   path_admin: "/admin/",
+  support: MVP_FALLBACK_PATH, // Story 1.7 — support role; future support dashboard.
 };
 
 export function getPostLoginPath(role: UserRole, _status: UserStatus): string {

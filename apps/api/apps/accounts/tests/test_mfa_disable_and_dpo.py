@@ -97,9 +97,17 @@ def test_staff_cannot_disable_mfa_returns_403(authed_client):
     )
     assert res.status_code == 403
     body = res.json()
-    assert body["type"].endswith("/mfa-disable-forbidden")
+    # Story 1.7 §AC7 — the permission layer (`IsB2C`) refuses staff at the
+    # edge with the generic `insufficient-permissions` type BEFORE reaching
+    # `mfa_service.disable()`. The service-layer `MfaDisableForbiddenForStaff`
+    # exception still exists as defense-in-depth for non-HTTP callers
+    # (Django shell, Celery), but the HTTP path now surfaces the canonical
+    # RBAC Problem Details.
+    assert body["type"].endswith("/insufficient-permissions")
     # Devices remain intact
     assert TOTPDevice.objects.filter(user=user).exists()
+    # The RBAC layer wrote one `rbac.access_denied` audit row.
+    assert AuditLog.objects.filter(action="rbac.access_denied", actor_id=user.id).count() == 1
 
 
 def test_disable_with_wrong_password_returns_400(authed_client):

@@ -4,8 +4,7 @@ import { MfaChallengeForm } from "@/components/features/auth/mfa-challenge-form"
 
 export const metadata: Metadata = {
   title: "Vérification double authentification | Path-Advisor",
-  description:
-    "Saisis ton code TOTP ou un code de récupération pour finaliser ta connexion.",
+  description: "Saisis ton code TOTP ou un code de récupération pour finaliser ta connexion.",
   robots: { index: false, follow: false },
 };
 

@@ -36,6 +36,7 @@
   --color-semantic-sur: 203 48% 44%; /* #3A7CA5 — "pari sûr"             */
   --color-success: 152 39% 30%; /* #2F6B4F                          */
   --color-warning: 37 76% 44%; /* #C7841B                          */
+  --color-warning-bg: 39 67% 92%; /* #FBF0DD — warning surface pair    */
   --color-danger: 3 63% 38%; /* #9E2A24 — ~6.8:1 vs bg (AA)      */
   --color-focus-ring: var(--color-brand);
 

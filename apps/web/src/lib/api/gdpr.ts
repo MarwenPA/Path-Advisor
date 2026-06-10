@@ -8,12 +8,7 @@
 
 import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
-export type GdprExportStatus =
-  | "pending"
-  | "in_progress"
-  | "ready"
-  | "expired"
-  | "failed";
+export type GdprExportStatus = "pending" | "in_progress" | "ready" | "expired" | "failed";
 
 export interface GdprExportRequest {
   id: string;
