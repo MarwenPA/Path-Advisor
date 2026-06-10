@@ -180,6 +180,18 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Metadata :** `{"reason": "<free-text justification>"}`.
 - **DPO note :** this is the "break-glass" trail. Every entry must have a meaningful `reason` so reviewers can audit the decision later. See `docs/runbooks/mfa-lost-device.md`.
 
+## Story 1.7 — RBAC middleware
+
+### `rbac.access_denied`
+- **Posé par :** `apps.core.permissions._record_rbac_denial` from any `PathAdvisorPermission` subclass (or `IsOwner.has_object_permission`) when it returns `False`.
+- **Result :** `denied`.
+- **Actor :** the user attempting the action (may be `None` for anonymous).
+- **Subject :** `None` (RBAC denial is an actor-side event — DPO queries `WHERE actor_id = X` to spot escalation patterns).
+- **Metadata :** `{"endpoint": "<request.path>", "method": "GET|POST|...", "required_roles": [...], "actor_role": "<role or empty>", "reason": "not_authenticated"|"wrong_role"|"not_mfa_verified"|"not_fully_active"|"not_owner", "view": "<view class name>"}`.
+- **Object-level only :** also carries `{"target_user_id": "...", "actor_user_id": "..."}` when `reason="not_owner"`.
+- **Dedup :** ONE row per request (DRF calls `has_permission` 2-3× per request — list view + filter backends — so the helper sets `request._rbac_denial_recorded = True` to collapse).
+- **DPO action :** patterns of `rbac.access_denied` from the same `actor_id` against many `endpoint`s = active escalation probe ; from the same `ip_address_hash` across many `actor_id`s = credential-stuffing post-login. See `docs/patterns/rbac-matrix.md` §7 for canonical triage queries.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.

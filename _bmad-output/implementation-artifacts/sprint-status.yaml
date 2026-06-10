@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-10  # Stories 2.8 + 2.9 done (Pass 2 review applied, PR #12 merging)
+last_updated: 2026-06-10  # Story 1.7 done (RBAC review remediation, PR #13) + Stories 2.8/2.9 done (PR #12)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   1-4-inscription-eleve-moins-15-ans-parental: done
   1-5-connexion-email-password: done
   1-6-mfa-staff: done
-  1-7-rbac-middleware-autorisation: backlog
+  1-7-rbac-middleware-autorisation: done
   1-8-multi-tenant-rls-postgresql: done
   1-9-liste-tiers-acces-profil: backlog
   1-10-revocation-acces-tiers: backlog

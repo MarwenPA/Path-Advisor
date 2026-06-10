@@ -45,6 +45,16 @@ jobs:
         # would break the right-to-erasure cascade pipeline.
         run: uv run python scripts/assert_user_cascade.py
 
+      - name: Assert RBAC declaration contract (Story 1.7 §AC5)
+        # Walks every URL pattern and refuses any endpoint without an EXPLICIT
+        # `permission_classes` declaration. Endpoints intentionally public OR
+        # IsAuthenticated-only must be whitelisted with rationale comments in
+        # the script itself. Also enforces that IsOwner is composed with a
+        # role permission (code-review D3) to prevent permission misuse.
+        env:
+          DJANGO_SETTINGS_MODULE: path_advisor.settings.test
+        run: uv run python scripts/assert_rbac_declared.py
+
       - name: Export OpenAPI schema
         run: uv run python scripts/export_openapi.py
 
