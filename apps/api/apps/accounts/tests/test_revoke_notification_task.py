@@ -67,3 +67,49 @@ def test_task_returns_false_when_smtp_fails(mock_send):
     result = notify_parental_consent_revoked(str(consent.id))
     assert result is False
     mock_send.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Review D5 — `revocation_notification_sent_at` idempotency gate
+# ---------------------------------------------------------------------------
+
+
+@patch("apps.accounts.tasks.send_revoked_to_parent", return_value=True)
+def test_task_stamps_revocation_notification_sent_at_on_success(mock_send):
+    """Review D5 (2) — successful SMTP must stamp the gate column."""
+    consent = _revoked_consent()
+    assert consent.revocation_notification_sent_at is None  # pre-condition
+
+    notify_parental_consent_revoked(str(consent.id))
+
+    consent.refresh_from_db()
+    assert consent.revocation_notification_sent_at is not None
+    mock_send.assert_called_once()
+
+
+@patch("apps.accounts.tasks.send_revoked_to_parent", return_value=True)
+def test_task_is_idempotent_on_re_invocation(mock_send):
+    """Review D5 (1) — a second invocation against an already-notified row
+    MUST NOT call SMTP again (gate on `revocation_notification_sent_at`).
+    """
+    consent = _revoked_consent()
+    consent.revocation_notification_sent_at = timezone.now()
+    consent.save(update_fields=["revocation_notification_sent_at"])
+
+    result = notify_parental_consent_revoked(str(consent.id))
+
+    assert result is True
+    mock_send.assert_not_called()
+
+
+@patch("apps.accounts.tasks.send_revoked_to_parent", return_value=False)
+def test_task_does_not_stamp_on_smtp_failure(mock_send):
+    """Review D5 — SMTP returning False must NOT stamp the gate (so a
+    Celery retry can re-attempt without thinking the email already went out).
+    """
+    consent = _revoked_consent()
+    notify_parental_consent_revoked(str(consent.id))
+
+    consent.refresh_from_db()
+    assert consent.revocation_notification_sent_at is None
+    mock_send.assert_called_once()

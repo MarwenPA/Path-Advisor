@@ -77,6 +77,12 @@ log = structlog.get_logger(__name__)
 # `expires_at__lte=now()` directly — see §P13.
 _REMINDER_AFTER_DAYS = 30
 
+# Narrow retryable email exceptions — programming bugs (TemplateDoesNotExist,
+# KeyError) must NOT be retried (Story 1.11 post-review). Hoisted from below
+# (was line 262) so Story 1.10's `notify_parental_consent_revoked` (review D5)
+# can reference it without a forward declaration.
+_EMAIL_RETRY_EXC = (SMTPException, ConnectionError, TimeoutError, OSError)
+
 
 @shared_task(name="accounts.send_parental_consent_reminders")
 def send_parental_consent_reminders() -> int:
@@ -183,18 +189,27 @@ def notify_unconfirmed_granted_consents() -> int:
     return sent
 
 
-@shared_task(name="accounts.notify_parental_consent_revoked")
+@shared_task(
+    name="accounts.notify_parental_consent_revoked",
+    autoretry_for=_EMAIL_RETRY_EXC,
+    max_retries=3,
+    default_retry_delay=60,
+    retry_backoff=True,
+)
 def notify_parental_consent_revoked(consent_id: str) -> bool:
-    """Story 1.10 §AC4 / §T3 — send the "your access has been revoked" email
-    to the parent. Dispatched from ``ParentalConsentSource.revoke`` after the
-    row is written.
+    """Story 1.10 §AC4 / §T3 + review D5 hardening — send the "your access has
+    been revoked" email to the parent. Dispatched from
+    ``ParentalConsentSource.revoke`` via ``transaction.on_commit``.
 
-    Idempotency : the source's ``revoke()`` is gated on ``revoked_at IS NULL``,
-    so the task is dispatched at most once per logical revocation. Retries
-    inside the task itself (SMTP transient failures) re-send the SAME email
-    to the SAME address — that is the desired behavior (a delayed delivery
-    is better than no delivery). The student is never directly notified of
-    THIS task's outcome ; their UI just shows "Accès révoqué" on the 200.
+    Idempotency contract (review D5) :
+    1. ``revocation_notification_sent_at IS NULL`` is checked BEFORE sending —
+       a re-dispatch (Celery retry that landed after SMTP success, or manual
+       re-run) is a no-op.
+    2. ``revocation_notification_sent_at`` is stamped on successful SMTP send.
+    3. On transient SMTP failure (SMTPException / ConnectionError / TimeoutError
+       / OSError), Celery autoretries with exponential backoff (3 max).
+    4. On programming errors (TemplateDoesNotExist, KeyError, etc.), the task
+       fails fast — Celery doesn't retry these.
     """
     with with_system_actor(reason="parental_consent.notify_revoked"):
         try:
@@ -210,11 +225,23 @@ def notify_parental_consent_revoked(consent_id: str) -> bool:
             log.error("parental_consent.revoke_notify_no_revoked_at", consent_id=consent_id)
             return False
 
-        try:
-            sent = send_revoked_to_parent(consent)
-        except Exception:
-            log.exception("parental_consent.revoke_notify_failed", consent_id=consent_id)
-            return False
+        # Review D5 (1) — idempotency gate. A second invocation (manual retry
+        # or out-of-band re-dispatch) sees the stamp and exits without re-sending.
+        if consent.revocation_notification_sent_at is not None:
+            log.info(
+                "parental_consent.revoke_notification_already_sent",
+                consent_id=consent_id,
+                sent_at=consent.revocation_notification_sent_at.isoformat(),
+            )
+            return True
+
+        sent = send_revoked_to_parent(consent)
+
+        if sent:
+            # Review D5 (2) — stamp on success so a retry that lands after
+            # successful SMTP doesn't re-deliver.
+            consent.revocation_notification_sent_at = timezone.now()
+            consent.save(update_fields=["revocation_notification_sent_at", "updated_at"])
 
         log.info(
             "parental_consent.revoke_notification_sent",
@@ -234,11 +261,6 @@ SCHEMA_VERSION = "1.0"
 # `record_audit` reads `.id` and `.role` from this object — actor_id=None means
 # "no human", actor_role="system" makes the DPO filter explicit.
 _SYSTEM_ACTOR = SimpleNamespace(id=None, role="system")
-
-# Narrow retryable email exceptions — programming bugs (TemplateDoesNotExist,
-# KeyError) must NOT be retried with the password in kwargs (Story 1.11
-# post-review patch).
-_EMAIL_RETRY_EXC = (SMTPException, ConnectionError, TimeoutError, OSError)
 
 README_BODY = """\
 Path-Advisor — Export RGPD (Article 20)

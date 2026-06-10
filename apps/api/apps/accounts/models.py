@@ -530,6 +530,10 @@ class ParentalConsent(models.Model):
     # Story 1.9 §AC1 — set by Story 1.10 on user-initiated revocation. The
     # access-list query filters `revoked_at IS NULL` so only live grants show.
     revoked_at = models.DateTimeField(null=True, blank=True)
+    # Story 1.10 review D5 — gates `notify_parental_consent_revoked` so a
+    # Celery retry can't re-deliver the same email. Distinct from
+    # `notification_sent_at` (Story 1.4 granted email).
+    revocation_notification_sent_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

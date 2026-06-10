@@ -59,7 +59,12 @@ class AuditLog(models.Model):
     tenant_id = models.UUIDField(null=True, blank=True, db_index=True)
 
     # Subject = the student whose data is touched (null for non-subject events like login_failed).
-    subject_id = models.CharField(max_length=32, null=True, blank=True, db_index=True)
+    # Story 1.10 review P1 — widened from 32 to 96 chars to accommodate
+    # composite ids `<source_name>:<source_pk>` (parental_consent:<26-char-ULID>
+    # ~ 47 chars). Without this, PostgreSQL would raise `DataError` on the
+    # INSERT and `record_audit` would silently swallow it — every revocation
+    # in prod would be unaudited.
+    subject_id = models.CharField(max_length=96, null=True, blank=True, db_index=True)
 
     # `<domain>.<action>` — see docs/patterns/audit-events.md for the canonical catalog.
     action = models.CharField(max_length=100, db_index=True)
