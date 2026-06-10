@@ -74,7 +74,10 @@ const config: Config = {
           sur: "hsl(var(--color-semantic-sur))",
         },
         success: "hsl(var(--color-success))",
-        warning: "hsl(var(--color-warning))",
+        warning: {
+          DEFAULT: "hsl(var(--color-warning))",
+          bg: "hsl(var(--color-warning-bg))",
+        },
         danger: "hsl(var(--color-danger))",
       },
 
@@ -122,6 +125,29 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+
+      // ---------- Custom keyframes / animations ----------
+      // `scenario-loader-particle`: Story 2.8 AC2 — minimal "signal de vie"
+      // pulse on the loader illustration. Disabled by the global
+      // reduced-motion reset (tokens.css §reduced-motion).
+      keyframes: {
+        "scenario-loader-particle": {
+          "0%, 100%": { transform: "scale(0.8)", opacity: "0.4" },
+          "50%": { transform: "scale(1.1)", opacity: "1" },
+        },
+        // Story 2.8 AC4 — overrun warning banner enters with fade + 8 px
+        // slide-up over motion-quick. Global reduced-motion reset collapses
+        // the duration to ~0, leaving the end state visible without movement.
+        "scenario-warning-in": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "scenario-loader-particle": "scenario-loader-particle 1800ms ease-out infinite",
+        "scenario-warning-in":
+          "scenario-warning-in var(--motion-quick) cubic-bezier(0.16,1,0.3,1) forwards",
       },
     },
   },
