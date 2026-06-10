@@ -105,6 +105,8 @@ urlpatterns = [
     path("api/v1/auth/", include("dj_rest_auth.urls")),
     path("api/v1/", include("apps.core.urls")),
     path("api/v1/audit/", include("apps.audit.urls")),
+    # Story 1.9 — third-party access list (`GET /api/v1/profile/access-list/`).
+    path("api/v1/profile/", include("apps.profiles.urls")),
     # Story 1.11 — GDPR Article 20 exports (POST/GET /api/v1/me/gdpr-exports[/{id}[/download]]).
     path("api/v1/me/", include("apps.accounts.gdpr_urls")),
     # OpenAPI / docs

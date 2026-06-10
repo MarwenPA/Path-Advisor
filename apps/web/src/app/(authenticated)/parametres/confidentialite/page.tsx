@@ -38,6 +38,20 @@ export default function ConfidentialitePage() {
         </div>
       </section>
 
+      <section className="flex flex-col gap-3 rounded-lg border border-border bg-bg p-6">
+        <h2 className="text-h2 font-semibold text-text">Accès tiers</h2>
+        <p className="text-body text-text-muted">
+          Voici la liste des personnes et institutions (parent, conseillère, école partenaire) qui
+          ont actuellement accès à ton profil — avec ce qu&apos;elles voient et ce qui leur reste
+          masqué.
+        </p>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          <Button asChild>
+            <Link href="/parametres/confidentialite/acces-tiers">Voir mes accès tiers</Link>
+          </Button>
+        </div>
+      </section>
+
       <section className="rounded-lg border border-dashed border-border-strong bg-bg-2 p-6">
         <h2 className="text-h2 font-semibold text-text">Suppression de compte</h2>
         <p className="text-body text-text-muted">

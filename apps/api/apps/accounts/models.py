@@ -527,6 +527,9 @@ class ParentalConsent(models.Model):
     # audit log to comply with data minimization; cf. Story 1.4 §AC4).
     decision_ip_truncated = models.CharField(max_length=45, null=True, blank=True)  # noqa: DJ001
     decision_user_agent = models.CharField(max_length=200, null=True, blank=True)  # noqa: DJ001
+    # Story 1.9 §AC1 — set by Story 1.10 on user-initiated revocation. The
+    # access-list query filters `revoked_at IS NULL` so only live grants show.
+    revoked_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -539,6 +542,9 @@ class ParentalConsent(models.Model):
             models.Index(fields=["decision", "expires_at"]),
             # Supports the "find latest pending consent for student" lookup used by /resend/.
             models.Index(fields=["student", "decision"]),
+            # Story 1.9 — supports the access-list query
+            # `student=:u AND decision='granted' AND revoked_at IS NULL`.
+            models.Index(fields=["student", "revoked_at"], name="parental_co_student_revoke_idx"),
         ]
 
     def __str__(self) -> str:

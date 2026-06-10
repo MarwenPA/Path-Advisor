@@ -57,6 +57,7 @@ from apps.accounts.services.parental_consent_email import (
     send_expired_to_child,
     send_granted_to_child,
     send_reminder_to_parent,
+    send_revoked_to_parent,
 )
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
@@ -180,6 +181,47 @@ def notify_unconfirmed_granted_consents() -> int:
 
     log.info("parental_consent.grant_notifications_sent", count=sent)
     return sent
+
+
+@shared_task(name="accounts.notify_parental_consent_revoked")
+def notify_parental_consent_revoked(consent_id: str) -> bool:
+    """Story 1.10 §AC4 / §T3 — send the "your access has been revoked" email
+    to the parent. Dispatched from ``ParentalConsentSource.revoke`` after the
+    row is written.
+
+    Idempotency : the source's ``revoke()`` is gated on ``revoked_at IS NULL``,
+    so the task is dispatched at most once per logical revocation. Retries
+    inside the task itself (SMTP transient failures) re-send the SAME email
+    to the SAME address — that is the desired behavior (a delayed delivery
+    is better than no delivery). The student is never directly notified of
+    THIS task's outcome ; their UI just shows "Accès révoqué" on the 200.
+    """
+    with with_system_actor(reason="parental_consent.notify_revoked"):
+        try:
+            consent = ParentalConsent.objects.get(id=consent_id)
+        except ParentalConsent.DoesNotExist:
+            log.warning("parental_consent.revoke_notify_missing_row", consent_id=consent_id)
+            return False
+
+        if consent.revoked_at is None:
+            # Defensive : the task was dispatched but the row isn't actually
+            # revoked. Don't email — log + skip. Indicates a programming bug
+            # upstream that we'd want Sentry to catch.
+            log.error("parental_consent.revoke_notify_no_revoked_at", consent_id=consent_id)
+            return False
+
+        try:
+            sent = send_revoked_to_parent(consent)
+        except Exception:
+            log.exception("parental_consent.revoke_notify_failed", consent_id=consent_id)
+            return False
+
+        log.info(
+            "parental_consent.revoke_notification_sent",
+            consent_id=consent_id,
+            sent=sent,
+        )
+        return sent
 
 
 # ============================================================================
