@@ -80,9 +80,7 @@ describe("GracefulFallback", () => {
     const tertiary = screen.getByRole("button", { name: "Plus tard" });
     fireEvent.click(tertiary);
     expect(tertiaryOnClick).toHaveBeenCalledOnce();
-    const tertiaryEvents = events.filter(
-      (e) => e.name === "graceful_fallback_tertiary_clicked",
-    );
+    const tertiaryEvents = events.filter((e) => e.name === "graceful_fallback_tertiary_clicked");
     expect(tertiaryEvents).toHaveLength(1);
     expect(tertiaryEvents[0]).toMatchObject({ context: "ocr", tertiary_label: "Plus tard" });
   });
@@ -127,9 +125,7 @@ describe("GracefulFallback", () => {
     expect(primary.className).toContain("cursor-wait");
     fireEvent.click(primary);
     expect(primaryClick).not.toHaveBeenCalled();
-    expect(
-      events.filter((e) => e.name === "graceful_fallback_primary_clicked"),
-    ).toHaveLength(0);
+    expect(events.filter((e) => e.name === "graceful_fallback_primary_clicked")).toHaveLength(0);
   });
 
   it("disables click and emits no event when isDisabled is true", () => {
@@ -164,9 +160,7 @@ describe("GracefulFallback", () => {
 
   it("places initial focus on the primary button when the page has no other focus", () => {
     render(<GracefulFallback {...baseProps} />);
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: /Saisir à la main/ }),
-    );
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Saisir à la main/ }));
   });
 
   it("does not steal focus when the caller has already placed it elsewhere", () => {

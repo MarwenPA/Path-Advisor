@@ -49,8 +49,7 @@ const COPY = {
     "Ta session de configuration a expiré. Reconnecte-toi pour relancer l'enrôlement.",
   fallbackError:
     "Quelque chose n'a pas fonctionné. Vérifie ta connexion et réessaie dans un instant.",
-  missingSession:
-    "Aucune session MFA active. Connecte-toi à nouveau pour relancer l'enrôlement.",
+  missingSession: "Aucune session MFA active. Connecte-toi à nouveau pour relancer l'enrôlement.",
 };
 
 export function MfaEnrollForm() {
@@ -114,10 +113,7 @@ export function MfaEnrollForm() {
         const type = cause.problem?.type ?? "";
         if (type.endsWith("/mfa-challenge-failed")) {
           setError(COPY.invalidCode);
-        } else if (
-          type.endsWith("/mfa-session-expired") ||
-          type.endsWith("/mfa-session-invalid")
-        ) {
+        } else if (type.endsWith("/mfa-session-expired") || type.endsWith("/mfa-session-invalid")) {
           setError(COPY.expiredSession);
         } else {
           setError(cause.problem?.detail ?? COPY.fallbackError);
@@ -174,12 +170,7 @@ export function MfaEnrollForm() {
           <span>{COPY.saveAcknowledge}</span>
         </label>
 
-        <Button
-          type="button"
-          className="w-full"
-          disabled={!acknowledged}
-          onClick={handleContinue}
-        >
+        <Button type="button" className="w-full" disabled={!acknowledged} onClick={handleContinue}>
           {COPY.continue}
         </Button>
       </section>
@@ -223,9 +214,7 @@ export function MfaEnrollForm() {
       />
 
       <details className="rounded-lg border border-border bg-bg-2 p-3">
-        <summary className="cursor-pointer text-sm font-medium">
-          {COPY.manualSecretLabel}
-        </summary>
+        <summary className="cursor-pointer text-sm font-medium">{COPY.manualSecretLabel}</summary>
         <div className="mt-2 space-y-2">
           <p className="text-sm text-text-muted">{COPY.manualSecretHelp}</p>
           <code className="block select-all break-all rounded bg-white p-2 font-mono text-xs">
@@ -254,16 +243,12 @@ export function MfaEnrollForm() {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-text-error">
+          <p role="alert" className="text-text-error text-sm">
             {error}
           </p>
         )}
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={submitting || code.length !== 6}
-        >
+        <Button type="submit" className="w-full" disabled={submitting || code.length !== 6}>
           {submitting ? COPY.submitting : COPY.submit}
         </Button>
       </form>

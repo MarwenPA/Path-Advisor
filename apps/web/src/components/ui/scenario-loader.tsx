@@ -337,32 +337,32 @@ export function ScenarioLoader({
           isFadingOut ? "scale-[0.98] opacity-0" : "opacity-100",
         )}
       >
-      <div className="relative">
-        <div
-          aria-hidden
-          className="flex h-24 w-24 items-center justify-center rounded-full border border-border bg-bg-2"
-        >
-          <Icon className="h-10 w-10 text-text-muted" aria-hidden />
-        </div>
-        {/* M5 — particle stays MOUNTED (anti-cirque). On isComplete / isError,
+        <div className="relative">
+          <div
+            aria-hidden
+            className="flex h-24 w-24 items-center justify-center rounded-full border border-border bg-bg-2"
+          >
+            <Icon className="h-10 w-10 text-text-muted" aria-hidden />
+          </div>
+          {/* M5 — particle stays MOUNTED (anti-cirque). On isComplete / isError,
             data-animating="false" pauses the keyframe in place via the Tailwind
             `animation-play-state: paused` utility — "stoppe sur sa frame
             visible" (AC3), not a brutal DOM removal. Reduced-motion still
             unmounts since the keyframe never starts. */}
-        {!prefersReducedMotion ? (
-          <span
-            aria-hidden
-            data-testid="scenario-loader-particle"
-            data-animating={particleAnimating}
-            className={cn(
-              "absolute right-0 top-0 h-[10px] w-[10px] animate-scenario-loader-particle rounded-full bg-brand",
-              !particleAnimating && "[animation-play-state:paused]",
-            )}
-          />
-        ) : null}
-      </div>
+          {!prefersReducedMotion ? (
+            <span
+              aria-hidden
+              data-testid="scenario-loader-particle"
+              data-animating={particleAnimating}
+              className={cn(
+                "absolute right-0 top-0 h-[10px] w-[10px] animate-scenario-loader-particle rounded-full bg-brand",
+                !particleAnimating && "[animation-play-state:paused]",
+              )}
+            />
+          ) : null}
+        </div>
 
-      {/* H3 (Pass 2 PR1) — crossfade via CSS grid stack: every `<p>` shares
+        {/* H3 (Pass 2 PR1) — crossfade via CSS grid stack: every `<p>` shares
           the same grid cell (col-start-1 row-start-1) so the container
           auto-sizes to the TALLEST phrase. The previous absolute-positioned
           stack capped the height at `min-h-7` (28 px) and let multi-line
@@ -370,51 +370,51 @@ export function ScenarioLoader({
           on a 375 px mobile) overflow into the progress bar below. Grid
           stack keeps the crossfade overlap (both `<p>` mounted with
           opacity transition) without breaking layout. */}
-      <div className="grid w-full">
-        {safePhrases.map((phrase, idx) => (
-          <p
-            key={idx}
-            data-testid={idx === phraseIndex ? "scenario-loader-phrase" : undefined}
-            aria-hidden={idx !== phraseIndex}
-            className={cn(
-              "col-start-1 row-start-1 text-center text-h2 font-semibold text-text",
-              "transition-opacity duration-quick ease-standard",
-              idx === phraseIndex ? "opacity-100" : "opacity-0",
-            )}
-          >
-            {phrase}
-          </p>
-        ))}
-      </div>
-
-      <div className="flex w-full max-w-[280px] flex-col gap-3">
-        <div
-          aria-hidden
-          className="h-1 w-full overflow-hidden rounded-full bg-bg-3"
-          data-testid="scenario-loader-bar"
-        >
-          <div
-            className="h-full rounded-full bg-brand"
-            style={{
-              // H1 — width is now driven by `barWidth` STATE seeded to 0 on
-              // mount and RAF'd to 100 in the bar-animation effect, so the
-              // CSS transition over `safeSeconds` actually runs. The old
-              // `isComplete ? 100 : 0` left the bar empty for the full wait.
-              width: `${barWidth}%`,
-              transitionProperty: "width",
-              transitionTimingFunction: "linear",
-              transitionDuration: isComplete ? "var(--motion-quick)" : `${safeSeconds}s`,
-            }}
-          />
+        <div className="grid w-full">
+          {safePhrases.map((phrase, idx) => (
+            <p
+              key={idx}
+              data-testid={idx === phraseIndex ? "scenario-loader-phrase" : undefined}
+              aria-hidden={idx !== phraseIndex}
+              className={cn(
+                "col-start-1 row-start-1 text-center text-h2 font-semibold text-text",
+                "transition-opacity duration-quick ease-standard",
+                idx === phraseIndex ? "opacity-100" : "opacity-0",
+              )}
+            >
+              {phrase}
+            </p>
+          ))}
         </div>
-        <p className="text-center text-caption text-text-subtle">
-          Estimation : ~{safeSeconds} secondes
-        </p>
-      </div>
 
-      {showWarning && !isComplete && !isError ? (
-        <EstimationWarning onFallback={onFallback} fallbackLabel={fallbackLabel} />
-      ) : null}
+        <div className="flex w-full max-w-[280px] flex-col gap-3">
+          <div
+            aria-hidden
+            className="h-1 w-full overflow-hidden rounded-full bg-bg-3"
+            data-testid="scenario-loader-bar"
+          >
+            <div
+              className="h-full rounded-full bg-brand"
+              style={{
+                // H1 — width is now driven by `barWidth` STATE seeded to 0 on
+                // mount and RAF'd to 100 in the bar-animation effect, so the
+                // CSS transition over `safeSeconds` actually runs. The old
+                // `isComplete ? 100 : 0` left the bar empty for the full wait.
+                width: `${barWidth}%`,
+                transitionProperty: "width",
+                transitionTimingFunction: "linear",
+                transitionDuration: isComplete ? "var(--motion-quick)" : `${safeSeconds}s`,
+              }}
+            />
+          </div>
+          <p className="text-center text-caption text-text-subtle">
+            Estimation : ~{safeSeconds} secondes
+          </p>
+        </div>
+
+        {showWarning && !isComplete && !isError ? (
+          <EstimationWarning onFallback={onFallback} fallbackLabel={fallbackLabel} />
+        ) : null}
       </section>
       {/* Final-state announcer — sibling of the section, NOT a descendant.
           Empty `role="status"` (implicit) container that only ever holds

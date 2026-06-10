@@ -45,18 +45,13 @@ export type RouteGuardVerdict = "allow" | "forbidden" | "redirect-login";
  * paths; this is a defensive default to avoid accidental lockouts on a
  * route the matrix forgot).
  */
-export function assertAllowedRole(
-  path: string,
-  role: UserRole | null,
-): RouteGuardVerdict {
+export function assertAllowedRole(path: string, role: UserRole | null): RouteGuardVerdict {
   if (role === null) {
     return "redirect-login";
   }
 
   // Find the longest prefix that matches.
-  const prefixes = Object.keys(ROUTE_ALLOWED_ROLES).sort(
-    (a, b) => b.length - a.length,
-  );
+  const prefixes = Object.keys(ROUTE_ALLOWED_ROLES).sort((a, b) => b.length - a.length);
   for (const prefix of prefixes) {
     if (path === prefix || path.startsWith(prefix + "/")) {
       const allowed = ROUTE_ALLOWED_ROLES[prefix] ?? [];
@@ -83,11 +78,7 @@ export function sanitizeNextParam(next: string | null): string {
   // is also a CRLF-injection vector if `next` ever lands in a header.
   if (/\s/.test(next)) return "/";
   // Refuse anything starting with `//`, `\\`, or containing a scheme.
-  if (
-    next.startsWith("//") ||
-    next.startsWith("\\") ||
-    /^[a-z][a-z0-9+.-]*:/i.test(next)
-  ) {
+  if (next.startsWith("//") || next.startsWith("\\") || /^[a-z][a-z0-9+.-]*:/i.test(next)) {
     return "/";
   }
   // Must start with `/` (local path)

@@ -46,9 +46,7 @@ export default async function CancelDeletionPage({ params }: PageProps) {
   if (status.status === "cancelled") {
     return (
       <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-12">
-        <h1 className="text-h1 font-semibold text-text">
-          Cette demande a déjà été annulée
-        </h1>
+        <h1 className="text-h1 font-semibold text-text">Cette demande a déjà été annulée</h1>
         <p className="text-body text-text-muted">
           Ton compte est restauré. Tu peux te reconnecter normalement.
         </p>
@@ -59,13 +57,10 @@ export default async function CancelDeletionPage({ params }: PageProps) {
   if (status.status === "hard_deleted" || status.status === "expired") {
     return (
       <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-12">
-        <h1 className="text-h1 font-semibold text-text">
-          Trop tard pour annuler
-        </h1>
+        <h1 className="text-h1 font-semibold text-text">Trop tard pour annuler</h1>
         <p className="text-body text-text-muted">
-          La fenêtre de 30 jours est dépassée et la suppression a déjà eu lieu
-          ou va survenir incessamment. Tu peux créer un nouveau compte à tout
-          moment si tu le souhaites.
+          La fenêtre de 30 jours est dépassée et la suppression a déjà eu lieu ou va survenir
+          incessamment. Tu peux créer un nouveau compte à tout moment si tu le souhaites.
         </p>
       </main>
     );
@@ -74,22 +69,18 @@ export default async function CancelDeletionPage({ params }: PageProps) {
   return (
     <main className="mx-auto flex w-full max-w-md flex-col gap-6 px-4 py-12">
       <header className="flex flex-col gap-2">
-        <h1 className="text-h1 font-semibold text-text">
-          Annuler la suppression de ton compte
-        </h1>
+        <h1 className="text-h1 font-semibold text-text">Annuler la suppression de ton compte</h1>
         <p className="text-body text-text-muted">
           Compte : <strong>{status.user_email_masked}</strong>
         </p>
         <p className="text-body-sm text-text-muted">
-          Suppression prévue le{" "}
-          <strong>{formatDateTime(status.hard_delete_after)}</strong>.
+          Suppression prévue le <strong>{formatDateTime(status.hard_delete_after)}</strong>.
         </p>
       </header>
 
       <section className="rounded-lg border border-border bg-bg-2 p-4 text-body-sm text-text-muted">
-        Pour confirmer que c&apos;est bien toi, on a besoin de ton mot de passe
-        actuel. Si tu l&apos;as oublié, contacte{" "}
-        <a href="mailto:dpo@path-advisor.fr">dpo@path-advisor.fr</a>.
+        Pour confirmer que c&apos;est bien toi, on a besoin de ton mot de passe actuel. Si tu
+        l&apos;as oublié, contacte <a href="mailto:dpo@path-advisor.fr">dpo@path-advisor.fr</a>.
       </section>
 
       <CancelDeletionForm token={token} />

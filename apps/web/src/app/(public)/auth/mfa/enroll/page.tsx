@@ -4,8 +4,7 @@ import { MfaEnrollForm } from "@/components/features/auth/mfa-enroll-form";
 
 export const metadata: Metadata = {
   title: "Configurer la double authentification | Path-Advisor",
-  description:
-    "Configure ton authenticator TOTP pour sécuriser ton compte Path-Advisor.",
+  description: "Configure ton authenticator TOTP pour sécuriser ton compte Path-Advisor.",
   robots: { index: false, follow: false },
 };
 

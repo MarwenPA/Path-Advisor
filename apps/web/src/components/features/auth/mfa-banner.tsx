@@ -34,21 +34,16 @@ export function MfaBanner() {
   }
 
   return (
-    <div
-      role="alert"
-      className="border-l-4 border-text-error bg-red-50 px-4 py-3 text-sm"
-    >
+    <div role="alert" className="border-text-error border-l-4 bg-red-50 px-4 py-3 text-sm">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2">
-        <strong className="text-text-error">
-          Double authentification obligatoire
-        </strong>
+        <strong className="text-text-error">Double authentification obligatoire</strong>
         <span className="text-text">
-          Ton rôle staff impose la MFA. Active-la maintenant pour sécuriser
-          ton compte conformément à notre politique.
+          Ton rôle staff impose la MFA. Active-la maintenant pour sécuriser ton compte conformément
+          à notre politique.
         </span>
         <Link
           href="/parametres/securite/mfa"
-          className="ml-auto rounded border border-text-error px-3 py-1 font-medium text-text-error hover:bg-text-error hover:text-white"
+          className="border-text-error text-text-error hover:bg-text-error ml-auto rounded border px-3 py-1 font-medium hover:text-white"
         >
           Activer la MFA
         </Link>

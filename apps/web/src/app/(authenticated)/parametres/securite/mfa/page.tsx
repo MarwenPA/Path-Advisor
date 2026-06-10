@@ -5,8 +5,7 @@ import { fetchCurrentUser } from "@/lib/api/auth";
 
 export const metadata: Metadata = {
   title: "Sécurité — Double authentification | Path-Advisor",
-  description:
-    "Gère ta double authentification (MFA TOTP) et tes codes de récupération.",
+  description: "Gère ta double authentification (MFA TOTP) et tes codes de récupération.",
 };
 
 export default async function MfaSettingsPage() {
@@ -22,10 +21,9 @@ export default async function MfaSettingsPage() {
           Double authentification
         </h1>
         <p className="text-body text-text-muted">
-          Ajoute une étape de vérification supplémentaire à ton compte en
-          plus de ton mot de passe. Pour les rôles staff (conseiller, école,
-          admin) c&apos;est obligatoire ; pour les élèves et parents
-          c&apos;est optionnel mais fortement recommandé.
+          Ajoute une étape de vérification supplémentaire à ton compte en plus de ton mot de passe.
+          Pour les rôles staff (conseiller, école, admin) c&apos;est obligatoire ; pour les élèves
+          et parents c&apos;est optionnel mais fortement recommandé.
         </p>
       </header>
 

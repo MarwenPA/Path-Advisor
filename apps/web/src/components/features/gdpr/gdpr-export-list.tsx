@@ -4,11 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api/client";
-import {
-  createGdprExport,
-  listGdprExports,
-  type GdprExportRequest,
-} from "@/lib/api/gdpr";
+import { createGdprExport, listGdprExports, type GdprExportRequest } from "@/lib/api/gdpr";
 
 import { GdprExportCard } from "./gdpr-export-card";
 
@@ -26,8 +22,7 @@ interface State {
 
 function hasActiveExport(exports: GdprExportRequest[]): boolean {
   return exports.some(
-    (exportRow) =>
-      exportRow.status === "pending" || exportRow.status === "in_progress",
+    (exportRow) => exportRow.status === "pending" || exportRow.status === "in_progress",
   );
 }
 
@@ -53,7 +48,7 @@ export function GdprExportList() {
     } catch (cause) {
       const message =
         cause instanceof ApiError
-          ? cause.problem?.detail ?? cause.message
+          ? (cause.problem?.detail ?? cause.message)
           : "Impossible de récupérer tes demandes d'export pour le moment.";
       const authLost = cause instanceof ApiError && cause.status === 401;
       setState((previous) => ({
@@ -98,7 +93,7 @@ export function GdprExportList() {
     } catch (cause) {
       const message =
         cause instanceof ApiError
-          ? cause.problem?.detail ?? cause.message
+          ? (cause.problem?.detail ?? cause.message)
           : "Impossible de lancer un export pour le moment.";
       setState((previous) => ({
         ...previous,
@@ -152,8 +147,8 @@ export function GdprExportList() {
 
       {state.exports.length === 0 ? (
         <p className="rounded border border-dashed border-border-strong bg-bg-2 px-4 py-8 text-center text-sm text-text-muted">
-          Tu n&apos;as encore demandé aucun export. Clique sur «&nbsp;Demander
-          un export&nbsp;» pour en lancer un.
+          Tu n&apos;as encore demandé aucun export. Clique sur «&nbsp;Demander un export&nbsp;» pour
+          en lancer un.
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
@@ -161,9 +156,7 @@ export function GdprExportList() {
             <li key={exportRow.id}>
               <GdprExportCard
                 export_={exportRow}
-                onRetry={
-                  exportRow.status === "failed" ? requestNewExport : undefined
-                }
+                onRetry={exportRow.status === "failed" ? requestNewExport : undefined}
               />
             </li>
           ))}

@@ -20,18 +20,15 @@ import { requestPasswordReset } from "@/lib/api/auth";
 
 const COPY = {
   title: "Mot de passe oublié ?",
-  subtitle:
-    "Saisis ton email — on t'enverra un lien pour réinitialiser ton mot de passe.",
+  subtitle: "Saisis ton email — on t'enverra un lien pour réinitialiser ton mot de passe.",
   emailLabel: "Adresse email",
   submit: "Envoyer le lien",
   submitting: "Envoi…",
   successTitle: "Vérifie ta boîte mail",
   successBody:
     "Si cet email existe, un lien de réinitialisation t'a été envoyé. Le lien est valable 1 heure.",
-  fallbackError:
-    "Quelque chose n'a pas fonctionné. Réessaie dans quelques instants.",
-  rateLimited:
-    "Trop de demandes. Patiente quelques minutes avant de réessayer.",
+  fallbackError: "Quelque chose n'a pas fonctionné. Réessaie dans quelques instants.",
+  rateLimited: "Trop de demandes. Patiente quelques minutes avant de réessayer.",
   backToLogin: "Retour à la connexion",
 };
 
