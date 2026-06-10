@@ -47,26 +47,14 @@ describe("ScenarioLoader", () => {
   });
 
   it("uses the context-specific SR label", () => {
-    render(
-      <ScenarioLoader
-        phrases={["A", "B"]}
-        estimatedSeconds={20}
-        context="ocr"
-      />,
-    );
+    render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={20} context="ocr" />);
     expect(
       screen.getByRole("status", { name: /analyse des bulletins en cours/i }),
     ).toBeInTheDocument();
   });
 
   it("advances to the next phrase after the clamped duration", () => {
-    render(
-      <ScenarioLoader
-        phrases={["A", "B", "C"]}
-        estimatedSeconds={15}
-        context="reco"
-      />,
-    );
+    render(<ScenarioLoader phrases={["A", "B", "C"]} estimatedSeconds={15} context="reco" />);
     expect(screen.getByTestId("scenario-loader-phrase")).toHaveTextContent("A");
     // 15 s / 3 phrases = 5 s per phrase (within clamp 4-12 s).
     act(() => {
@@ -99,9 +87,7 @@ describe("ScenarioLoader", () => {
   });
 
   it("freezes on the last phrase — no loop back to phrase 0", () => {
-    render(
-      <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="reco" />,
-    );
+    render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="reco" />);
     act(() => {
       vi.advanceTimersByTime(60_000);
     });
@@ -109,9 +95,7 @@ describe("ScenarioLoader", () => {
   });
 
   it("shows the overrun warning after estimatedSeconds and emits a single analytics event", () => {
-    render(
-      <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={3} context="ocr" />,
-    );
+    render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={3} context="ocr" />);
     expect(screen.queryByTestId("scenario-loader-warning")).not.toBeInTheDocument();
 
     act(() => {
@@ -126,9 +110,7 @@ describe("ScenarioLoader", () => {
     act(() => {
       vi.advanceTimersByTime(30_000);
     });
-    const overrunEvents = events.filter(
-      (e) => e.name === "scenario_loader_estimation_exceeded",
-    );
+    const overrunEvents = events.filter((e) => e.name === "scenario_loader_estimation_exceeded");
     expect(overrunEvents).toHaveLength(1);
     expect(overrunEvents[0]).toMatchObject({ context: "ocr", estimated_seconds: 3 });
   });
@@ -203,9 +185,7 @@ describe("ScenarioLoader", () => {
     const { rerender } = render(
       <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="ocr" isError />,
     );
-    rerender(
-      <ScenarioLoader phrases={["X", "Y"]} estimatedSeconds={10} context="ocr" isError />,
-    );
+    rerender(<ScenarioLoader phrases={["X", "Y"]} estimatedSeconds={10} context="ocr" isError />);
     const errored = events.filter((e) => e.name === "scenario_loader_errored");
     expect(errored).toHaveLength(1);
   });
@@ -238,7 +218,8 @@ describe("ScenarioLoader", () => {
   // col-start-1 row-start-1) so the container auto-sizes to the tallest
   // phrase.
   it("uses CSS grid stack for crossfade (not absolute) so the container auto-sizes (Pass 2 PR1)", () => {
-    const longPhrase = "Qu'est-ce qui te plaît, vraiment ? Pas de pression, choisis ce qui te branche.";
+    const longPhrase =
+      "Qu'est-ce qui te plaît, vraiment ? Pas de pression, choisis ce qui te branche.";
     const { container } = render(
       <ScenarioLoader phrases={[longPhrase, "Short"]} estimatedSeconds={10} context="ocr" />,
     );
@@ -293,9 +274,7 @@ describe("ScenarioLoader", () => {
     expect(container.querySelector("section")?.className).not.toContain("opacity-0");
 
     // Now error again — analytics latch must have re-armed.
-    rerender(
-      <ScenarioLoader phrases={["A"]} estimatedSeconds={10} context="reco" isError />,
-    );
+    rerender(<ScenarioLoader phrases={["A"]} estimatedSeconds={10} context="reco" isError />);
     const errored = events.filter((e) => e.name === "scenario_loader_errored");
     expect(errored).toHaveLength(2);
   });
@@ -325,9 +304,7 @@ describe("ScenarioLoader", () => {
   it("does not render the particle when prefers-reduced-motion is set", () => {
     vi.unstubAllGlobals();
     mockMatchMedia(true);
-    render(
-      <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="reco" />,
-    );
+    render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} context="reco" />);
     expect(screen.queryByTestId("scenario-loader-particle")).not.toBeInTheDocument();
   });
 
@@ -340,9 +317,7 @@ describe("ScenarioLoader", () => {
   });
 
   it("resets to phrase 0 when the `phrases` array reference changes", () => {
-    const { rerender } = render(
-      <ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} />,
-    );
+    const { rerender } = render(<ScenarioLoader phrases={["A", "B"]} estimatedSeconds={10} />);
     act(() => {
       vi.advanceTimersByTime(5_000);
     });

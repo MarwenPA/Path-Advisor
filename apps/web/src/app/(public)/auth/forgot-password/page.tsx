@@ -4,8 +4,7 @@ import { ForgotPasswordForm } from "@/components/features/auth/forgot-password-f
 
 export const metadata: Metadata = {
   title: "Mot de passe oublié | Path-Advisor",
-  description:
-    "Réinitialise ton mot de passe Path-Advisor — on t'envoie un lien par email.",
+  description: "Réinitialise ton mot de passe Path-Advisor — on t'envoie un lien par email.",
   robots: { index: false, follow: false },
 };
 

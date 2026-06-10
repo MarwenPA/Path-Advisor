@@ -48,10 +48,7 @@ export function CancelDeletionForm({ token }: CancelDeletionFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
-      <label
-        htmlFor="cancel-deletion-password"
-        className="text-body-sm font-medium text-text"
-      >
+      <label htmlFor="cancel-deletion-password" className="text-body-sm font-medium text-text">
         Mot de passe actuel
       </label>
       <input
@@ -68,11 +65,7 @@ export function CancelDeletionForm({ token }: CancelDeletionFormProps) {
         aria-describedby={error ? "cancel-deletion-error" : undefined}
       />
       {error && (
-        <p
-          id="cancel-deletion-error"
-          role="alert"
-          className="text-body-sm text-danger"
-        >
+        <p id="cancel-deletion-error" role="alert" className="text-body-sm text-danger">
           {error}
         </p>
       )}
@@ -81,9 +74,7 @@ export function CancelDeletionForm({ token }: CancelDeletionFormProps) {
         disabled={submitting || password.length === 0}
         aria-disabled={submitting || password.length === 0}
       >
-        {submitting ? (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-        ) : null}
+        {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
         Annuler la suppression
       </Button>
       <p className="text-body-sm text-text-muted">

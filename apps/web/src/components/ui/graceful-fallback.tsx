@@ -100,9 +100,7 @@ function validateTitleInDev(title: string): void {
   }
   for (const word of FORBIDDEN_TITLE_WORDS) {
     if (title.includes(word)) {
-      console.warn(
-        `[GracefulFallback] title contient un mot proscrit ("${word}"). Story 2.9 AC1.`,
-      );
+      console.warn(`[GracefulFallback] title contient un mot proscrit ("${word}"). Story 2.9 AC1.`);
       return;
     }
   }
@@ -125,8 +123,7 @@ const SHARED_CTA_SHAPE =
 // brand-shade variant we ship.
 const PRIMARY_COLORS =
   "bg-brand border border-brand text-white hover:bg-brand-hover hover:border-brand-hover";
-const SECONDARY_COLORS =
-  "bg-transparent border border-border-strong text-text hover:bg-bg-2";
+const SECONDARY_COLORS = "bg-transparent border border-border-strong text-text hover:bg-bg-2";
 
 function ActionIcon({
   icon,
@@ -199,8 +196,7 @@ export function GracefulFallback({
     }
   }, [primaryAction.isDisabled, secondaryAction.isDisabled, tertiaryLink]);
 
-  const secondsSinceShown = () =>
-    (Date.now() - (shownAtRef.current ?? Date.now())) / 1000;
+  const secondsSinceShown = () => (Date.now() - (shownAtRef.current ?? Date.now())) / 1000;
 
   const handleClick = (
     action: GracefulFallbackAction,
@@ -275,11 +271,7 @@ export function GracefulFallback({
         <p className="mb-8 text-center text-body text-text-muted">{description}</p>
       ) : null}
 
-      <div
-        role="group"
-        aria-label="Options disponibles"
-        className="mb-6 flex flex-col gap-3"
-      >
+      <div role="group" aria-label="Options disponibles" className="mb-6 flex flex-col gap-3">
         <button
           ref={primaryRef}
           type="button"

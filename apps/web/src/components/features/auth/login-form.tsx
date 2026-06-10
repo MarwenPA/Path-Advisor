@@ -41,16 +41,14 @@ const COPY = {
   genericError: "Email ou mot de passe incorrect.",
   fallbackError:
     "Quelque chose n'a pas fonctionné. Vérifie ta connexion et réessaie dans un instant.",
-  accountSuspended:
-    "Ton compte est suspendu. Contacte le DPO si tu penses que c'est une erreur.",
+  accountSuspended: "Ton compte est suspendu. Contacte le DPO si tu penses que c'est une erreur.",
   emailUnverifiedTitle: "Email non vérifié",
   emailUnverifiedBody:
     "Vérifie ton adresse email avant de te connecter. Le lien d'activation t'a été envoyé à l'inscription.",
   resendButton: "Renvoyer l'email de vérification",
   resending: "Envoi…",
   resendDone: "Email renvoyé — vérifie ta boîte.",
-  rateLimited:
-    "Trop de tentatives de connexion. Patiente quelques minutes avant de réessayer.",
+  rateLimited: "Trop de tentatives de connexion. Patiente quelques minutes avant de réessayer.",
 };
 
 interface UnverifiedState {
@@ -100,9 +98,7 @@ export function LoginForm() {
           setError(COPY.fallbackError);
           return;
         }
-        const target = res.mfa_enrollment_required
-          ? "/auth/mfa/enroll"
-          : "/auth/mfa/challenge";
+        const target = res.mfa_enrollment_required ? "/auth/mfa/enroll" : "/auth/mfa/challenge";
         router.replace(target);
         return;
       }
@@ -131,9 +127,10 @@ export function LoginForm() {
           // code-review P12 (Story 1.5 review 2026-05-27). The fallback
           // covers (a) older API versions still nesting it under `errors`
           // and (b) backend regressions that drop the hint entirely.
-          const problem = cause.problem as
-            | { resend_endpoint?: string; errors?: { resend_endpoint?: string } }
-            | null;
+          const problem = cause.problem as {
+            resend_endpoint?: string;
+            errors?: { resend_endpoint?: string };
+          } | null;
           const resendEndpoint =
             problem?.resend_endpoint ??
             problem?.errors?.resend_endpoint ??
@@ -232,9 +229,7 @@ export function LoginForm() {
             >
               {resending ? COPY.resending : COPY.resendButton}
             </Button>
-            {resendStatus && (
-              <p className="text-body-sm text-text-muted">{resendStatus}</p>
-            )}
+            {resendStatus && <p className="text-body-sm text-text-muted">{resendStatus}</p>}
           </div>
         )}
 
@@ -256,10 +251,7 @@ export function LoginForm() {
         </Link>
         <p className="text-text-muted">
           {COPY.signupHint}{" "}
-          <Link
-            href="/auth/signup"
-            className="text-brand underline-offset-2 hover:underline"
-          >
+          <Link href="/auth/signup" className="text-brand underline-offset-2 hover:underline">
             {COPY.signupLink}
           </Link>
         </p>

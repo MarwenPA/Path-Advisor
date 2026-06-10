@@ -37,10 +37,8 @@ const COPY = {
   mismatch: "Les deux mots de passe ne correspondent pas.",
   tokenInvalid:
     "Ce lien est invalide ou expiré. Demande un nouveau lien depuis la page « Mot de passe oublié ».",
-  rateLimited:
-    "Trop de tentatives. Patiente quelques minutes avant de réessayer.",
-  fallbackError:
-    "Quelque chose n'a pas fonctionné. Réessaie dans un instant.",
+  rateLimited: "Trop de tentatives. Patiente quelques minutes avant de réessayer.",
+  fallbackError: "Quelque chose n'a pas fonctionné. Réessaie dans un instant.",
   backToLogin: "Retour à la connexion",
 };
 
@@ -78,9 +76,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
           // dj-rest-auth surfaces token errors via {"token": [...]} and
           // password-validator errors via {"new_password2": [...]}. Both
           // are valid 400s; render the most informative string we can find.
-          const problemErrors = cause.problem?.errors as
-            | Record<string, string[]>
-            | undefined;
+          const problemErrors = cause.problem?.errors as Record<string, string[]> | undefined;
           if (problemErrors?.token) {
             setError(COPY.tokenInvalid);
           } else if (problemErrors) {
@@ -147,10 +143,7 @@ export function ResetPasswordForm({ uid, token }: ResetPasswordFormProps) {
           </p>
         )}
 
-        <Button
-          type="submit"
-          disabled={submitting || !password1 || !password2}
-        >
+        <Button type="submit" disabled={submitting || !password1 || !password2}>
           {submitting ? COPY.submitting : COPY.submit}
         </Button>
       </form>

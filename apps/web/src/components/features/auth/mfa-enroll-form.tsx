@@ -49,8 +49,7 @@ const COPY = {
     "Ta session de configuration a expiré. Reconnecte-toi pour relancer l'enrôlement.",
   fallbackError:
     "Quelque chose n'a pas fonctionné. Vérifie ta connexion et réessaie dans un instant.",
-  missingSession:
-    "Aucune session MFA active. Connecte-toi à nouveau pour relancer l'enrôlement.",
+  missingSession: "Aucune session MFA active. Connecte-toi à nouveau pour relancer l'enrôlement.",
 };
 
 export function MfaEnrollForm() {
@@ -58,25 +57,28 @@ export function MfaEnrollForm() {
   const [startData, setStartData] = useState<MfaEnrollStartResponse | null>(null);
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [postLoginPath, setPostLoginPath] = useState<string>("/");
 
+  // Read mfa_session once on first client render (SSR-safe). Lazy init
+  // keeps the value stable and lets us derive the initial error state
+  // synchronously — avoiding `react-hooks/set-state-in-effect`.
+  const [initialToken] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : readMfaSession(),
+  );
+  const [error, setError] = useState<string | null>(() =>
+    typeof window === "undefined" || initialToken ? null : COPY.missingSession,
+  );
+
   const startedRef = useRef(false);
 
-  // Bootstrap: read mfa_session + call /enroll/start/ once on mount.
+  // Bootstrap: call /enroll/start/ once on mount when a token is present.
   useEffect(() => {
-    if (startedRef.current) return;
+    if (startedRef.current || !initialToken) return;
     startedRef.current = true;
 
-    const token = readMfaSession();
-    if (!token) {
-      setError(COPY.missingSession);
-      return;
-    }
-
-    mfaEnrollStart(token)
+    mfaEnrollStart(initialToken)
       .then(setStartData)
       .catch((cause) => {
         if (cause instanceof ApiError) {
@@ -88,7 +90,7 @@ export function MfaEnrollForm() {
         }
         setError(COPY.fallbackError);
       });
-  }, []);
+  }, [initialToken]);
 
   async function handleConfirm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -111,10 +113,7 @@ export function MfaEnrollForm() {
         const type = cause.problem?.type ?? "";
         if (type.endsWith("/mfa-challenge-failed")) {
           setError(COPY.invalidCode);
-        } else if (
-          type.endsWith("/mfa-session-expired") ||
-          type.endsWith("/mfa-session-invalid")
-        ) {
+        } else if (type.endsWith("/mfa-session-expired") || type.endsWith("/mfa-session-invalid")) {
           setError(COPY.expiredSession);
         } else {
           setError(cause.problem?.detail ?? COPY.fallbackError);
@@ -171,12 +170,7 @@ export function MfaEnrollForm() {
           <span>{COPY.saveAcknowledge}</span>
         </label>
 
-        <Button
-          type="button"
-          className="w-full"
-          disabled={!acknowledged}
-          onClick={handleContinue}
-        >
+        <Button type="button" className="w-full" disabled={!acknowledged} onClick={handleContinue}>
           {COPY.continue}
         </Button>
       </section>
@@ -220,9 +214,7 @@ export function MfaEnrollForm() {
       />
 
       <details className="rounded-lg border border-border bg-bg-2 p-3">
-        <summary className="cursor-pointer text-sm font-medium">
-          {COPY.manualSecretLabel}
-        </summary>
+        <summary className="cursor-pointer text-sm font-medium">{COPY.manualSecretLabel}</summary>
         <div className="mt-2 space-y-2">
           <p className="text-sm text-text-muted">{COPY.manualSecretHelp}</p>
           <code className="block select-all break-all rounded bg-white p-2 font-mono text-xs">
@@ -251,16 +243,12 @@ export function MfaEnrollForm() {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-text-error">
+          <p role="alert" className="text-text-error text-sm">
             {error}
           </p>
         )}
 
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={submitting || code.length !== 6}
-        >
+        <Button type="submit" className="w-full" disabled={submitting || code.length !== 6}>
           {submitting ? COPY.submitting : COPY.submit}
         </Button>
       </form>

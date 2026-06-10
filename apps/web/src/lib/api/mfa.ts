@@ -32,9 +32,7 @@ export interface MfaEnrollStartResponse {
   account_label: string;
 }
 
-export async function mfaEnrollStart(
-  mfaSession: string,
-): Promise<MfaEnrollStartResponse> {
+export async function mfaEnrollStart(mfaSession: string): Promise<MfaEnrollStartResponse> {
   const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
   return apiFetch<MfaEnrollStartResponse>("/api/v1/auth/mfa/enroll/start/", {
     method: "POST",
@@ -108,9 +106,7 @@ export async function mfaEnrollStartFromSession(): Promise<MfaEnrollStartFromSes
   );
 }
 
-export async function mfaDisable(
-  payload: MfaReauthPayload,
-): Promise<{ detail: string }> {
+export async function mfaDisable(payload: MfaReauthPayload): Promise<{ detail: string }> {
   const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
   return apiFetch<{ detail: string }>("/api/v1/auth/mfa/disable/", {
     method: "POST",
@@ -127,14 +123,11 @@ export async function mfaRegenerateRecoveryCodes(
   payload: MfaReauthPayload,
 ): Promise<MfaRegenerateRecoveryResponse> {
   const csrfToken = readCsrfCookie() ?? (await fetchCsrfToken());
-  return apiFetch<MfaRegenerateRecoveryResponse>(
-    "/api/v1/auth/mfa/recovery-codes/regenerate/",
-    {
-      method: "POST",
-      body: payload,
-      csrfToken,
-    },
-  );
+  return apiFetch<MfaRegenerateRecoveryResponse>("/api/v1/auth/mfa/recovery-codes/regenerate/", {
+    method: "POST",
+    body: payload,
+    csrfToken,
+  });
 }
 
 // ---------------------------------------------------------------------------

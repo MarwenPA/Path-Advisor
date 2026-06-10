@@ -26,11 +26,7 @@ export interface AccountDeletionPublicStatus {
   user_email_masked: string;
   requested_at: string;
   hard_delete_after: string;
-  status:
-    | "pending_hard_delete"
-    | "cancelled"
-    | "hard_deleted"
-    | "expired";
+  status: "pending_hard_delete" | "cancelled" | "hard_deleted" | "expired";
 }
 
 export interface AccountDeletionRequestPayload {
@@ -63,10 +59,9 @@ export async function requestAccountDeletion(
 export async function getMyAccountDeletionStatus(): Promise<AccountDeletionRequest> {
   // Returns 404 if no in-flight request exists — caller catches `ApiError.status === 404`
   // and treats it as "no pending deletion".
-  return apiFetch<AccountDeletionRequest>(
-    "/api/v1/auth/me/account-deletion/status/",
-    { method: "GET" },
-  );
+  return apiFetch<AccountDeletionRequest>("/api/v1/auth/me/account-deletion/status/", {
+    method: "GET",
+  });
 }
 
 export async function getPublicAccountDeletionStatus(

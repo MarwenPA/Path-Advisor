@@ -74,10 +74,7 @@ export function MfaChallengeForm() {
         const type = cause.problem?.type ?? "";
         if (type.endsWith("/mfa-challenge-failed")) {
           setError(COPY.invalidCode);
-        } else if (
-          type.endsWith("/mfa-session-expired") ||
-          type.endsWith("/mfa-session-invalid")
-        ) {
+        } else if (type.endsWith("/mfa-session-expired") || type.endsWith("/mfa-session-invalid")) {
           setError(COPY.expiredSession);
         } else {
           setError(cause.problem?.detail ?? COPY.fallbackError);
@@ -110,9 +107,7 @@ export function MfaChallengeForm() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <Label htmlFor="mfa-challenge-code">
-            {isTotp ? COPY.totpLabel : COPY.recoveryLabel}
-          </Label>
+          <Label htmlFor="mfa-challenge-code">{isTotp ? COPY.totpLabel : COPY.recoveryLabel}</Label>
           <Input
             id="mfa-challenge-code"
             type="text"
@@ -133,7 +128,7 @@ export function MfaChallengeForm() {
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-text-error">
+          <p role="alert" className="text-text-error text-sm">
             {error}
           </p>
         )}
@@ -143,11 +138,7 @@ export function MfaChallengeForm() {
         </Button>
       </form>
 
-      <button
-        type="button"
-        className="text-sm text-text-muted underline"
-        onClick={switchMethod}
-      >
+      <button type="button" className="text-sm text-text-muted underline" onClick={switchMethod}>
         {isTotp ? COPY.switchToRecovery : COPY.switchToTotp}
       </button>
 

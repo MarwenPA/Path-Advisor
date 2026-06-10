@@ -15,12 +15,7 @@
 
 export type ScenarioLoaderContext = "ocr" | "reco" | "export" | "payment" | "generic";
 
-export type GracefulFallbackContext =
-  | "ocr"
-  | "payment"
-  | "school_send"
-  | "network"
-  | "generic";
+export type GracefulFallbackContext = "ocr" | "payment" | "school_send" | "network" | "generic";
 
 export type AnalyticsEvent =
   // ScenarioLoader (Story 2.8 AC3 / AC4 / AC5)
