@@ -48,20 +48,31 @@ export function InteretsFreeForm({ value, onChange, placeholdersOverride }: Inte
     ? { "1": placeholdersOverride[0], "2": placeholdersOverride[1], "3": placeholdersOverride[2] }
     : FIELD_PLACEHOLDERS;
 
+  // Pass 1 M5 — keep a ref per textarea so the suggestion-tap can restore
+  // focus on the field after injection.
+  const fieldRefs = React.useRef<Record<FieldKey, HTMLTextAreaElement | null>>({
+    "1": null,
+    "2": null,
+    "3": null,
+  });
+
   const handleFieldChange = (key: FieldKey, newText: string) => {
     onChange({ ...value, [key]: newText.length === 0 ? null : newText });
   };
 
+  // Pass 1 M5 — suggestion behavior: INJECT (replace) the field text and
+  // return focus to the textarea. Previously appended with " · " separator,
+  // which the spec doesn't ask for and accumulates noise across taps. The
+  // Pass 1 M7 cap guard is now redundant for the simple replace path, but
+  // kept for callers using `placeholdersOverride` with long suggestion text.
   const handleSuggestionTap = (key: FieldKey, suggestion: string) => {
-    const current = value[key] ?? "";
-    if (!current) {
-      onChange({ ...value, [key]: suggestion });
-      return;
-    }
-    // Append to existing text with a separator, respecting the char cap.
-    const combined = `${current.trimEnd()} · ${suggestion}`;
-    if (combined.length > MAX_INTERET_CHARS) return;
-    onChange({ ...value, [key]: combined });
+    if (suggestion.length > MAX_INTERET_CHARS) return; // defensive
+    onChange({ ...value, [key]: suggestion });
+    // Return focus on the textarea so the SR cursor stays inside the
+    // field and the user can keep typing immediately after.
+    queueMicrotask(() => {
+      fieldRefs.current[key]?.focus();
+    });
   };
 
   return (
@@ -80,6 +91,9 @@ export function InteretsFreeForm({ value, onChange, placeholdersOverride }: Inte
             </label>
             <Textarea
               id={fieldId}
+              ref={(el) => {
+                fieldRefs.current[key] = el;
+              }}
               value={text}
               onChange={(event) => handleFieldChange(key, event.target.value)}
               placeholder={placeholders[key]}
@@ -106,6 +120,9 @@ export function InteretsFreeForm({ value, onChange, placeholdersOverride }: Inte
                   </li>
                 ))}
               </ul>
+              {/* Pass 1 M3 — `aria-live` removed; visual counter only.
+                  AC9 threshold messages live in the orchestrator's single
+                  polite region. */}
               <p
                 id={helperId}
                 className={cn(
@@ -113,7 +130,6 @@ export function InteretsFreeForm({ value, onChange, placeholdersOverride }: Inte
                   danger ? "text-danger" : warning ? "text-warning" : "text-text-subtle",
                 )}
                 data-testid={`interet-${key}-counter`}
-                aria-live="polite"
               >
                 {length} / {MAX_INTERET_CHARS}
               </p>

@@ -50,7 +50,15 @@ import { ValeursPicker } from "./valeurs-picker";
 
 const SCHOOL_LEVEL: SchoolLevel = "lycee";
 
-export function OnboardingStep1() {
+export type OnboardingStep1Props = {
+  /** Authenticated student's user ID — used to namespace the localStorage
+   *  draft so a shared device can't leak User A's selections into User B's
+   *  onboarding (Pass 1 review M9). When omitted the legacy global key is
+   *  used; production callers should always pass it. */
+  userId?: string | null;
+};
+
+export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   const router = useRouter();
   const {
     snapshot,
@@ -58,15 +66,26 @@ export function OnboardingStep1() {
     submit,
     isSubmitting,
     submitError,
-  } = useOnboardingStep1();
+    submitErrorKind,
+  } = useOnboardingStep1(userId);
 
   const copy = React.useMemo(() => getOnboardingCopy(SCHOOL_LEVEL), []);
 
   // Local drafts — start from snapshot, kept in sync via effect when the
   // snapshot changes (initial load or after a PATCH).
-  const [passionsDraft, setPassionsDraft] = React.useState<readonly string[]>(snapshot.passions);
-  const [valeursDraft, setValeursDraft] = React.useState<readonly string[]>(snapshot.valeurs);
-  const [interetsDraft, setInteretsDraft] = React.useState<OnboardingInterets>(snapshot.interets);
+  //
+  // Pass 1 M14 — clone the array on init to break the reference shared with
+  // the snapshot. A snapshot mutation upstream (TanStack structural-sharing
+  // edge case, or a foot-gun caller) would otherwise leak into the draft.
+  const [passionsDraft, setPassionsDraft] = React.useState<readonly string[]>(
+    () => [...snapshot.passions],
+  );
+  const [valeursDraft, setValeursDraft] = React.useState<readonly string[]>(
+    () => [...snapshot.valeurs],
+  );
+  const [interetsDraft, setInteretsDraft] = React.useState<OnboardingInterets>(
+    () => ({ ...snapshot.interets }),
+  );
 
   // Substep state — derived from snapshot status on first render, then
   // owned by local state. `prevSnapshotStatus` tracks the last value we
@@ -102,12 +121,60 @@ export function OnboardingStep1() {
     }
   }, [snapshot.onboarding_step1_status, router]);
 
-  // SR announcer for substep transitions (AC6 — "Étape 2 sur 3 : valeurs").
+  // SR announcer for substep transitions AND for the AC9 threshold
+  // messages ("Minimum atteint, tu peux continuer." / "Maximum N atteint,
+  // désélectionne pour en changer."). Pass 1 review M3 hoisted these out
+  // of the per-picker counters (which each had their own `aria-live`) so
+  // there's exactly one polite live region on the screen — no cascade.
   const [srMessage, setSrMessage] = React.useState("");
   const setSubstepWithAnnounce = (next: 1 | 2 | 3, label: string) => {
     setSubstep(next);
     setSrMessage(`Étape ${next} sur 3 : ${label}`);
   };
+
+  // Pass 1 review M1 — initial focus on the first interactive picker
+  // element of the current substep (AC1 — "le focus initial à l'arrivée
+  // sur l'écran est sur le premier chip"). Re-fires when the substep
+  // changes so dot-jumps land focus on the new picker too.
+  const mainRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+    // Don't steal focus if the user has tabbed elsewhere (e.g. into the
+    // "Plus tard" header button).
+    if (document.activeElement && document.activeElement !== document.body) return;
+    const root = mainRef.current;
+    if (!root) return;
+    const firstInteractive = root.querySelector<HTMLElement>(
+      'button:not([disabled]), [role="checkbox"]:not([aria-disabled="true"]), textarea, [tabindex="0"]',
+    );
+    firstInteractive?.focus();
+  }, [substep]);
+
+  // Pass 1 review M3 — emit the spec-literal AC9 threshold messages.
+  const prevPassionsCountRef = React.useRef(0);
+  const prevValeursCountRef = React.useRef(0);
+  React.useEffect(() => {
+    if (substep !== 1) return;
+    const prev = prevPassionsCountRef.current;
+    const next = passionsDraft.length;
+    prevPassionsCountRef.current = next;
+    if (prev < MIN_PASSIONS && next >= MIN_PASSIONS) {
+      setSrMessage("Minimum atteint, tu peux continuer.");
+    } else if (prev < 8 && next >= 8) {
+      setSrMessage("Maximum 8 passions atteint, désélectionne pour en changer.");
+    }
+  }, [substep, passionsDraft]);
+  React.useEffect(() => {
+    if (substep !== 2) return;
+    const prev = prevValeursCountRef.current;
+    const next = valeursDraft.length;
+    prevValeursCountRef.current = next;
+    if (prev < MIN_VALEURS && next >= MIN_VALEURS) {
+      setSrMessage("Minimum atteint, tu peux continuer.");
+    } else if (prev < 5 && next >= 5) {
+      setSrMessage("Maximum 5 valeurs atteint, désélectionne pour en changer.");
+    }
+  }, [substep, valeursDraft]);
 
   // Skip dialog ----------------------------------------------------------
 
@@ -122,33 +189,43 @@ export function OnboardingStep1() {
 
   // Continue handlers ----------------------------------------------------
 
+  // Pass 1 M6 — distinguish 4xx (client errors: CSRF, permission, validation)
+  // from 5xx / network. A 4xx is permanent for this payload, so the orchestrator
+  // must NOT silently advance the substep — the user would think their data
+  // landed when it didn't, and a localStorage wipe would erase the entire
+  // onboarding. A 5xx / network blip keeps the AC5 UX-over-strict-sync trade-off.
   const handleContinuePassions = async () => {
     if (passionsDraft.length < MIN_PASSIONS) return;
+    let advance = true;
     try {
       await submit({ step: "passions", passions: passionsDraft });
     } catch {
-      // Hook keeps the draft in localStorage; UX > strict sync (AC5).
+      // Block advance on a client error so the user sees the typed error
+      // and can act on it; transient errors keep the spec's optimistic UX.
+      advance = submitErrorKind !== "client";
     }
-    setSubstepWithAnnounce(2, "valeurs");
+    if (advance) setSubstepWithAnnounce(2, "valeurs");
   };
 
   const handleContinueValeurs = async () => {
     if (valeursDraft.length < MIN_VALEURS) return;
+    let advance = true;
     try {
       await submit({ step: "valeurs", valeurs: valeursDraft });
     } catch {
-      // localStorage draft preserves the selection.
+      advance = submitErrorKind !== "client";
     }
-    setSubstepWithAnnounce(3, "centres d'intérêt");
+    if (advance) setSubstepWithAnnounce(3, "centres d'intérêt");
   };
 
   const handleFinishInterets = async () => {
+    let advance = true;
     try {
       await submit({ step: "interets", interets: interetsDraft });
     } catch {
-      // localStorage preserves the draft; user can retry from /profile.
+      advance = submitErrorKind !== "client";
     }
-    router.push("/onboarding/step-2");
+    if (advance) router.push("/onboarding/step-2");
   };
 
   // Render --------------------------------------------------------------
@@ -180,18 +257,24 @@ export function OnboardingStep1() {
         ? handleContinueValeurs
         : handleFinishInterets;
 
+  // Pass 1 M6 — surface the spec-literal network helper ONLY for
+  // 5xx / network blips; a 4xx (CSRF, validation, permission) gets a
+  // distinct typed message so the user understands it's not just a
+  // refresh-and-retry situation.
   const helperBelowCta =
-    submitError && substep !== 3
-      ? "Pas de réseau ? Pas grave, on enregistre quand tu reviens."
-      : substep === 3 && [interetsDraft["1"], interetsDraft["2"], interetsDraft["3"]].every((v) => !v)
-        ? "Tu pourras compléter plus tard depuis ton profil."
-        : substep === 1 && passionsDraft.length < MIN_PASSIONS
-          ? "Sélectionne au moins 3 propositions."
-          : substep === 2 && valeursDraft.length < MIN_VALEURS
-            ? "Choisis-en au moins 3."
-            : substep === 3
-              ? "Tu peux finir quand tu veux."
-              : "Tu peux continuer quand tu veux";
+    submitError && submitErrorKind === "client"
+      ? "Impossible d'enregistrer. Recharge la page et réessaye."
+      : submitError && submitErrorKind === "network" && substep !== 3
+        ? "Pas de réseau ? Pas grave, on enregistre quand tu reviens."
+        : substep === 3 && [interetsDraft["1"], interetsDraft["2"], interetsDraft["3"]].every((v) => !v)
+          ? "Tu pourras compléter plus tard depuis ton profil."
+          : substep === 1 && passionsDraft.length < MIN_PASSIONS
+            ? "Sélectionne au moins 3 propositions."
+            : substep === 2 && valeursDraft.length < MIN_VALEURS
+              ? "Choisis-en au moins 3."
+              : substep === 3
+                ? "Tu peux finir quand tu veux."
+                : "Tu peux continuer quand tu veux";
 
   const title =
     substep === 1
@@ -208,6 +291,17 @@ export function OnboardingStep1() {
 
   return (
     <div className="flex min-h-screen flex-col bg-bg">
+      {/* AC1 + Pass 1 M2 — skip link is the FIRST focusable element so
+          keyboard users can actually skip the header (sticky back chevron
+          + progress dots + "Plus tard" trigger). Previously rendered
+          inside <main>, after the header — defeated its purpose. */}
+      <a
+        href="#onboarding-step1-main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-20 focus:rounded focus:bg-brand focus:px-3 focus:py-1 focus:text-white"
+      >
+        Aller au contenu principal
+      </a>
+
       {/* AC1 — header sticky */}
       <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-bg/80">
         <button
@@ -238,17 +332,11 @@ export function OnboardingStep1() {
 
       {/* AC1 — main */}
       <main
+        ref={mainRef}
         id="onboarding-step1-main"
         className="mx-auto flex w-full max-w-[600px] flex-1 flex-col gap-4 px-4 py-6 sm:px-6"
         data-testid="onboarding-main"
       >
-        <a
-          href="#onboarding-step1-main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:rounded focus:bg-brand focus:px-3 focus:py-1 focus:text-white"
-        >
-          Aller au contenu principal
-        </a>
-
         <h2 className="text-h2 font-semibold text-text">{title}</h2>
         <p className="text-body text-text-muted">{subtitle}</p>
 
@@ -278,9 +366,16 @@ export function OnboardingStep1() {
           >
             {isSubmitting ? "Enregistrement…" : continueLabel}
           </Button>
+          {/* Pass 1 M13 — animate-fade-in micro-animation on helper swap.
+              `key={helperBelowCta}` remounts the element on content change,
+              so the `animate-fade-in` Tailwind utility runs the
+              motion-instant (100 ms) fade declared in tokens.css. Reduced
+              motion already collapses the duration globally. */}
           <p
+            key={helperBelowCta}
             className={cn(
-              "text-center text-caption sm:text-right",
+              "animate-fade-in text-center text-caption sm:text-right",
+              submitError && submitErrorKind === "client" ? "text-danger" :
               submitError ? "text-warning" : "text-text-subtle",
             )}
             data-testid="onboarding-helper"

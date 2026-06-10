@@ -87,6 +87,20 @@ export function ValeursPicker({ selected, onChange }: ValeursPickerProps) {
         })}
       </ul>
 
+      {/* Pass 1 M4 — dedicated warning helper next to the list when the
+          5-max is reached. */}
+      {isAtMax ? (
+        <p
+          role="note"
+          className="text-caption text-warning"
+          data-testid="valeurs-max-helper"
+        >
+          Maximum {MAX_VALEURS} — désélectionne pour en changer.
+        </p>
+      ) : null}
+
+      {/* Counter. Pass 1 M3 — `aria-live` removed; the orchestrator owns
+          the AC9 threshold announcement. */}
       <p
         id="valeurs-helper"
         className={cn(
@@ -94,12 +108,10 @@ export function ValeursPicker({ selected, onChange }: ValeursPickerProps) {
           atOrAboveMinimum ? "text-success" : "text-text-subtle",
         )}
         data-testid="valeurs-counter"
-        aria-live="polite"
       >
         {atOrAboveMinimum
           ? `${selected.length} / ${MIN_VALEURS} minimum atteint`
           : `${selected.length} / ${MIN_VALEURS} minimum`}
-        {isAtMax ? ` — Maximum ${MAX_VALEURS} — désélectionne pour en changer.` : ""}
       </p>
     </div>
   );

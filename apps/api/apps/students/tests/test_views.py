@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APIClient
 
+from apps.accounts.models import UserStatus
 from apps.students.models import OnboardingStep1Status, StudentProfile
 
 User = get_user_model()
@@ -18,7 +19,38 @@ User = get_user_model()
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(email="sarah@test.local", password="Strong1!password")
+    # Pass 1 review H1 — endpoints now gate behind
+    # `IsAuthenticatedAndActive + IsStudent`. The default User created by
+    # `create_user` ships as `email_unverified` / `email_verified_at=None`,
+    # which makes `is_fully_active` False. Onboarding step-1 is reached
+    # AFTER email verification in the real flow, so the fixture mirrors that
+    # post-verification state — student role (the model default) + ACTIVE
+    # status + a non-null `email_verified_at`.
+    from django.utils import timezone
+
+    return User.objects.create_user(
+        email="sarah@test.local",
+        password="Strong1!password",
+        status=UserStatus.ACTIVE,
+        email_verified_at=timezone.now(),
+    )
+
+
+@pytest.fixture
+def parent_user(db):
+    """Used by the H1 RBAC tests — a non-student authenticated user that must
+    be refused by the endpoint even though they're fully active."""
+    from django.utils import timezone
+
+    from apps.accounts.models import UserRole
+
+    return User.objects.create_user(
+        email="parent@test.local",
+        password="Strong1!password",
+        role=UserRole.PARENT,
+        status=UserStatus.ACTIVE,
+        email_verified_at=timezone.now(),
+    )
 
 
 @pytest.fixture
@@ -37,6 +69,23 @@ URL = "/api/v1/students/me/onboarding/passions"
 
 
 # --- GET --------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestRbac:
+    """Pass 1 review H1 — non-student authenticated users must be refused."""
+
+    def test_parent_role_is_refused(self, parent_user):
+        api = APIClient()
+        api.force_authenticate(user=parent_user)
+        resp = api.get(URL)
+        assert resp.status_code == 403, resp.content
+
+    def test_parent_role_cannot_patch(self, parent_user):
+        api = APIClient()
+        api.force_authenticate(user=parent_user)
+        resp = api.patch(URL, data={"step": "skip"}, format="json")
+        assert resp.status_code == 403, resp.content
 
 
 @pytest.mark.django_db
@@ -201,7 +250,23 @@ class TestPatchValeurs:
 
 @pytest.mark.django_db
 class TestPatchInterets:
+    # Helper: seed the canonical "complete prerequisites" state in one call.
+    @staticmethod
+    def _seed_passions_and_valeurs(user):
+        StudentProfile.objects.create(
+            user=user,
+            passions=["sciences-nature", "musique", "tech-code"],
+            valeurs=["justice-sociale", "creativite", "sens-utilite"],
+            onboarding_step1_status=OnboardingStep1Status.IN_PROGRESS,
+        )
+
     def test_completes_step1_and_stamps_timestamp(self, client, user):
+        # Pass 1 review M12 — the prior test PATCHed interets against a fresh
+        # user with NO passions / NO valeurs and asserted COMPLETED. That
+        # behaviour ratified the H3 completion-bypass bug. Fixed: completion
+        # now requires the MIN_PASSIONS + MIN_VALEURS prerequisites, so the
+        # test must seed them before asserting completion.
+        self._seed_passions_and_valeurs(user)
         resp = client.patch(
             URL,
             data={
@@ -217,7 +282,11 @@ class TestPatchInterets:
         # Empty string normalised to None.
         assert p.interets == {"1": "Podcast Choses à savoir", "2": "Sapiens", "3": None}
 
-    def test_accepts_all_null(self, client, user):
+    def test_accepts_all_null_when_prerequisites_met(self, client, user):
+        # An all-null intérêts payload is still a valid completion as long as
+        # passions and valeurs have been validated first (AC4 — intérêts
+        # entirely optional). Pass 1 M12 fixup — explicitly seed the floors.
+        self._seed_passions_and_valeurs(user)
         resp = client.patch(
             URL,
             data={"step": "interets", "interets": {"1": "", "2": "", "3": ""}},
@@ -228,7 +297,50 @@ class TestPatchInterets:
         assert p.interets == {"1": None, "2": None, "3": None}
         assert p.onboarding_step1_status == OnboardingStep1Status.COMPLETED
 
+    def test_interets_without_prerequisites_routes_to_partial_skipped(self, client, user):
+        # Pass 1 review H3 — a `step=interets` PATCH against a profile that
+        # has not yet met the MIN_PASSIONS / MIN_VALEURS floors must NOT
+        # mark the row `completed`. The serializer now downgrades to
+        # `partial_skipped` and persists whatever intérêts the user typed,
+        # so they don't lose data; the recommendation engine (Epic 3) will
+        # later see the row as "step 1 dropped" not "step 1 finished".
+        resp = client.patch(
+            URL,
+            data={
+                "step": "interets",
+                "interets": {"1": "Podcast Choses à savoir", "2": "", "3": ""},
+            },
+            format="json",
+        )
+        assert resp.status_code == 200, resp.content
+        p = StudentProfile.objects.get(user=user)
+        assert p.onboarding_step1_status == OnboardingStep1Status.PARTIAL_SKIPPED
+        assert p.onboarding_step1_completed_at is None
+        # User's typed intérêt is still persisted (UX > strict sync).
+        assert p.interets == {"1": "Podcast Choses à savoir", "2": None, "3": None}
+
+    def test_terminal_state_refuses_further_passions_patch(self, client, user):
+        # Pass 1 review H2 — once a profile reaches a terminal state
+        # (`completed`, `skipped`, `partial_skipped`), further sub-step
+        # PATCHes are refused with a typed 400 so a stale tab can't
+        # silently overwrite a finished onboarding. `step=skip` is
+        # excepted (idempotent reaffirmation).
+        StudentProfile.objects.create(
+            user=user,
+            passions=["sciences-nature", "musique", "tech-code"],
+            valeurs=["justice-sociale", "creativite", "sens-utilite"],
+            onboarding_step1_status=OnboardingStep1Status.COMPLETED,
+        )
+        resp = client.patch(
+            URL,
+            data={"step": "passions", "passions": ["arts-creation", "musique", "sport-corps"]},
+            format="json",
+        )
+        assert resp.status_code == 400
+        assert b"terminal state" in resp.content.lower() or b"already" in resp.content.lower()
+
     def test_rejects_string_over_200_chars(self, client, user):
+        self._seed_passions_and_valeurs(user)
         resp = client.patch(
             URL,
             data={"step": "interets", "interets": {"1": "a" * 201, "2": "", "3": ""}},

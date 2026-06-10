@@ -157,10 +157,14 @@ export function filterPassions(query: string): readonly PassionCategory[] {
 }
 
 function normalize(s: string): string {
+  // Pass 1 M11 — explicit Unicode escape `̀-ͯ` for the
+  // combining-marks range. The previous literal-character form was
+  // brittle to file-encoding round-trips (a non-UTF-8 editor could
+  // silently lose the range and turn this into a no-op).
   return s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .trim();
 }
 

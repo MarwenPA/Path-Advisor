@@ -40,7 +40,10 @@ describe("InteretsFreeForm", () => {
     expect(onChange).toHaveBeenCalledWith({ "1": null, "2": null, "3": null });
   });
 
-  it("clicking a suggestion appends to the current text (separator)", () => {
+  it("clicking a suggestion REPLACES the current text (Pass 1 M5)", () => {
+    // Pass 1 review M5 — spec AC4 says "au tap → texte du chip injecté dans
+    // le champ correspondant (focus reste sur le champ après injection)".
+    // The previous behavior appended with " · " separator; fixed to replace.
     const onChange = vi.fn();
     render(
       <InteretsFreeForm
@@ -48,12 +51,12 @@ describe("InteretsFreeForm", () => {
         onChange={onChange}
       />,
     );
-    // "+ YouTube" lives under field 1 — first suggestion list.
     const youtubeButton = screen.getAllByRole("button").find((b) => b.textContent === "+ YouTube");
     expect(youtubeButton).toBeDefined();
     fireEvent.click(youtubeButton!);
+    // INJECT, not APPEND — and the prior content "Choses à savoir" is replaced.
     expect(onChange).toHaveBeenCalledWith({
-      "1": "Choses à savoir · YouTube",
+      "1": "YouTube",
       "2": null,
       "3": null,
     });

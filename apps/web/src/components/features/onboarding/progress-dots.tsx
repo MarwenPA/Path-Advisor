@@ -43,6 +43,12 @@ export function ProgressDots({ current, onJumpTo }: ProgressDotsProps) {
           const canJump = isPast && onJumpTo !== undefined;
           return (
             <li key={step} className="flex">
+              {/* Pass 1 review H4 — the visible 8 × 8 dot lives inside a
+                  44 × 44 button wrapper so the touch target meets AC9
+                  (44 × 44 px minimum). The dot itself stays the spec-
+                  literal `h-2 w-2`. The button is `inline-flex
+                  items-center justify-center` so the visual stays
+                  centered. */}
               <button
                 type="button"
                 onClick={canJump ? () => onJumpTo(step) : undefined}
@@ -52,12 +58,20 @@ export function ProgressDots({ current, onJumpTo }: ProgressDotsProps) {
                 data-step={step}
                 data-state={isActive ? "active" : isPast ? "past" : "future"}
                 className={cn(
-                  "block h-2 w-2 rounded-full transition-colors duration-quick ease-standard",
+                  "inline-flex h-11 w-11 items-center justify-center rounded-full",
+                  "transition-colors duration-quick ease-standard",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  isActive || isPast ? "bg-brand" : "bg-border-strong",
                   !canJump && "cursor-default",
                 )}
-              />
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "block h-2 w-2 rounded-full transition-colors duration-quick ease-standard",
+                    isActive || isPast ? "bg-brand" : "bg-border-strong",
+                  )}
+                />
+              </button>
             </li>
           );
         })}

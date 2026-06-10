@@ -162,9 +162,44 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
     # --- application ----------------------------------------------------
 
     def apply(self, profile: StudentProfile) -> StudentProfile:
-        """Apply the validated payload to the profile. Caller saves."""
+        """Apply the validated payload to the profile. Caller saves.
+
+        Pass 1 review H2 + H3 — the previous version called
+        `profile.mark_completed()` unconditionally on `step=interets`, even
+        when the profile carried zero passions / zero valeurs OR was
+        already in a terminal state (`skipped` / `partial_skipped`). That
+        let a single PATCH bypass the AC2 / AC3 minimums AND silently
+        flipped a prior skip into a completion — breaking the AC7 distinction
+        Story 2.7 (maturité de profil) depends on. The fixed branch
+        explicitly checks both invariants before mutating status.
+        """
+        from apps.students.models import OnboardingStep1Status as Status
+        from apps.students.onboarding.referentials import MIN_PASSIONS, MIN_VALEURS
+
         data = self.validated_data
         step = data["step"]
+
+        # H2 — refuse any sub-step write on a terminal-state profile. The
+        # frontend (AC10) already redirects users away from /step-1 when the
+        # status is `completed`, but a stale tab or a non-browser client
+        # could still hit the endpoint. Returning 409 keeps the audit trail
+        # crisp ("client tried to mutate a closed onboarding") vs silently
+        # over-writing the row.
+        terminal_states = {Status.COMPLETED, Status.SKIPPED, Status.PARTIAL_SKIPPED}
+        if profile.onboarding_step1_status in terminal_states and step != "skip":
+            # `step=skip` is allowed against a terminal state (idempotent —
+            # a second skip just refreshes the timestamp via mark_skipped).
+            raise serializers.ValidationError(
+                {
+                    "step": (
+                        f"Onboarding step 1 is already in terminal state "
+                        f"'{profile.onboarding_step1_status}'. Submit `step=skip` "
+                        f"to reaffirm or use the profile-edit endpoint (Story 2.6) "
+                        f"to modify saved selections."
+                    )
+                },
+                code="onboarding_step1_terminal",
+            )
 
         if step == "passions":
             profile.passions = data["passions"]
@@ -179,8 +214,21 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
                 k: (None if (v is None or v.strip() == "") else v)
                 for k, v in data["interets"].items()
             }
-            # 1C is the last sub-step → completion (AC4).
-            profile.mark_completed()
+            # H3 — completion requires BOTH AC2 (≥ MIN_PASSIONS) and AC3
+            # (≥ MIN_VALEURS) satisfied. Without this guard a malicious or
+            # buggy client could send `step=interets` with empty fields
+            # against a fresh profile and immediately mark the row
+            # `completed` — the recommendation engine (Epic 3) would then
+            # consume a zero-signal row. If the minimums aren't met, the
+            # status routes to `partial_skipped` (Story 2.7 distinguishes
+            # this from a clean `completed`) and the interets payload is
+            # still persisted so the user doesn't lose what they typed.
+            passions_count = len(profile.passions or [])
+            valeurs_count = len(profile.valeurs or [])
+            if passions_count >= MIN_PASSIONS and valeurs_count >= MIN_VALEURS:
+                profile.mark_completed()
+            else:
+                profile.mark_skipped(partial=True)
         elif step == "skip":
             has_partial = bool(profile.passions) or bool(profile.valeurs) or any(
                 profile.interets.values()

@@ -7,12 +7,12 @@
   time. Creates the profile row on first call. Idempotent — re-sending the
   same payload returns the same shape.
 
-Auth: any authenticated user. The role gate (student vs counselor vs parent)
-is intentionally NOT enforced here at MVP — the route is meant to be
-unreachable by non-students via the frontend routing. Story 1.7 (RBAC
-middleware) will tighten this. For non-student authenticated users that DO
-reach the endpoint, the operation is technically allowed but only mutates
-their own profile (RLS guards data leakage), which is a niche misuse.
+Auth: `IsAuthenticatedAndActive` + `IsStudent` (Story 1.7 §AC2 — Path-Advisor
+permission matrix). Non-student authenticated users (parent / counselor /
+school_admin) are refused with a typed 403. The route is conceptually
+student-only (only students own a `StudentProfile`); without this gate a
+non-student user could PATCH and create a row keyed to themselves, which
+the recommendation engine (Epic 3) would later treat as a real student.
 
 Tenant isolation: relies on `TenantSessionMiddleware` (Story 1.8) having
 already set `app.current_user_id` so the RLS policy on `student_profiles`
@@ -24,11 +24,11 @@ from __future__ import annotations
 from typing import Any
 
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.permissions import IsAuthenticatedAndActive, IsStudent
 from apps.students.models import StudentProfile
 from apps.students.serializers import (
     OnboardingStep1PatchSerializer,
@@ -45,7 +45,7 @@ class OnboardingPassionsView(APIView):
     is being submitted.
     """
 
-    permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticatedAndActive, IsStudent)
 
     def get(self, request: Request) -> Response:
         profile = self._get_or_none(request)

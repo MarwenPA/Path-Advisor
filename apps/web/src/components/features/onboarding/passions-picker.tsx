@@ -289,19 +289,33 @@ export function PassionsPicker({
         ) : null}
       </div>
 
-      {/* AC2 — discrete counter */}
+      {/* AC2 + Pass 1 M4 — when the 8-max is reached, surface a dedicated
+          helper in `text-warning` next to the chip grid (spec wording). Live
+          announcement is owned by the orchestrator (M3 — single
+          `aria-live`), so this helper is presentational only — `role="note"`
+          + no `aria-live` to avoid the per-screen live-region cascade. */}
+      {isAtMax ? (
+        <p
+          role="note"
+          className="text-caption text-warning"
+          data-testid="passions-max-helper"
+        >
+          Maximum {MAX_PASSIONS_TOTAL} — désélectionne pour en changer.
+        </p>
+      ) : null}
+
+      {/* AC2 — discrete counter. Pass 1 M3 — `aria-live` removed; the
+          orchestrator announces threshold transitions in one region. */}
       <p
         className={cn(
           "self-end text-caption",
           atOrAboveMinimum ? "text-success" : "text-text-subtle",
         )}
         data-testid="passions-counter"
-        aria-live="polite"
       >
         {atOrAboveMinimum
           ? `${selected.length} / ${MIN_PASSIONS} minimum atteint`
           : `${selected.length} / ${MIN_PASSIONS} minimum`}
-        {isAtMax ? ` — Maximum ${MAX_PASSIONS_TOTAL} atteint` : ""}
       </p>
     </div>
   );

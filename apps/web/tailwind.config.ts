@@ -143,11 +143,19 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        // Story 2.1 AC2 — `motion-instant` (100 ms) fade-in used by the
+        // orchestrator's helper text swap under the Continue CTA so the
+        // wording change is perceived as a transition, not a pop.
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         "scenario-loader-particle": "scenario-loader-particle 1800ms ease-out infinite",
         "scenario-warning-in":
           "scenario-warning-in var(--motion-quick) cubic-bezier(0.16,1,0.3,1) forwards",
+        "fade-in": "fade-in var(--motion-instant) cubic-bezier(0.16,1,0.3,1) forwards",
       },
     },
   },

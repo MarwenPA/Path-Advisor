@@ -96,8 +96,23 @@ async function computeContentHash(input: {
     refuseLabel: input.refuseLabel,
     title: input.title,
   });
+  // Story 2.1 Pass 1 M8 — `crypto.subtle` is undefined in insecure
+  // contexts (dev tunnels without HTTPS, certain embedded WebViews, very
+  // old browsers). The previous implementation threw, the handler caught
+  // and never invoked `onAccept`, and the dialog hung silently. Feature-
+  // detect and fall back to a tagged sentinel `"crypto-unavailable:<hex>"`
+  // where the hex segment is a non-crypto djb2 hash of the canonical JSON.
+  // The audit row keeps something queryable; the prefix tells the DPO
+  // playbook the hash is not collision-resistant for this specific row.
+  if (!globalThis.crypto?.subtle?.digest) {
+    let h = 5381;
+    for (let i = 0; i < canonical.length; i += 1) {
+      h = ((h << 5) + h + canonical.charCodeAt(i)) | 0;
+    }
+    return `crypto-unavailable:${(h >>> 0).toString(16).padStart(8, "0")}`;
+  }
   const bytes = new TextEncoder().encode(canonical);
-  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

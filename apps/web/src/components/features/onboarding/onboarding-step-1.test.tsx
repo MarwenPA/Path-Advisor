@@ -18,6 +18,7 @@ type HookReturn = {
   submit: ReturnType<typeof vi.fn>;
   isSubmitting: boolean;
   submitError: unknown;
+  submitErrorKind: "none" | "client" | "network";
   reset: () => void;
 };
 
@@ -44,6 +45,7 @@ function makeHook(overrides: Partial<HookReturn> = {}): HookReturn {
     }),
     isSubmitting: false,
     submitError: null,
+    submitErrorKind: "none",
     reset: vi.fn(),
     ...overrides,
   };
@@ -127,11 +129,31 @@ describe("OnboardingStep1 orchestrator", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/onboarding/step-2"));
   });
 
-  it("shows the AC5 'pas de réseau' helper when a submit fails", () => {
-    hookReturn = makeHook({ submitError: new Error("network"), isSubmitting: false });
+  it("shows the AC5 'pas de réseau' helper when a NETWORK submit fails (Pass 1 M6)", () => {
+    hookReturn = makeHook({
+      submitError: new Error("network"),
+      isSubmitting: false,
+      submitErrorKind: "network",
+    });
     render(<OnboardingStep1 />);
     expect(screen.getByTestId("onboarding-helper")).toHaveTextContent(
       /pas de réseau \? pas grave, on enregistre quand tu reviens\./i,
+    );
+  });
+
+  it("shows a distinct typed helper when a 4xx CLIENT submit fails (Pass 1 M6)", () => {
+    // Pass 1 review M6 — a 4xx (CSRF, validation, RBAC) must not surface as a
+    // "no network" message: the data won't land on a refresh either. The
+    // orchestrator also blocks substep advance for client errors (covered
+    // elsewhere); this test asserts the user-visible distinction.
+    hookReturn = makeHook({
+      submitError: new Error("csrf"),
+      isSubmitting: false,
+      submitErrorKind: "client",
+    });
+    render(<OnboardingStep1 />);
+    expect(screen.getByTestId("onboarding-helper")).toHaveTextContent(
+      /impossible d'enregistrer\. recharge la page et réessaye\./i,
     );
   });
 

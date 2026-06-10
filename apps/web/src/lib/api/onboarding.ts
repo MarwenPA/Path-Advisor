@@ -41,13 +41,31 @@ export type OnboardingStep1Patch =
   | { step: "interets"; interets: OnboardingInterets }
   | { step: "skip" };
 
-export const EMPTY_ONBOARDING_SNAPSHOT: OnboardingStep1Snapshot = {
-  passions: [],
-  valeurs: [],
-  interets: { "1": null, "2": null, "3": null },
-  onboarding_step1_status: "pending",
-  onboarding_step1_completed_at: null,
-};
+/**
+ * Factory returning a fresh empty snapshot each call.
+ *
+ * Pass 1 review M10 — the previous shared `EMPTY_ONBOARDING_SNAPSHOT`
+ * constant was a foot-gun: every consumer received the same `interets`
+ * sub-object reference, so any caller mutating it (or any TanStack
+ * structural-sharing edge case) would taint the singleton across hook
+ * instances. The factory pattern guarantees each consumer owns its
+ * defaults. The `EMPTY_ONBOARDING_SNAPSHOT` named export is preserved
+ * as a frozen alias for callers that only read it.
+ */
+export function makeEmptyOnboardingSnapshot(): OnboardingStep1Snapshot {
+  return {
+    passions: [],
+    valeurs: [],
+    interets: { "1": null, "2": null, "3": null },
+    onboarding_step1_status: "pending",
+    onboarding_step1_completed_at: null,
+  };
+}
+
+export const EMPTY_ONBOARDING_SNAPSHOT: OnboardingStep1Snapshot = Object.freeze({
+  ...makeEmptyOnboardingSnapshot(),
+  interets: Object.freeze({ "1": null, "2": null, "3": null }) as OnboardingInterets,
+}) as OnboardingStep1Snapshot;
 
 export function fetchOnboardingSnapshot(signal?: AbortSignal): Promise<OnboardingStep1Snapshot> {
   return apiFetch<OnboardingStep1Snapshot>(ENDPOINT, { signal });
