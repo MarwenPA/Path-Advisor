@@ -26,3 +26,27 @@ export interface AccessListResponse {
 export async function fetchAccessList(): Promise<AccessListResponse> {
   return apiFetch<AccessListResponse>("/api/v1/profile/access-list/");
 }
+
+export interface RevokeResponse {
+  revoked: boolean;
+  id: string;
+}
+
+/**
+ * Story 1.10 §AC1 — POST /api/v1/profile/access-list/<id>/revoke/.
+ * `contentHash` is computed by the ConsentDialog from the displayed props
+ * and stored server-side as forensic proof (NOT a gate). Throws ApiError
+ * on 404 (already revoked / unknown entry) so the caller can branch.
+ */
+export async function revokeAccessListEntry(
+  id: string,
+  contentHash: string,
+): Promise<RevokeResponse> {
+  return apiFetch<RevokeResponse>(
+    `/api/v1/profile/access-list/${encodeURIComponent(id)}/revoke/`,
+    {
+      method: "POST",
+      body: { content_hash: contentHash },
+    },
+  );
+}

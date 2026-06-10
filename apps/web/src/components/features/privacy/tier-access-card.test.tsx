@@ -4,10 +4,16 @@
  * Assert accessible name, aria-describedby wiring, disabled-button
  * semantics, badge rendering, relative-date output.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { TierAccessCard } from "./tier-access-card";
+
+// TierAccessCard now embeds RevokeAccessButton (Story 1.10) which uses
+// useRouter. Mock the App Router so the card renders cleanly in jsdom.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 import type { AccessListEntry } from "@/lib/api/access-list";
 
@@ -42,18 +48,10 @@ describe("TierAccessCard", () => {
     expect(screen.getByText("Bulletins détaillés")).toBeInTheDocument();
   });
 
-  it("renders revoke button as disabled with the aria-label fallback", () => {
+  it("renders an active revoke button (Story 1.10)", () => {
     render(<TierAccessCard entry={_entry()} />);
-    const btn = screen.getByRole("button", { name: /révocation à venir/i });
-    expect(btn).toBeDisabled();
-  });
-
-  it("wires aria-describedby on the revoke button to the visibility section", () => {
-    render(<TierAccessCard entry={_entry()} />);
-    const btn = screen.getByRole("button", { name: /révocation à venir/i });
-    const describedBy = btn.getAttribute("aria-describedby");
-    expect(describedBy).toBeTruthy();
-    expect(document.getElementById(describedBy!)).toBeInTheDocument();
+    const btn = screen.getByRole("button", { name: /révoquer l'accès/i });
+    expect(btn).toBeEnabled();
   });
 
   it("renders a <time> element with both absolute (title) and relative text", () => {

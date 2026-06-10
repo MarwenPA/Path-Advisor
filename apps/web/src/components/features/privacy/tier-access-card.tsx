@@ -7,7 +7,7 @@
  * badge ; the disabled button is `aria-describedby` the visibility list so
  * a screen-reader user knows WHAT they would revoke.
  */
-import { Button } from "@/components/ui/button";
+import { RevokeAccessButton } from "@/components/features/privacy/revoke-access-button";
 import {
   ACCESS_LIST_COPY,
   type DataAreaKey,
@@ -105,14 +105,7 @@ export function TierAccessCard({ entry }: { entry: AccessListEntry }) {
       </div>
 
       <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          disabled
-          aria-describedby={visibilityListId}
-          aria-label={ACCESS_LIST_COPY.revokeNotYetAvailable}
-        >
-          {ACCESS_LIST_COPY.revokeButtonLabel}
-        </Button>
+        <RevokeAccessButton entry={entry} />
       </div>
     </article>
   );

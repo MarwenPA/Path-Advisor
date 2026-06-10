@@ -10,9 +10,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.db import transaction
+from django.utils import timezone
+
 from apps.accounts.models import ParentalConsent, ParentalConsentDecision
 
 from ..dto import AccessListEntry
+from ..exceptions import EntryNotFound
 from ..visibility_matrix import VISIBILITY_MATRIX
 
 if TYPE_CHECKING:
@@ -49,5 +53,33 @@ class ParentalConsentSource:
         ]
 
     def revoke(self, user: User, source_pk: str) -> None:
-        """Story 1.10 implements this. Refusing to act in 1.9 is intentional."""
-        raise NotImplementedError("ParentalConsentSource.revoke is implemented by Story 1.10.")
+        """Story 1.10 §AC4 + §T2 — set ``revoked_at = now()`` and dispatch the
+        parent-notification Celery task.
+
+        Idempotent : a second invocation on an already-revoked row is a no-op
+        (no second update, no second email — the task itself checks
+        ``notification_sent_at IS NULL`` before sending).
+
+        Raises ``EntryNotFound`` if no row matches ``(user, source_pk)``
+        regardless of revocation state — the view turns this into a 404.
+        ``select_for_update`` serializes against the rare double-POST race.
+        """
+        with transaction.atomic():
+            row = (
+                ParentalConsent.objects.select_for_update()
+                .filter(student=user, id=source_pk)
+                .first()
+            )
+            if row is None:
+                raise EntryNotFound(f"ParentalConsent({source_pk}) not found for user {user.id}")
+            if row.revoked_at is not None:
+                # Already revoked → idempotent success, no second side effect.
+                return
+            row.revoked_at = timezone.now()
+            row.save(update_fields=["revoked_at", "updated_at"])
+
+        # Dispatch the notification task OUTSIDE the transaction so a
+        # transient broker hiccup does not rollback the revocation write.
+        from apps.accounts.tasks import notify_parental_consent_revoked
+
+        notify_parental_consent_revoked.delay(str(row.id))
