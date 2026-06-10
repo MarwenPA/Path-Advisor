@@ -85,6 +85,7 @@ from apps.core.exceptions import (
     ParentalConsentNotFound,
     RateLimited,
 )
+from apps.core.permissions import IsB2C, IsOwner, IsStudent
 from apps.core.rls import bypass_rls
 from apps.core.text import mask_email
 
@@ -693,7 +694,15 @@ class GdprExportViewSet(
     """
 
     serializer_class = GdprExportRequestSerializer
-    permission_classes = (IsAuthenticated,)
+    # Story 1.7 §AC7 — defense-in-depth on top of the existing
+    # `request.user`-scoped queryset. `IsOwner` enforces object-level
+    # ownership for /retrieve/download (catches an IDOR via direct ID);
+    # `IsOwnerOrPathAdmin` would be appropriate for /download/ specifically
+    # if the DPO needs cross-user inspection — currently the queryset filter
+    # makes that path inaccessible, so we stay with `IsOwner` for the whole
+    # viewset. Composed with `IsAuthenticated` (auth gate) + the implicit
+    # `IsAuthenticated` from `IsOwner.has_permission`.
+    permission_classes = (IsAuthenticated, IsOwner)
     pagination_class = _GdprExportCursorPagination
     lookup_field = "id"
 
@@ -943,7 +952,9 @@ def parental_consent_decide(request: Request, token: str) -> Response:
     },
 )
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+# Story 1.7 §AC7 — only the kid (student role) needs the resend hook; a
+# random authenticated user (parent / staff) has no business triggering it.
+@permission_classes([IsAuthenticated, IsStudent])
 # `user_or_ip` is the django-ratelimit built-in that resolves to `request.user.id` when
 # authenticated and falls back to client IP otherwise — safe regardless of where the
 # rate-limit decorator runs in the middleware chain (cf. Story 1.4 review §P10).
@@ -1331,7 +1342,12 @@ def mfa_enroll_start_view(request: Request) -> Response:
     responses={200: serializers.JSONField(), 403: serializers.JSONField()},
 )
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+# Story 1.7 §AC7 — in-place enrollment is B2C-only. Staff users get their
+# `mfa_session` token at login-time via `ThrottledLoginView` and don't
+# need this endpoint. Locking it to B2C prevents a staff user from
+# accidentally minting a stage=`mfa_enrollment_pending` token (which would
+# be useless to them but pollutes the audit log).
+@permission_classes([IsAuthenticated, IsB2C])
 def mfa_enroll_start_from_session_view(request: Request) -> Response:
     """Issue an `mfa_session` token (stage=`mfa_enrollment_pending`) for the
     currently-authenticated user — used by the settings-page "Activer la MFA"
@@ -1569,7 +1585,11 @@ def mfa_challenge_view(request: Request) -> Response:
     responses={200: serializers.JSONField(), 403: serializers.JSONField()},
 )
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+# Story 1.7 §AC7 — B2C-only at the permission layer. Staff would be
+# refused inside `mfa_service.disable()` (`MfaDisableForbiddenForStaff`),
+# but the permission-layer check produces a cleaner 403 + audit row at
+# the front of the request, before any DB work.
+@permission_classes([IsAuthenticated, IsB2C])
 def mfa_disable_view(request: Request) -> Response:
     """Self-service MFA disable for B2C. Re-auth required (password + TOTP).
     Refuses with 403 for staff roles.

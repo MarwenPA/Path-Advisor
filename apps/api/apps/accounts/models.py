@@ -50,6 +50,10 @@ class UserRole(models.TextChoices):
     COUNSELOR = "counselor", "Conseiller"
     SCHOOL_ADMIN = "school_admin", "Administrateur école partenaire"
     PATH_ADMIN = "path_admin", "Administrateur Path-Advisor"
+    # Story 1.7 §AC1 — 6th role per PRD §"Matrice RBAC". Support users handle
+    # tickets with a MASKED profile + activity-journal view; no audit-log read,
+    # no bulletins access without DPO escalation.
+    SUPPORT = "support", "Support utilisateur"
 
 
 class UserStatus(models.TextChoices):

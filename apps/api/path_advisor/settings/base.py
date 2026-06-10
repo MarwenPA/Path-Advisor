@@ -70,6 +70,12 @@ MIDDLEWARE = [
     # so `request.user` exists, and BEFORE `TenantSessionMiddleware` so
     # the RLS GUC writes see a (possibly) verified user.
     "django_otp.middleware.OTPMiddleware",
+    # Story 1.7 §T13 — capture `(actor_id, actor_role, tenant_id, ip_hash,
+    # user_agent)` into a thread-local at request start so `@audit_action`
+    # decorators (which have no request in their signature) can read it.
+    # MUST be AFTER AuthenticationMiddleware + OTPMiddleware so user is
+    # resolved + MFA verification status is known.
+    "path_advisor.middleware.actor_context.ActorContextMiddleware",
     # Story 1.8: pushes (user_id, tenant_id, role) into PG session GUCs so
     # the RLS policies on `users` / `parental_consents` filter at the DB
     # layer. MUST be AFTER AuthenticationMiddleware (request.user must be

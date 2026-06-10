@@ -77,7 +77,10 @@ export type UserRole =
   | "parent"
   | "counselor"
   | "school_admin"
-  | "path_admin";
+  | "path_admin"
+  // Story 1.7 §AC1 — 6th role per PRD §"Matrice RBAC". Support users
+  // handle tickets with a masked profile view ; no audit log access.
+  | "support";
 
 export type UserStatus =
   | "email_unverified"
