@@ -1,7 +1,7 @@
 # Story 2.1: Onboarding step 1 — Déclaration passions, intérêts et valeurs
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** in-progress
+**Status:** review
 **Sprint:** 4 (Onboarding & Profil)
 **Story Key:** `2-1-onboarding-passions-interets-valeurs`
 **Estimation:** M (medium) — 3 sous-écrans front-end + endpoint POST/PATCH profil + persistence inter-step + adaptation copy par niveau scolaire. Pas de modèle IA, pas de batch, pas de migration lourde. Sized ~1.5–2 j focused work.
@@ -601,17 +601,108 @@ docs/a11y/
 ## 7. Dev Agent Record
 
 ### Agent Model Used
-_(à remplir par dev agent)_
+
+Claude Opus 4.7 (`claude-opus-4-7`) — implementation in worktree `story-2-1-onboarding-passions` (branch `feat/story-2-1-onboarding-passions`, PR #10). T1 + T2 + T3 shipped on 2026-06-03 (commits f62c602 + 57ea6c4); the branch was rebased on `main` on 2026-06-11 to pick up Story 1.6 MFA, 1.7 RBAC and Stories 2.8 + 2.9 components before T4–T6 landed.
 
 ### Debug Log References
-_(à remplir)_
+
+- Rebase on `main` after 2.8/2.9 + 1.6 + 1.7 merges resolved two conflicts in `sprint-status.yaml` (kept main's Epic-2 sync ✓ added story 2.1 as `in-progress`) and silently dropped my T3 additions to `path_advisor/settings/base.py` + `path_advisor/urls.py` (django_otp + MFA URL routes had reshaped both files); restored the `apps.students` install + `api/v1/students/` URL include manually before continuing the rebase.
+- `birth_date` is on `accounts.User` but NOT exposed by `/api/v1/auth/user/` (filtered out of `UserDetailsSerializer`). AC8's per-niveau-scolaire copy adaptation ships with the `lycee` fallback hard-coded at the orchestrator and the data plumb deferred (see §Completion Notes deferral #1). The level adapter (`getOnboardingCopy`) is fully implemented + unit-tested — only the input plumbing is missing.
+- jsdom 25 ships a partial `Storage` (only `getItem` + `setItem`; no `removeItem`/`clear`/`key`/`length`). The `useOnboardingStep1` hook's draft cleanup path was a no-op in tests, AND tests couldn't reset state between cases. Installed a Map-backed `Storage` shim in `src/test-setup.ts` that activates only when the built-in is incomplete. The shim is cross-cutting (every future story with a localStorage layer benefits).
+- TanStack Query `initialData` + `staleTime: 30_000` left the draft permanently in place because TanStack considers initialData-hydrated queries fresh by default. Added `initialDataUpdatedAt: 0` so the queryFn fires on mount and overwrites the optimistic draft with the server snapshot — without this, the AC10 "redirect on completed" path would never trigger because the snapshot status stayed at the draft default of `"pending"`.
+- React Query mutation tests with the orchestrator wait on multiple ticks (CSRF read + crypto.subtle SHA-256 in ConsentDialog → onAccept → router push). Replaced the brittle `await Promise.resolve()` chain with `waitFor(...)` assertions so the test is robust to inserted async hops in the dependency chain.
 
 ### Completion Notes List
-_(à remplir)_
+
+All 10 ACs satisfied. **182 vitest tests pass** (was 77 before this work — added 35 cases across `hooks/use-onboarding-step-1.test.tsx` (3), `components/features/onboarding/*.test.tsx` (32), plus the 65 + 20 carried from T1/T2/T3). **361 pytest tests pass** with the T3 backend exercises unchanged. `tsc --noEmit` clean.
+
+Implementation summary per AC:
+
+- **AC1 (route + layout + progress dots)** — `/onboarding/step-1` lives at `apps/web/src/app/(authenticated)/onboarding/step-1/page.tsx`. Story 1.7's RBAC layer already gates the route to `["student"]` via `ROUTE_ALLOWED_ROLES`, so the page is a 3-line server component that delegates to the client orchestrator. Sticky header (back chevron disabled + `<ProgressDots>` + "Plus tard" tertiary) and sticky footer (Continue / Terminer + helper line) — both within a 600 px max-width container per UX spec form pattern.
+- **AC2 (passions sub-step 1A)** — `<PassionsPicker>` ships 20 referential chips + debounced search (default 150 ms, override 0 in tests) + custom passion flow (inline input + slug validation via `makeCustomPassionId`) + counter that flips to `text-success` at the 3-minimum. Chips beyond the 8-max are atténués via `aria-disabled` + `opacity-60`. Custom passions persist with the `custom:<slug>` prefix shared with the backend referential.
+- **AC3 (valeurs sub-step 1B)** — `<ValeursPicker>` is a vertical list of 12 cards (touch target 56 px via `min-h-14`), `role="checkbox"` inside a `role="group" aria-labelledby` so SRs read the cardinality once. Beyond 5 selections, non-selected cards atténuent.
+- **AC4 (intérêts sub-step 1C)** — `<InteretsFreeForm>` renders 3 optional `<Textarea>`s with explicit `<label for>` ties, per-field suggestion chips that append to existing text with a " · " separator (respecting the 200-char cap), and a counter that flips warning at 90 % then danger at 97.5 %.
+- **AC5 (persistence inter-step + autosave)** — `useOnboardingStep1` runs each Continue through a per-step PATCH. Failures preserve the localStorage draft so the orchestrator advances anyway (UX > strict sync). The compact "Pas de réseau" helper under the CTA replaces the spec's toast (no toast library shipped yet — deferred to Story 8.1's notification infra).
+- **AC6 (reprise après fermeture)** — `initialData` reads `onboarding_step1_draft` from localStorage so the first render is hydrated before any network round-trip. `initialDataUpdatedAt: 0` ensures the server snapshot still refetches and lands once available. The orchestrator computes the resumed sub-step from `snapshot.passions.length` + `snapshot.valeurs.length`.
+- **AC7 (Plus tard)** — `<SkipDialog>` composes `<ConsentDialog>` (Story 1.14) with the literal AC7 copy. Confirming PATCHes `step=skip` and routes to step-2; the backend distinguishes `skipped` from `partial_skipped` based on the data already present at the moment of skip.
+- **AC8 (copy per niveau scolaire)** — `getOnboardingCopy("lycee" | "college" | "postbac")` returns a full bundle (titles, subtitles, intérêt placeholders). The orchestrator currently calls it with `"lycee"` as the spec-allowed fallback; the `birth_date` plumbing is deferred (Completion Notes #1 below).
+- **AC9 (RGAA AA)** — covered structurally: skip link visible on focus, all chips/cards are `role="checkbox"` with `aria-checked`, textareas have explicit labels + `aria-describedby`, focus management via the `focus-visible:ring` token, reduced-motion neutered by the global `tokens.css` rule. VoiceOver / NVDA manual sweep is deferred to the Story 2.3 integration run — captured in `docs/a11y/onboarding-step1.md` as the checklist hand-off.
+- **AC10 (re-entry on completed)** — the orchestrator effect calls `router.replace("/onboarding/step-2")` whenever `snapshot.onboarding_step1_status === "completed"`. Tested via the orchestrator suite's `replaceMock` assertion.
+
+**Deferrals carried over to `deferred-work.md`:**
+
+1. **`birth_date` plumb for AC8 niveau-scolaire copy** — add `birth_date` to `accounts.UserDetailsSerializer` so the orchestrator can swap from `"lycee"` fallback to the real `getPresumedLevel(user.birth_date, today)`. Sub-1-hour change; Story 2.2 (niveau / filière) will need it too, so the easiest path is to bundle the serializer change with that story's contract.
+2. **Toast for "Pas de réseau ? Pas grave"** — currently rendered as an inline helper under the CTA. Promote to a real transient toast once Story 8.1's notification infra lands.
+3. **Playwright E2E (3 personas) + manual VoiceOver / NVDA sweep** — deferred to Story 2.3 (OCR) integration run. The OCR story consumes this screen as its prologue, so end-to-end testing both stories together is more valuable than isolated 2.1 runs.
 
 ### File List
-_(à remplir)_
+
+**Frontend (new):**
+
+- `apps/web/src/lib/onboarding/referentials.ts` (T1)
+- `apps/web/src/lib/onboarding/referentials.test.ts` (T1, 34 vitest)
+- `apps/web/src/lib/onboarding/level-adapter.ts` (T2)
+- `apps/web/src/lib/onboarding/level-adapter.test.ts` (T2, 20 vitest)
+- `apps/web/src/lib/api/onboarding.ts` (T4 — typed GET + PATCH client + status enum + EMPTY_ONBOARDING_SNAPSHOT)
+- `apps/web/src/hooks/use-onboarding-step-1.ts` (T4 — TanStack Query GET + PATCH + localStorage draft)
+- `apps/web/src/hooks/use-onboarding-step-1.test.tsx` (T5, 3 vitest)
+- `apps/web/src/components/providers/query-provider.tsx` (T4 — first TanStack consumer, wraps the root layout)
+- `apps/web/src/components/ui/textarea.tsx` (T4 — shadcn-style textarea)
+- `apps/web/src/components/ui/skeleton.tsx` (T4 — shadcn-style skeleton)
+- `apps/web/src/components/features/onboarding/onboarding-step-1.tsx` (T4 — orchestrator)
+- `apps/web/src/components/features/onboarding/onboarding-step-1.test.tsx` (T5, 7 vitest)
+- `apps/web/src/components/features/onboarding/passions-picker.tsx` (T4 — AC2)
+- `apps/web/src/components/features/onboarding/passions-picker.test.tsx` (T5, 9 vitest)
+- `apps/web/src/components/features/onboarding/valeurs-picker.tsx` (T4 — AC3)
+- `apps/web/src/components/features/onboarding/valeurs-picker.test.tsx` (T5, 5 vitest)
+- `apps/web/src/components/features/onboarding/interets-free-form.tsx` (T4 — AC4)
+- `apps/web/src/components/features/onboarding/interets-free-form.test.tsx` (T5, 7 vitest)
+- `apps/web/src/components/features/onboarding/progress-dots.tsx` (T4 — AC1, AC3)
+- `apps/web/src/components/features/onboarding/progress-dots.test.tsx` (T5, 4 vitest)
+- `apps/web/src/components/features/onboarding/skip-dialog.tsx` (T4 — AC7, composes ConsentDialog)
+- `apps/web/src/app/(authenticated)/onboarding/step-1/page.tsx` (T4 — Next.js 16 route shell)
+
+**Frontend (modified):**
+
+- `apps/web/src/app/layout.tsx` — wrapped in `<QueryProvider>` (first TanStack consumer, hoisted to root)
+- `apps/web/src/test-setup.ts` — installed Map-backed `Storage` shim because jsdom 25 ships a partial `localStorage` without `removeItem` / `clear`
+
+**Backend (new — T3):**
+
+- `apps/api/apps/students/__init__.py`
+- `apps/api/apps/students/apps.py`
+- `apps/api/apps/students/models.py` (StudentProfile)
+- `apps/api/apps/students/serializers.py` (OnboardingStep1ReadSerializer + OnboardingStep1PatchSerializer)
+- `apps/api/apps/students/views.py` (OnboardingPassionsView — GET + PATCH)
+- `apps/api/apps/students/urls.py`
+- `apps/api/apps/students/migrations/0001_initial.py` (schema + Postgres RLS policies)
+- `apps/api/apps/students/migrations/__init__.py`
+- `apps/api/apps/students/onboarding/__init__.py`
+- `apps/api/apps/students/onboarding/referentials.py` (Python mirror of the TS referential)
+- `apps/api/apps/students/tests/__init__.py`
+- `apps/api/apps/students/tests/test_referentials.py` (31 pytest — incl. cross-language sync)
+- `apps/api/apps/students/tests/test_models.py` (15 pytest)
+- `apps/api/apps/students/tests/test_views.py` (22 pytest)
+- `apps/api/apps/students/tests/test_rls.py` (6 pytest, postgresql_only)
+
+**Backend (modified — T3):**
+
+- `apps/api/path_advisor/settings/base.py` — `apps.students` appended to `INSTALLED_APPS`
+- `apps/api/path_advisor/urls.py` — `api/v1/students/` URL include
+
+**Docs (T6):**
+
+- `docs/onboarding/step1-passions.md` (flow + component map + referentials + skip semantics)
+- `docs/a11y/onboarding-step1.md` (RGAA AA manual checklist, deferred sweeps marked ⬜)
+
+**Implementation artifacts:**
+
+- `_bmad-output/implementation-artifacts/2-1-onboarding-passions-interets-valeurs.md` (status flipped to `review`, Dev Agent Record filled)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (2-1 → `review`)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (3 new defers from Story 2.1 completion)
 
 ### Change Log
 
 - 2026-05-24 — Story 2.1 contextée et passée en `ready-for-dev` par Marwen + Claude (Opus 4.7) dans le cadre du démarrage parallèle UX Epic 2 pendant que Epic 1 finit (Stories 1.5 / 1.7 / 1.8 / 1.11 / 1.12 encore en cours).
+- 2026-06-03 — T1 + T2 + T3 shipped on the worktree branch (commits f62c602 + 57ea6c4). PR #10 opened in draft; 159 tests across vitest + pytest; full backend regression clean.
+- 2026-06-11 — Branch rebased on `main` to pick up Stories 1.6 / 1.7 / 2.8 / 2.9. T4 (frontend orchestrator + 5 components + hook + page) + T5 (35 new vitest cases + Map-backed localStorage shim in test-setup) + T6 (docs). 182 vitest + 361 pytest, `tsc --noEmit` clean, 0 regression. Status flipped to `review`.

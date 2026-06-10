@@ -62,7 +62,7 @@ development_status:
 
   # Epic 2 — Profil élève & Onboarding
   epic-2: in-progress
-  2-1-onboarding-passions-interets-valeurs: in-progress
+  2-1-onboarding-passions-interets-valeurs: review
   2-2-onboarding-niveau-filiere-specialites: ready-for-dev
   2-3-import-bulletins-pdf-ocr: ready-for-dev
   2-4-saisie-manuelle-notes: ready-for-dev
