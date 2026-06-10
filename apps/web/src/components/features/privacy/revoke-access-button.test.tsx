@@ -83,10 +83,12 @@ describe("RevokeAccessButton", () => {
     await waitFor(() => {
       expect(revokeMock).toHaveBeenCalledTimes(1);
     });
-    const [id, contentHash] = revokeMock.mock.calls[0];
+    const firstCall = revokeMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const [id, contentHash] = firstCall!;
     expect(id).toBe("parental_consent:abc-123");
     expect(typeof contentHash).toBe("string");
-    expect(contentHash.length).toBeGreaterThan(0);
+    expect((contentHash as string).length).toBeGreaterThan(0);
     await waitFor(() => {
       expect(routerMock.refresh).toHaveBeenCalled();
     });
