@@ -1,7 +1,7 @@
 # Story 2.8: Reusable `ScenarioLoader` Component
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review
+**Status:** done
 **Sprint:** 5 (Onboarding bulletins & OCR) — **remonté du sprint 9** pour débloquer Story 2.3
 **Story Key:** `2-8-composant-scenario-loader`
 **Estimation:** S (small) — pure front-end, no backend, no DB migration. Composes shadcn primitives shippées par Story 1.2 (`Progress`, motion tokens). Sized ~3–4 h focused work, **structurellement critique** : c'est le composant qui remplace tous les spinners nus du produit (cf UX spec §Anti-patterns proscrits).

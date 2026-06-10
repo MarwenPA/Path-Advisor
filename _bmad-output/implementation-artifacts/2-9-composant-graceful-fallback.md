@@ -1,7 +1,7 @@
 # Story 2.9: Reusable `GracefulFallback` Component
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review
+**Status:** done
 **Sprint:** 5 (Onboarding bulletins & OCR) — **remonté du sprint 9** pour débloquer Story 2.3
 **Story Key:** `2-9-composant-graceful-fallback`
 **Estimation:** S (small) — pure front-end, no backend, no DB migration. Composes shadcn primitives shippées par Story 1.2 (`Button`). Sized ~3–4 h focused work, **structurellement critique** : c'est le composant qui transforme tous les patterns d'erreur du produit en *portes ouvertes plutôt que murs* (UX-DR13 + NFR-R4).
