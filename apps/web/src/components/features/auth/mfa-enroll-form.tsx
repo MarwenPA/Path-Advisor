@@ -58,25 +58,28 @@ export function MfaEnrollForm() {
   const [startData, setStartData] = useState<MfaEnrollStartResponse | null>(null);
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
   const [postLoginPath, setPostLoginPath] = useState<string>("/");
 
+  // Read mfa_session once on first client render (SSR-safe). Lazy init
+  // keeps the value stable and lets us derive the initial error state
+  // synchronously — avoiding `react-hooks/set-state-in-effect`.
+  const [initialToken] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : readMfaSession(),
+  );
+  const [error, setError] = useState<string | null>(() =>
+    typeof window === "undefined" || initialToken ? null : COPY.missingSession,
+  );
+
   const startedRef = useRef(false);
 
-  // Bootstrap: read mfa_session + call /enroll/start/ once on mount.
+  // Bootstrap: call /enroll/start/ once on mount when a token is present.
   useEffect(() => {
-    if (startedRef.current) return;
+    if (startedRef.current || !initialToken) return;
     startedRef.current = true;
 
-    const token = readMfaSession();
-    if (!token) {
-      setError(COPY.missingSession);
-      return;
-    }
-
-    mfaEnrollStart(token)
+    mfaEnrollStart(initialToken)
       .then(setStartData)
       .catch((cause) => {
         if (cause instanceof ApiError) {
@@ -88,7 +91,7 @@ export function MfaEnrollForm() {
         }
         setError(COPY.fallbackError);
       });
-  }, []);
+  }, [initialToken]);
 
   async function handleConfirm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
