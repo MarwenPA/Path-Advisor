@@ -104,3 +104,17 @@ def send_expired_to_child(student: User) -> bool:
         to=student.email,
         context={"student": student},
     )
+
+
+def send_revoked_to_parent(consent: ParentalConsent) -> bool:
+    """Story 1.10 §AC4 — notify the parent that the student revoked their access.
+
+    Returns True iff SMTP accepted ; the Celery task gates `notification_sent_at`
+    on this return value (idempotency contract — second invocation is a no-op
+    if the first send succeeded).
+    """
+    return _send(
+        template_base="parental_consent_revoked_to_parent",
+        to=consent.parent_email,
+        context={"consent": consent},
+    )

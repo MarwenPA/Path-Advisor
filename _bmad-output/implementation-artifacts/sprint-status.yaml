@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-11  # Story 2.1 done (Pass 1 + Pass 2 review applied, PR #10 merging)
+last_updated: 2026-06-11  # Story 2.1 done (Pass 1 + Pass 2 review, PR #10 merging) + Epic 1 done (14/14)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -43,7 +43,7 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1 — Foundation : Auth multi-rôle, RBAC, Conformité RGPD, Infra technique
-  epic-1: in-progress
+  epic-1: done
   1-1-initialisation-projet: done
   1-2-design-system-tokens: done
   1-3-inscription-eleve-15-ans-rgpd: done
@@ -52,8 +52,8 @@ development_status:
   1-6-mfa-staff: done
   1-7-rbac-middleware-autorisation: done
   1-8-multi-tenant-rls-postgresql: done
-  1-9-liste-tiers-acces-profil: backlog
-  1-10-revocation-acces-tiers: backlog
+  1-9-liste-tiers-acces-profil: done
+  1-10-revocation-acces-tiers: done
   1-11-export-portabilite-rgpd: done
   1-12-suppression-compte-rgpd: done
   1-13-journal-audit-acces: done

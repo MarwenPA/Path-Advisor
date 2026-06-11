@@ -232,3 +232,26 @@ Pass 2 re-review on commit `2849c1d` of the Pass 1 fix. 3 new defers (the 1 H + 
 - **`birth_date` plumb for AC8 niveau-scolaire copy** — `accounts.User.birth_date` exists on the model but is filtered out of `UserDetailsSerializer`. Story 2.1 ships the `lycee` fallback hard-coded at the orchestrator (`SCHOOL_LEVEL = "lycee"`). Surface `birth_date` on the user serializer when Story 2.2 lands — both stories need it (2.2 explicitly so for niveau / filière). The level adapter (`getOnboardingCopy`) is fully implemented + unit-tested; only the data plumb is missing.
 - **Toast for "Pas de réseau ? Pas grave, on enregistre quand tu reviens."** — currently rendered as an inline helper line under the Continue CTA (warning color, `text-warning`). The compact inline pattern works as a single-screen UX but doesn't survive a router navigation. Promote to a real transient toast once Story 8.1's notification infra (email + in-app) lands with a Sonner-equivalent transport.
 - **Playwright E2E (Sarah / Mehdi / Léa) + manual VoiceOver iOS / NVDA Windows sweep** — Story 2.1 ships with the in-component a11y guardrails (role + aria-* queries asserted at the unit level) but no end-to-end run or screen-reader cycle yet. The Story 2.3 (OCR bulletins) integration sweep is the natural moment to run both: 2.3 enters the onboarding chain by routing back through `/onboarding/step-1` on first import, so testing 2.1 in isolation produces less signal than running both stories together. The checklist lives in `docs/a11y/onboarding-step1.md` with ⬜ markers for the deferred items.
+
+## Deferred from: code review of 2-1-onboarding-passions-interets-valeurs (2026-06-11)
+
+Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR. 13 L deferred:
+
+- **AC9 `aria-current="step"` placed on `<button>` instead of `<li>`** — both forms are valid ARIA, but the spec is literal about the `<li>`. Cosmetic.
+- **valeurs group `aria-describedby` points at the counter ("3 / 3 minimum") rather than a dedicated "3 à 5 valeurs" helper** — functionally equivalent (both convey cardinality), spec is literal about the helper text.
+- **Suggestion chips not built as `Toggle` shadcn primitives** — bare `<button>` works because suggestions are inject-then-exit, not stateful. Reconsider if a future story makes them sticky.
+- **Continue button label swaps to "Enregistrement…" while submitting** — not in spec, reasonable progressive-disclosure UX. Keep unless the UX team rejects.
+- **Custom-passion slug stricter than spec (ASCII-only after slugification vs spec's "Unicode L/N" which keeps accented letters)** — ASCII is safer for analytics + future i18n; revisit if support tickets surface.
+- **4+ `aria-live="polite"` regions per screen** — will collapse to one when M3 (AC9 announcer hoist) lands, leaving the counters as non-live visual feedback.
+- **AC10 double-redirect on happy-path completion** — orchestrator's `useEffect` and `handleFinishInterets` both `router.replace`/`router.push` to step-2 on the same tick. Harmless duplicate navigation (same URL). Low priority.
+- **InteretsFreeForm labels were authored rather than lifted from the spec** — semantically aligned ("Une chaîne, un podcast…", "Un livre, un film…", "Une matière, un TP…"). Spec doesn't enumerate label copy. Validate in sprint review.
+- **Substep state can desync when another tab regresses `snapshot.passions` to `[]`** — multi-tab cross-pollination. Requires explicit storage event listening; defer until support tickets surface.
+- **Suggestion append on whitespace-only field produces leading " · "** — `"   ".trimEnd()` returns `"   "`, append yields `"   · YouTube"`. Cosmetic.
+- **In-flight PATCH overwrites draft when user navigates to past substep mid-flight** — narrow race: requires the user to use the dot-jump while a PATCH is pending. Defer; can address with a `ProgressDots` `disabled` prop tied to `isSubmitting`.
+- **`Storage` shim in `test-setup.ts` doesn't support indexed / named property access (`localStorage.foo = "x"` or `localStorage[0]`)** — current production code uses methods only. Add a `Proxy` wrap if any future consumer needs the index form.
+- **`useOnboardingStep1` return docstring claims a stable object but `reset` is a fresh arrow every render** — docstring fix or `useCallback` wrap. Low impact (current consumers destructure individual fields).
+
+## Deferred from: code review of 1-9 + 1-10 (2026-06-11)
+
+- **`aria-label="Révocation à venir"` documented but never observable** — Story 1.9's disabled-button contract (§AC5) was overwritten by Story 1.10's active button in the same merge. The 1.9 surface in isolation was never reviewable.
+- **`error.tsx` Next.js boundary missing for `/parametres/confidentialite/acces-tiers`** — acknowledged in the page comment ("added Q3"). Fallback to default Next 500 page is acceptable for MVP.

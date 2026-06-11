@@ -280,6 +280,16 @@ Every refusal writes ONE `rbac.access_denied` audit row per request (deduped). D
 
 Full matrix + how-to-add-a-new-endpoint walkthrough: [`docs/patterns/rbac-matrix.md`](./patterns/rbac-matrix.md).
 
+## 9f. Access-list aggregator (Story 1.9)
+
+`GET /api/v1/profile/access-list/` returns a unified list of every third party (parent, école, conseillère) currently authorized to see a student's profile. The endpoint is powered by a polymorphic source registry in [`apps/profiles/access_list/`](../apps/api/apps/profiles/access_list/) — each tier type (`parental_consent`, `school_partnership`, `counselor_consent`) ships its own `AccessListSource` adapter, and the aggregator concatenates results.
+
+Today only `ParentalConsentSource` is live (Story 1.4 data). Stories 5.4 and 6.7 will add the other two adapters with no change to the API or the frontend page.
+
+The visibility matrix in [`visibility_matrix.py`](../apps/api/apps/profiles/access_list/visibility_matrix.py) is the single source of truth for "what does tier X see / not see" — `bulletins_detailles` masked for parents, `motivation_libre` masked for conseillère, etc. Every change to that matrix triggers a parametrized test that fails if you forget to update a tier.
+
+Full pattern + extension recipe: [`docs/patterns/access-list-aggregator.md`](./patterns/access-list-aggregator.md).
+
 ## 10. What's next
 
 After the foundation is up, the next stories live in
