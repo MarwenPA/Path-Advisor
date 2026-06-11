@@ -1,7 +1,7 @@
 # Story 2.1: Onboarding step 1 — Déclaration passions, intérêts et valeurs
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review
+**Status:** done
 **Sprint:** 4 (Onboarding & Profil)
 **Story Key:** `2-1-onboarding-passions-interets-valeurs`
 **Estimation:** M (medium) — 3 sous-écrans front-end + endpoint POST/PATCH profil + persistence inter-step + adaptation copy par niveau scolaire. Pas de modèle IA, pas de batch, pas de migration lourde. Sized ~1.5–2 j focused work.
