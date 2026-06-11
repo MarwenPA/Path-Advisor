@@ -179,23 +179,26 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
         data = self.validated_data
         step = data["step"]
 
-        # H2 — refuse any sub-step write on a terminal-state profile. The
-        # frontend (AC10) already redirects users away from /step-1 when the
-        # status is `completed`, but a stale tab or a non-browser client
-        # could still hit the endpoint. Returning 409 keeps the audit trail
-        # crisp ("client tried to mutate a closed onboarding") vs silently
-        # over-writing the row.
-        terminal_states = {Status.COMPLETED, Status.SKIPPED, Status.PARTIAL_SKIPPED}
-        if profile.onboarding_step1_status in terminal_states and step != "skip":
-            # `step=skip` is allowed against a terminal state (idempotent —
-            # a second skip just refreshes the timestamp via mark_skipped).
+        # H2 — refuse any sub-step write on a TRULY terminal-state profile.
+        # The frontend (AC10) already redirects users away from /step-1 when
+        # the status is `completed`, but a stale tab or a non-browser client
+        # could still hit the endpoint.
+        #
+        # Pass 2 PR2-H2 — only `completed` is genuinely terminal. `skipped` /
+        # `partial_skipped` mean the user dropped off mid-flight; they MUST
+        # be able to come back and finish later (this is the whole point of
+        # the per-skip distinction Story 2.7 leverages). The Pass 1 fix
+        # included those two in the terminal set, which combined with the
+        # H3 routing-to-`partial_skipped` created a one-way dead-end: a
+        # mis-clicked Terminer locked the user out of step-1 forever.
+        # Now only `completed` blocks further sub-step writes.
+        if profile.onboarding_step1_status == Status.COMPLETED and step != "skip":
             raise serializers.ValidationError(
                 {
                     "step": (
-                        f"Onboarding step 1 is already in terminal state "
-                        f"'{profile.onboarding_step1_status}'. Submit `step=skip` "
-                        f"to reaffirm or use the profile-edit endpoint (Story 2.6) "
-                        f"to modify saved selections."
+                        "Onboarding step 1 is already completed. Use the "
+                        "profile-edit endpoint (Story 2.6) to modify saved "
+                        "selections."
                     )
                 },
                 code="onboarding_step1_terminal",
@@ -230,6 +233,15 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
             else:
                 profile.mark_skipped(partial=True)
         elif step == "skip":
+            # Pass 2 PR2-H5 — a `step=skip` PATCH against a row that is
+            # already `completed` must be a true no-op, NOT a regression to
+            # `skipped`. The Pass 1 H2 fix exempted `step=skip` from the
+            # terminal-state guard to keep skip idempotent; without this
+            # additional check, a stale tab firing skip after a successful
+            # completion would silently demote `completed` → `skipped`,
+            # corrupting the maturité-de-profil signal Story 2.7 reads.
+            if profile.onboarding_step1_status == Status.COMPLETED:
+                return profile
             has_partial = bool(profile.passions) or bool(profile.valeurs) or any(
                 profile.interets.values()
             )

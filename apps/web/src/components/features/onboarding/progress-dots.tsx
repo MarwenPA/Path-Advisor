@@ -35,20 +35,26 @@ export type ProgressDotsProps = {
 export function ProgressDots({ current, onJumpTo }: ProgressDotsProps) {
   const steps: (1 | 2 | 3)[] = [1, 2, 3];
   return (
+    // Pass 2 PR2-H6 — `-mx-4` on each `<li>` collapses the visual gap
+    // back to the spec-literal 4 px (AC1) while keeping each 44 × 44
+    // touch target intact. WCAG 2.5.5 allows touch targets to OVERLAP
+    // each other as long as the visible target ≥ 44 × 44; the negative
+    // margin makes the buttons overlap on either side without shrinking
+    // the click surface. The wrapper `<ol>` is `gap-0` since the
+    // negative margin replaces it.
     <nav aria-label="Progression onboarding" data-testid="progress-dots">
-      <ol className="flex items-center gap-1">
+      <ol className="flex items-center">
         {steps.map((step) => {
           const isActive = step === current;
           const isPast = step < current;
           const canJump = isPast && onJumpTo !== undefined;
           return (
-            <li key={step} className="flex">
-              {/* Pass 1 review H4 — the visible 8 × 8 dot lives inside a
-                  44 × 44 button wrapper so the touch target meets AC9
-                  (44 × 44 px minimum). The dot itself stays the spec-
-                  literal `h-2 w-2`. The button is `inline-flex
-                  items-center justify-center` so the visual stays
-                  centered. */}
+            <li key={step} className="-mx-4 flex first:ml-0 last:mr-0">
+              {/* Pass 1 H4 + Pass 2 PR2-H6 — visible 8 × 8 dot inside a
+                  44 × 44 click surface. Negative `mx-4` on the parent
+                  `<li>` collapses the visible gap to 4 px (AC1) while
+                  preserving the full touch target through controlled
+                  overlap. */}
               <button
                 type="button"
                 onClick={canJump ? () => onJumpTo(step) : undefined}

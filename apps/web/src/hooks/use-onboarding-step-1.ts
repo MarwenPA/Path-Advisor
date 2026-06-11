@@ -13,7 +13,13 @@ import {
   type OnboardingStep1Snapshot,
 } from "@/lib/api/onboarding";
 
-const QUERY_KEY = ["onboarding", "step1"] as const;
+// Pass 2 PR2-H4 — the query key MUST carry the userId. The Pass 1 M9 fix
+// scoped the localStorage draft but left this constant module-level; that
+// meant TanStack's cache still served User A's snapshot to User B on a
+// device-shared / SPA-logout-login flow. The first dimension stays stable
+// so future stories can selectively invalidate the whole "onboarding"
+// scope (queryClient.invalidateQueries({ queryKey: ["onboarding"] })).
+const QUERY_KEY_PREFIX = ["onboarding", "step1"] as const;
 // Pass 1 review M9 — namespace the draft by user ID so a shared device
 // can't leak User A's selections into User B's onboarding. The legacy
 // shared key `onboarding_step1_draft` is migrated on first read (any leftover
@@ -97,13 +103,43 @@ async function getCsrf(): Promise<string> {
 export function useOnboardingStep1(userId?: string | null) {
   const queryClient = useQueryClient();
   const draftKey = React.useMemo(() => draftKeyFor(userId), [userId]);
+  // Pass 2 PR2-H4 — per-user query key. A logout / login on the same tab
+  // now invalidates the previous user's cache entry on `userId` change
+  // because TanStack treats a new key as a new query.
+  const queryKey = React.useMemo(
+    () => [...QUERY_KEY_PREFIX, userId ?? "anon"] as const,
+    [userId],
+  );
+
+  // Pass 2 PR2-H7 — eagerly drop the legacy global localStorage key on
+  // mount when a real userId is provided. The Pass 1 cleanup only ran on
+  // PATCH success; until then, any anonymous / SSR / `userId === null`
+  // path would re-read the legacy entry and serve User A's draft to
+  // User B. This effect closes that window the moment we know who the
+  // current user is.
+  React.useEffect(() => {
+    if (!userId) return;
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(LEGACY_DRAFT_STORAGE_KEY);
+    } catch {
+      /* noop — quota / privacy mode */
+    }
+  }, [userId]);
 
   const query = useQuery<OnboardingStep1Snapshot>({
-    queryKey: QUERY_KEY,
+    queryKey,
     queryFn: ({ signal }) => fetchOnboardingSnapshot(signal),
     // The draft is the initial data so the first render is hydrated even
     // before the network round-trip completes (AC6 — silent reprise).
+    //
+    // Pass 2 PR2-H7 — only hydrate from the user-scoped key. If `userId`
+    // is not yet known (typically the first render where the auth
+    // resolution is still pending), skip initialData entirely; that
+    // avoids reading the legacy global key and serving another user's
+    // draft to whoever lands on the page before auth resolves.
     initialData: () => {
+      if (!userId) return undefined;
       const draft = readDraft(draftKey);
       if (!draft) return undefined;
       // Pass 1 M10 — use the factory (not the frozen const) so the
@@ -127,7 +163,7 @@ export function useOnboardingStep1(userId?: string | null) {
       return patchOnboardingStep1(payload, csrf);
     },
     onSuccess: (snapshot) => {
-      queryClient.setQueryData(QUERY_KEY, snapshot);
+      queryClient.setQueryData(queryKey, snapshot);
       // Flush the draft once the server has confirmed the write — the
       // server snapshot is the new source of truth.
       clearDraft(draftKey);
@@ -184,13 +220,13 @@ export function useOnboardingStep1(userId?: string | null) {
     isSubmitting: mutation.isPending,
     submitError: mutation.error,
     submitErrorKind,
-    reset: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
+    reset: () => queryClient.invalidateQueries({ queryKey }),
   } as const;
 }
 
 export const __TEST_ONLY__ = {
   DRAFT_STORAGE_KEY: LEGACY_DRAFT_STORAGE_KEY,
   DRAFT_STORAGE_PREFIX,
+  QUERY_KEY_PREFIX,
   draftKeyFor,
-  QUERY_KEY,
 };

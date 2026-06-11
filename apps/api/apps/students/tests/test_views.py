@@ -319,12 +319,13 @@ class TestPatchInterets:
         # User's typed intérêt is still persisted (UX > strict sync).
         assert p.interets == {"1": "Podcast Choses à savoir", "2": None, "3": None}
 
-    def test_terminal_state_refuses_further_passions_patch(self, client, user):
-        # Pass 1 review H2 — once a profile reaches a terminal state
-        # (`completed`, `skipped`, `partial_skipped`), further sub-step
-        # PATCHes are refused with a typed 400 so a stale tab can't
-        # silently overwrite a finished onboarding. `step=skip` is
-        # excepted (idempotent reaffirmation).
+    def test_completed_state_refuses_further_passions_patch(self, client, user):
+        # Pass 1 review H2 + Pass 2 review PR2-H2 — only `completed` is truly
+        # terminal. The Pass 1 fix originally treated `skipped` and
+        # `partial_skipped` as terminal too, which combined with the H3
+        # routing-to-partial_skipped created a one-way dead-end for users
+        # who mis-clicked Terminer. Pass 2 narrows the gate to `completed`
+        # only; `skipped` / `partial_skipped` profiles can resume.
         StudentProfile.objects.create(
             user=user,
             passions=["sciences-nature", "musique", "tech-code"],
@@ -337,7 +338,52 @@ class TestPatchInterets:
             format="json",
         )
         assert resp.status_code == 400
-        assert b"terminal state" in resp.content.lower() or b"already" in resp.content.lower()
+        assert b"already completed" in resp.content.lower()
+
+    def test_partial_skipped_state_ALLOWS_resume_via_passions_patch(self, client, user):
+        # Pass 2 review PR2-H2 — `partial_skipped` is a "user dropped off
+        # mid-flight" status, not a closed-door terminal state. The user
+        # MUST be able to come back and complete step 1 later.
+        StudentProfile.objects.create(
+            user=user,
+            passions=[],
+            valeurs=[],
+            onboarding_step1_status=OnboardingStep1Status.PARTIAL_SKIPPED,
+        )
+        resp = client.patch(
+            URL,
+            data={"step": "passions", "passions": ["sciences-nature", "musique", "tech-code"]},
+            format="json",
+        )
+        assert resp.status_code == 200, resp.content
+        p = StudentProfile.objects.get(user=user)
+        # Status moves back to `in_progress` (mark_in_progress is invoked
+        # by `_touch_in_progress` on the new sub-step write).
+        assert p.passions == ["sciences-nature", "musique", "tech-code"]
+
+    def test_completed_state_skip_is_noop_does_not_demote(self, client, user):
+        # Pass 2 review PR2-H5 — `step=skip` against an already-completed
+        # profile must NOT demote the row from `completed` → `skipped`.
+        # The Pass 1 H2 fix exempted `step=skip` from the terminal-state
+        # guard for idempotence; without this additional noop check, a
+        # stale tab firing skip after completion silently regressed the
+        # status.
+        from django.utils import timezone as _tz
+
+        completed_at = _tz.now()
+        StudentProfile.objects.create(
+            user=user,
+            passions=["sciences-nature", "musique", "tech-code"],
+            valeurs=["justice-sociale", "creativite", "sens-utilite"],
+            onboarding_step1_status=OnboardingStep1Status.COMPLETED,
+            onboarding_step1_completed_at=completed_at,
+        )
+        resp = client.patch(URL, data={"step": "skip"}, format="json")
+        assert resp.status_code == 200, resp.content
+        p = StudentProfile.objects.get(user=user)
+        assert p.onboarding_step1_status == OnboardingStep1Status.COMPLETED
+        # Timestamp preserved exactly (no re-stamping).
+        assert p.onboarding_step1_completed_at is not None
 
     def test_rejects_string_over_200_chars(self, client, user):
         self._seed_passions_and_valeurs(user)

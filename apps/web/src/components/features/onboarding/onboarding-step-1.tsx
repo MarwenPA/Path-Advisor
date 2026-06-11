@@ -15,6 +15,7 @@ import {
   MIN_PASSIONS,
   MIN_VALEURS,
 } from "@/lib/onboarding/referentials";
+import { ApiError } from "@/lib/api/client";
 import type { OnboardingInterets } from "@/lib/api/onboarding";
 import { cn } from "@/lib/utils";
 
@@ -136,19 +137,31 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   // element of the current substep (AC1 — "le focus initial à l'arrivée
   // sur l'écran est sur le premier chip"). Re-fires when the substep
   // changes so dot-jumps land focus on the new picker too.
+  //
+  // Pass 2 PR2-H3 — `isLoading` is in the dep array so the effect re-runs
+  // when the skeleton unmounts and the real <main> commits (the substep
+  // value doesn't change on that transition, so the previous deps
+  // `[substep]` missed the very flow this fix targets — initial page
+  // load). The effect bails on the skeleton render because `mainRef`
+  // isn't attached yet.
   const mainRef = React.useRef<HTMLElement>(null);
   React.useEffect(() => {
     if (typeof document === "undefined") return;
-    // Don't steal focus if the user has tabbed elsewhere (e.g. into the
-    // "Plus tard" header button).
-    if (document.activeElement && document.activeElement !== document.body) return;
+    if (isLoading) return;
+    // Don't steal focus if the user has tabbed elsewhere INSIDE the page
+    // (e.g. into the "Plus tard" header button or a search input). Router
+    // navigations leave focus on the body or on the previous trigger
+    // (detached), so the body check + the "inside the picker root"
+    // check below cover those.
+    const active = document.activeElement;
     const root = mainRef.current;
     if (!root) return;
+    if (active && active !== document.body && root.contains(active)) return;
     const firstInteractive = root.querySelector<HTMLElement>(
       'button:not([disabled]), [role="checkbox"]:not([aria-disabled="true"]), textarea, [tabindex="0"]',
     );
     firstInteractive?.focus();
-  }, [substep]);
+  }, [substep, isLoading]);
 
   // Pass 1 review M3 — emit the spec-literal AC9 threshold messages.
   const prevPassionsCountRef = React.useRef(0);
@@ -194,15 +207,26 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   // must NOT silently advance the substep — the user would think their data
   // landed when it didn't, and a localStorage wipe would erase the entire
   // onboarding. A 5xx / network blip keeps the AC5 UX-over-strict-sync trade-off.
+  //
+  // Pass 2 PR2-H1 — classify the caught error INLINE rather than reading the
+  // hook's memoised `submitErrorKind`. The hook re-computes that memo on the
+  // NEXT render after `mutation.error` propagates; the catch block runs in
+  // THIS render's closure, where `submitErrorKind` is still the previous
+  // value ("none" on the first failure). Reading the throw directly avoids
+  // the one-tick-behind race that made Pass 1's M6 a no-op for the very
+  // first 4xx.
+  const isClientError = (err: unknown): boolean =>
+    err instanceof ApiError && typeof err.status === "number" && err.status >= 400 && err.status < 500;
+
   const handleContinuePassions = async () => {
     if (passionsDraft.length < MIN_PASSIONS) return;
     let advance = true;
     try {
       await submit({ step: "passions", passions: passionsDraft });
-    } catch {
+    } catch (err) {
       // Block advance on a client error so the user sees the typed error
       // and can act on it; transient errors keep the spec's optimistic UX.
-      advance = submitErrorKind !== "client";
+      if (isClientError(err)) advance = false;
     }
     if (advance) setSubstepWithAnnounce(2, "valeurs");
   };
@@ -212,8 +236,8 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
     let advance = true;
     try {
       await submit({ step: "valeurs", valeurs: valeursDraft });
-    } catch {
-      advance = submitErrorKind !== "client";
+    } catch (err) {
+      if (isClientError(err)) advance = false;
     }
     if (advance) setSubstepWithAnnounce(3, "centres d'intérêt");
   };
@@ -222,8 +246,8 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
     let advance = true;
     try {
       await submit({ step: "interets", interets: interetsDraft });
-    } catch {
-      advance = submitErrorKind !== "client";
+    } catch (err) {
+      if (isClientError(err)) advance = false;
     }
     if (advance) router.push("/onboarding/step-2");
   };
