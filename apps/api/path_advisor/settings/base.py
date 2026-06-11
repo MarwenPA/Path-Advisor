@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.audit",
     "apps.profiles",
+    "apps.students",
 ]
 
 MIDDLEWARE = [

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-11  # Epic 1 done — 14/14 stories complete after PR #17
+last_updated: 2026-06-11  # Story 2.1 done (Pass 1 + Pass 2 review, PR #10 merging) + Epic 1 done (14/14)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -62,7 +62,7 @@ development_status:
 
   # Epic 2 — Profil élève & Onboarding
   epic-2: in-progress
-  2-1-onboarding-passions-interets-valeurs: ready-for-dev
+  2-1-onboarding-passions-interets-valeurs: done
   2-2-onboarding-niveau-filiere-specialites: ready-for-dev
   2-3-import-bulletins-pdf-ocr: ready-for-dev
   2-4-saisie-manuelle-notes: ready-for-dev
