@@ -28,7 +28,7 @@ import { BranchePostbac } from "./branche-postbac";
 import { RecapCard } from "./recap-card";
 import { SkipDialog } from "./skip-dialog-step2";
 import { useOnboardingStep2 } from "@/hooks/use-onboarding-step-2";
-import type { NiveauId } from "@/lib/onboarding/levels";
+import { expectedSpecCount, type NiveauId } from "@/lib/onboarding/levels";
 
 type ViewState = "editing" | "recap";
 
@@ -57,6 +57,7 @@ export function OnboardingStep2() {
   const [view, setView] = React.useState<ViewState>("editing");
   const [skipOpen, setSkipOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [commitError, setCommitError] = React.useState<string | null>(null);
 
   // AC10 aria-live announcer
   const announcerRef = React.useRef<HTMLDivElement>(null!);
@@ -80,11 +81,12 @@ export function OnboardingStep2() {
 
   const handleCommit = async () => {
     setIsSubmitting(true);
+    setCommitError(null);
     try {
       await commitLevel();
       router.push("/onboarding/step-3");
     } catch {
-      // Stay on recap — network error toast handled globally
+      setCommitError("Une erreur est survenue. Vérifie ta connexion et réessaie.");
     } finally {
       setIsSubmitting(false);
     }
@@ -110,7 +112,12 @@ export function OnboardingStep2() {
       if (branch === "lycee" && !draft.filiere) return "Choisis ta filière pour continuer.";
       if (branch === "lycee" && draft.filiere === "techno" && !draft.sous_filiere_techno)
         return "Précise ta sous-filière techno.";
-      if (branch === "lycee" && draft.specialites.length === 0)
+      if (
+        branch === "lycee" &&
+        draft.filiere &&
+        expectedSpecCount(draft.level!, draft.filiere) !== null &&
+        draft.specialites.length === 0
+      )
         return "Sélectionne tes spécialités pour continuer.";
       if (branch === "postbac" && !draft.postbac_year) return "Indique ton niveau actuel.";
       if (branch === "postbac" && !draft.postbac_formation_type)
@@ -255,14 +262,19 @@ export function OnboardingStep2() {
               )}
             </>
           ) : (
-            <Button
-              size="lg"
-              className="w-full md:w-auto"
-              disabled={isSubmitting}
-              onClick={handleCommit}
-            >
-              {isSubmitting ? "Enregistrement…" : "Continuer vers les bulletins"}
-            </Button>
+            <>
+              <Button
+                size="lg"
+                className="w-full md:w-auto"
+                disabled={isSubmitting}
+                onClick={handleCommit}
+              >
+                {isSubmitting ? "Enregistrement…" : "Continuer vers les bulletins"}
+              </Button>
+              {commitError && (
+                <p role="alert" className="text-body-sm text-danger">{commitError}</p>
+              )}
+            </>
           )}
         </div>
       </footer>

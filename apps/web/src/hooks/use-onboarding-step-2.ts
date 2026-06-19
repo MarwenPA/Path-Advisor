@@ -16,8 +16,8 @@ import { REF_VERSION, expectedSpecCount, requiresSousFiliere } from "@/lib/onboa
 
 const DRAFT_STORAGE_PREFIX = "onboarding_step2_draft";
 
-function draftKeyFor(userId: string | null | undefined): string {
-  return userId ? `${DRAFT_STORAGE_PREFIX}:${userId}` : DRAFT_STORAGE_PREFIX;
+function draftKeyFor(userId: string | null | undefined): string | null {
+  return userId ? `${DRAFT_STORAGE_PREFIX}:${userId}` : null;
 }
 
 export type Step2Draft = {
@@ -42,19 +42,35 @@ function emptyDraft(): Step2Draft {
   };
 }
 
-function readDraft(key: string): Step2Draft | null {
-  if (typeof window === "undefined") return null;
+function isValidDraft(v: unknown): v is Step2Draft {
+  if (!v || typeof v !== "object") return false;
+  const d = v as Record<string, unknown>;
+  return (
+    "level" in d &&
+    "filiere" in d &&
+    "sous_filiere_techno" in d &&
+    Array.isArray(d.specialites) &&
+    "intended_track" in d &&
+    "postbac_year" in d &&
+    "postbac_formation_type" in d
+  );
+}
+
+function readDraft(key: string | null): Step2Draft | null {
+  if (!key || typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem(key);
     if (!raw) return null;
-    return JSON.parse(raw) as Step2Draft;
+    const parsed: unknown = JSON.parse(raw);
+    if (!isValidDraft(parsed)) return null;
+    return parsed;
   } catch {
     return null;
   }
 }
 
-function writeDraft(key: string, draft: Step2Draft): void {
-  if (typeof window === "undefined") return;
+function writeDraft(key: string | null, draft: Step2Draft): void {
+  if (!key || typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(draft));
   } catch {
@@ -62,8 +78,8 @@ function writeDraft(key: string, draft: Step2Draft): void {
   }
 }
 
-function clearDraft(key: string): void {
-  if (typeof window === "undefined") return;
+function clearDraft(key: string | null): void {
+  if (!key || typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(key);
   } catch {
@@ -194,13 +210,14 @@ export function useOnboardingStep2({ userId }: UseOnboardingStep2Options): UseOn
 
   const toggleSpecialite = (id: string) => {
     setDraft((prev) => {
-      const expected = expectedSpecCount(prev.level!, prev.filiere);
+      if (!prev.level) return prev;
+      const expected = expectedSpecCount(prev.level, prev.filiere);
       const isSelected = prev.specialites.includes(id);
       if (isSelected) {
         return { ...prev, specialites: prev.specialites.filter((s) => s !== id) };
       }
-      // Reject if already at cap
-      if (expected !== null && prev.specialites.length >= expected) return prev;
+      // Reject if already at cap (null expected = no specialites allowed, treat as 0)
+      if (expected === null || prev.specialites.length >= expected) return prev;
       return { ...prev, specialites: [...prev.specialites, id] };
     });
   };

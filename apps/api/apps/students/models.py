@@ -276,3 +276,4 @@ class StudentLevelProfile(models.Model):
 
     def mark_skipped(self) -> None:
         self.onboarding_step2_status = OnboardingStep2Status.SKIPPED
+        self.onboarding_step2_completed_at = None

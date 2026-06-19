@@ -30,8 +30,9 @@ export function Branche3eme({ value, onChange }: Branche3emeProps) {
           {TRACKS_3EME.map((track) => {
             const isSelected = value === track.id;
             return (
-              <div
+              <Label
                 key={track.id}
+                htmlFor={`track-${track.id}`}
                 className={[
                   "flex cursor-pointer items-center justify-between rounded-md border px-4 py-3",
                   "min-h-[56px] bg-bg-2 transition-colors",
@@ -39,19 +40,13 @@ export function Branche3eme({ value, onChange }: Branche3emeProps) {
                     ? "border-brand bg-brand/5"
                     : "border-border hover:border-border-strong",
                 ].join(" ")}
-                onClick={() => onChange(track.id)}
               >
                 <div className="flex flex-col gap-0.5">
-                  <Label
-                    htmlFor={`track-${track.id}`}
-                    className="cursor-pointer text-body font-medium"
-                  >
-                    {track.label}
-                  </Label>
+                  <span className="text-body font-medium">{track.label}</span>
                   <p className="text-body-sm text-text-muted">{track.description}</p>
                 </div>
                 <RadioGroupItem id={`track-${track.id}`} value={track.id} className="shrink-0" />
-              </div>
+              </Label>
             );
           })}
         </RadioGroup>

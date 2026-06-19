@@ -46,6 +46,11 @@ def emit_student_level_declared(level_profile_id: str) -> None:
             "specialites": level_profile.specialites,
             "intended_track": level_profile.intended_track,
             "level_profile_id": level_profile_id,
+            "declared_at": (
+                level_profile.onboarding_step2_completed_at.isoformat()
+                if level_profile.onboarding_step2_completed_at
+                else None
+            ),
         },
     )
     # Future: outbox.publish("student_level_declared", payload={...})

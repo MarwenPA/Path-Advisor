@@ -378,6 +378,8 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 f"Unknown specialite IDs: {unknown}"
             )
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("Duplicate specialite IDs are not allowed.")
         return value
 
     def validate(self, data: dict) -> dict:
@@ -434,9 +436,11 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
                             f"got {len(specialites)}."
                         )
                 else:
-                    # techno → no general specialites but sous_filiere required for 1ère/Terminale
-                    if specialites and filiere == "techno":
-                        errors["specialites"] = "specialites must be empty for techno filiere."
+                    # expected is None: techno or 2nde général/techno — no specialites allowed
+                    if specialites:
+                        errors["specialites"] = (
+                            f"specialites must be empty for {level}/{filiere}."
+                        )
 
                 if requires_sous_filiere(level, filiere) and not sous_filiere:
                     errors["sous_filiere_techno"] = (
@@ -489,6 +493,23 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
             level_profile.specialites = data["specialites"]
 
         if data.get("commit"):
+            # Normalize stale branch fields that are incompatible with the committed level.
+            level = level_profile.level
+            if level == "college_3eme":
+                level_profile.filiere = None
+                level_profile.sous_filiere_techno = None
+                level_profile.specialites = []
+                level_profile.postbac_year = None
+                level_profile.postbac_formation_type = None
+            elif level in ("lycee_2nde", "lycee_1ere", "lycee_terminale"):
+                level_profile.intended_track = None
+                level_profile.postbac_year = None
+                level_profile.postbac_formation_type = None
+            elif level == "postbac":
+                level_profile.filiere = None
+                level_profile.sous_filiere_techno = None
+                level_profile.specialites = []
+                level_profile.intended_track = None
             level_profile.mark_completed()
         elif level_profile.onboarding_step2_status == OnboardingStep2Status.PENDING:
             level_profile.onboarding_step2_status = OnboardingStep2Status.IN_PROGRESS

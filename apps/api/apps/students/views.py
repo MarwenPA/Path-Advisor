@@ -123,21 +123,28 @@ class OnboardingLevelView(APIView):
 
         level_profile = self._get_or_create(request)
 
-        # Once completed, only skips are accepted (stale tab safety)
         from apps.students.models import OnboardingStep2Status as S2
 
+        was_completed = level_profile.onboarding_step2_status == S2.COMPLETED
+
+        # Stale-tab guard: once completed, reject non-commit, non-skip PATCHes.
         if (
-            level_profile.onboarding_step2_status == S2.COMPLETED
+            was_completed
             and not serializer.validated_data.get("skip")
             and not serializer.validated_data.get("commit")
         ):
-            # Allow idempotent re-commit (récap resubmit edge case)
-            pass
+            return Response(
+                OnboardingStep2ReadSerializer(level_profile).data, status=status.HTTP_200_OK
+            )
 
         serializer.apply(level_profile)
         level_profile.save()
 
-        if level_profile.onboarding_step2_status == S2.COMPLETED:
+        # Only emit the domain event on a real PENDING/IN_PROGRESS → COMPLETED transition.
+        if (
+            not was_completed
+            and level_profile.onboarding_step2_status == S2.COMPLETED
+        ):
             self._emit_level_declared(level_profile, request)
 
         return Response(
@@ -156,7 +163,12 @@ class OnboardingLevelView(APIView):
     @staticmethod
     def _get_or_create(request: Request) -> StudentLevelProfile:
         profile, _ = StudentProfile.objects.get_or_create(user=request.user)
-        level_profile, _ = StudentLevelProfile.objects.get_or_create(profile=profile)
+        level_profile, created = StudentLevelProfile.objects.get_or_create(profile=profile)
+        if created and level_profile.tenant_id is None and profile.tenant_id is not None:
+            level_profile.tenant_id = profile.tenant_id
+            StudentLevelProfile.objects.filter(pk=level_profile.pk).update(
+                tenant_id=profile.tenant_id
+            )
         return level_profile
 
     @staticmethod

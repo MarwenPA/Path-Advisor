@@ -69,8 +69,9 @@ export function BrancheLycee({
           {FILIERES_LYCEE.map((item) => {
             const isSelected = filiere === item.id;
             return (
-              <div
+              <Label
                 key={item.id}
+                htmlFor={`filiere-${item.id}`}
                 className={[
                   "flex cursor-pointer items-center justify-between rounded-md border px-4 py-3",
                   "min-h-[56px] bg-bg-2 transition-colors",
@@ -78,16 +79,13 @@ export function BrancheLycee({
                     ? "border-brand bg-brand/5"
                     : "border-border hover:border-border-strong",
                 ].join(" ")}
-                onClick={() => onFiliereChange(item.id)}
               >
                 <div className="flex flex-col gap-0.5">
-                  <Label htmlFor={`filiere-${item.id}`} className="cursor-pointer text-body font-medium">
-                    {item.label}
-                  </Label>
+                  <span className="text-body font-medium">{item.label}</span>
                   <p className="text-body-sm text-text-muted">{item.description}</p>
                 </div>
                 <RadioGroupItem id={`filiere-${item.id}`} value={item.id} className="shrink-0" />
-              </div>
+              </Label>
             );
           })}
         </RadioGroup>
@@ -115,21 +113,21 @@ export function BrancheLycee({
             {SOUS_FILIERES_TECHNO.map((sf) => {
               const isSelected = sousFiliere === sf.id;
               return (
-                <div
+                <Label
                   key={sf.id}
+                  htmlFor={`sf-${sf.id}`}
                   className={[
                     "flex cursor-pointer items-center justify-between rounded-md border px-4 py-2.5",
                     "min-h-[44px] bg-bg-2 transition-colors",
                     isSelected ? "border-brand bg-brand/5" : "border-border hover:border-border-strong",
                   ].join(" ")}
-                  onClick={() => onSousFiliereChange(sf.id)}
                 >
                   <div>
-                    <Label htmlFor={`sf-${sf.id}`} className="cursor-pointer text-body font-medium">{sf.id}</Label>
+                    <span className="text-body font-medium">{sf.id}</span>
                     <p className="text-body-sm text-text-muted">{sf.description}</p>
                   </div>
                   <RadioGroupItem id={`sf-${sf.id}`} value={sf.id} className="shrink-0" />
-                </div>
+                </Label>
               );
             })}
           </RadioGroup>

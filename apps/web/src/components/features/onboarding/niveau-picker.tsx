@@ -32,8 +32,9 @@ export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProp
         {LEVELS.map((item) => {
           const isSelected = value === item.id;
           return (
-            <div
+            <Label
               key={item.id}
+              htmlFor={`niveau-${item.id}`}
               className={[
                 "flex cursor-pointer items-center justify-between rounded-md border px-4 py-3",
                 "min-h-[56px] bg-bg-2 transition-colors",
@@ -41,15 +42,9 @@ export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProp
                   ? "border-brand bg-brand/5"
                   : "border-border hover:border-border-strong",
               ].join(" ")}
-              onClick={() => onChange(item.id)}
             >
               <div className="flex flex-col gap-0.5">
-                <Label
-                  htmlFor={`niveau-${item.id}`}
-                  className="cursor-pointer text-body font-medium"
-                >
-                  {item.label}
-                </Label>
+                <span className="text-body font-medium">{item.label}</span>
                 <p className="text-body-sm text-text-muted">{item.description}</p>
               </div>
               <RadioGroupItem
@@ -57,7 +52,7 @@ export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProp
                 value={item.id}
                 className="shrink-0"
               />
-            </div>
+            </Label>
           );
         })}
       </RadioGroup>
