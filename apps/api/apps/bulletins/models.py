@@ -203,3 +203,59 @@ class BulletinOCRJob(models.Model):
         fields = self.normalized_fields or []
         subject_fields = [f for f in fields if f.get("key") == "matiere"]
         return len(subject_fields) < 3
+
+
+def _default_bulletin_manual_id() -> str:
+    return generate_id("bltm")
+
+
+class BulletinManual(models.Model):
+    """Manually entered bulletin data — Story 2.4.
+
+    Unlike `Bulletin` (file upload + OCR), `BulletinManual` is pure
+    structured JSON — no S3 file, no purge schedule.
+
+    One row per student per trimestre (student + trimestre_label should be
+    unique per year, enforced at serializer level to allow PATCH-based updates).
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        default=_default_bulletin_manual_id,
+        editable=False,
+    )
+    student = models.ForeignKey(
+        "students.StudentProfile",
+        on_delete=models.CASCADE,
+        related_name="manual_bulletins",
+    )
+    tenant_id = models.UUIDField(null=True, blank=True, db_index=True)
+
+    trimestre_label = models.CharField(max_length=20)
+    year = models.CharField(max_length=10)
+    level_at_save = models.CharField(max_length=30, blank=True)
+    subjects_ref_version = models.CharField(max_length=20, blank=True)
+    # JSON: list of {subject_id, note, appreciation, is_custom?}
+    matieres = models.JSONField(default=list)
+    source = models.CharField(max_length=10, default="manual", editable=False)
+    validated_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "bulletin_manuals"
+
+    def __str__(self) -> str:
+        return f"BulletinManual({self.id}, {self.trimestre_label} {self.year}, student={self.student_id})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.tenant_id is None and self.student_id:
+            self.tenant_id = (
+                type(self)
+                .student.field.related_model.objects.filter(pk=self.student_id)
+                .values_list("tenant_id", flat=True)
+                .first()
+            )
+        super().save(*args, **kwargs)
