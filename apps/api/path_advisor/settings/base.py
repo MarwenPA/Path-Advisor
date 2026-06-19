@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "apps.audit",
     "apps.profiles",
     "apps.students",
+    # Story 2.3 — bulletin upload + OCR
+    "apps.bulletins",
 ]
 
 MIDDLEWARE = [
@@ -339,6 +341,8 @@ AWS_S3_ENDPOINT_URL = os.environ.get("AWS_S3_ENDPOINT_URL", "http://localhost:90
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID", "minio_local")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "minio_local_password")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
+# Story 2.3 — encrypted bulletin storage (SSE-S3 at rest, prefix per student)
+BULLETINS_BUCKET = os.environ.get("BULLETINS_BUCKET", "bulletins-encrypted")
 
 # --- Email (overridden per environment) ---
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@path-advisor.local")

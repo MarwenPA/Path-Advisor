@@ -1,0 +1,122 @@
+[
+  {
+    "id": "brand-new-user",
+    "onboarding_step1_status": "pending",
+    "passions_count": 0,
+    "onboarding_step2_status": "pending",
+    "bulletins_status": "pending",
+    "expected": "base"
+  },
+  {
+    "id": "step1-skipped-step2-skipped-bulletins-pending",
+    "onboarding_step1_status": "skipped",
+    "passions_count": 0,
+    "onboarding_step2_status": "skipped",
+    "bulletins_status": "pending",
+    "expected": "base"
+  },
+  {
+    "id": "step1-completed-step2-skipped-bulletins-postponed",
+    "onboarding_step1_status": "completed",
+    "passions_count": 5,
+    "onboarding_step2_status": "skipped",
+    "bulletins_status": "postponed",
+    "expected": "base"
+  },
+  {
+    "id": "partial-skipped-3-passions-step2-completed-bulletins-pending",
+    "onboarding_step1_status": "partial_skipped",
+    "passions_count": 3,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "pending",
+    "expected": "base"
+  },
+  {
+    "id": "in-progress-no-passions-step2-pending-bulletins-pending",
+    "onboarding_step1_status": "in_progress",
+    "passions_count": 0,
+    "onboarding_step2_status": "pending",
+    "bulletins_status": "pending",
+    "expected": "base"
+  },
+  {
+    "id": "step1-completed-step2-completed-bulletins-postponed",
+    "onboarding_step1_status": "completed",
+    "passions_count": 6,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "postponed",
+    "expected": "base"
+  },
+  {
+    "id": "step1-completed-step2-completed-bulletins-partial",
+    "onboarding_step1_status": "completed",
+    "passions_count": 5,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "partial",
+    "expected": "enriched"
+  },
+  {
+    "id": "step1-skipped-step2-skipped-bulletins-partial",
+    "onboarding_step1_status": "skipped",
+    "passions_count": 0,
+    "onboarding_step2_status": "skipped",
+    "bulletins_status": "partial",
+    "expected": "enriched"
+  },
+  {
+    "id": "partial-skipped-4-passions-step2-skipped-bulletins-partial",
+    "onboarding_step1_status": "partial_skipped",
+    "passions_count": 4,
+    "onboarding_step2_status": "skipped",
+    "bulletins_status": "partial",
+    "expected": "enriched"
+  },
+  {
+    "id": "in-progress-2-passions-step2-pending-bulletins-partial",
+    "onboarding_step1_status": "in_progress",
+    "passions_count": 2,
+    "onboarding_step2_status": "pending",
+    "bulletins_status": "partial",
+    "expected": "enriched"
+  },
+  {
+    "id": "step1-completed-step2-completed-bulletins-completed",
+    "onboarding_step1_status": "completed",
+    "passions_count": 5,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "completed",
+    "expected": "complete"
+  },
+  {
+    "id": "step1-completed-8-passions-step2-completed-bulletins-completed",
+    "onboarding_step1_status": "completed",
+    "passions_count": 8,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "completed",
+    "expected": "complete"
+  },
+  {
+    "id": "step1-skipped-step2-completed-bulletins-completed-not-complete",
+    "onboarding_step1_status": "skipped",
+    "passions_count": 0,
+    "onboarding_step2_status": "completed",
+    "bulletins_status": "completed",
+    "expected": "enriched"
+  },
+  {
+    "id": "step1-completed-step2-skipped-bulletins-completed-not-complete",
+    "onboarding_step1_status": "completed",
+    "passions_count": 5,
+    "onboarding_step2_status": "skipped",
+    "bulletins_status": "completed",
+    "expected": "enriched"
+  },
+  {
+    "id": "partial-skipped-1-passion-step2-pending-bulletins-completed",
+    "onboarding_step1_status": "partial_skipped",
+    "passions_count": 1,
+    "onboarding_step2_status": "pending",
+    "bulletins_status": "completed",
+    "expected": "enriched"
+  }
+]

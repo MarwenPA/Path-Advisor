@@ -111,6 +111,8 @@ urlpatterns = [
     path("api/v1/me/", include("apps.accounts.gdpr_urls")),
     # Story 2.1 — onboarding step 1 (passions / valeurs / intérêts).
     path("api/v1/students/", include("apps.students.urls")),
+    # Story 2.3 — bulletin upload + OCR.
+    path("api/v1/students/", include("apps.bulletins.urls")),
     # OpenAPI / docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
