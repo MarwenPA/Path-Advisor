@@ -27,6 +27,7 @@ import { BrancheLycee } from "./branche-lycee";
 import { BranchePostbac } from "./branche-postbac";
 import { RecapCard } from "./recap-card";
 import { SkipDialog } from "./skip-dialog-step2";
+import { ConsentDialog } from "@/components/ui/consent-dialog";
 import { useOnboardingStep2 } from "@/hooks/use-onboarding-step-2";
 import { expectedSpecCount, type NiveauId } from "@/lib/onboarding/levels";
 
@@ -56,6 +57,7 @@ export function OnboardingStep2() {
 
   const [view, setView] = React.useState<ViewState>("editing");
   const [skipOpen, setSkipOpen] = React.useState(false);
+  const [backOpen, setBackOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [commitError, setCommitError] = React.useState<string | null>(null);
 
@@ -160,7 +162,13 @@ export function OnboardingStep2() {
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-bg px-4 py-3">
         <button
           type="button"
-          onClick={() => router.push("/onboarding/step-1")}
+          onClick={() => {
+            if (draft.level !== null) {
+              setBackOpen(true);
+            } else {
+              router.push("/onboarding/step-1");
+            }
+          }}
           aria-label="Retour à l'étape précédente"
           className="flex items-center gap-1 text-text-muted hover:text-text"
         >
@@ -284,6 +292,21 @@ export function OnboardingStep2() {
         onOpenChange={setSkipOpen}
         onConfirm={handleSkipConfirm}
         isSubmitting={isSaving}
+      />
+
+      {/* AC1 — back chevron anti-perte guard */}
+      <ConsentDialog
+        open={backOpen}
+        onOpenChange={setBackOpen}
+        title="Tu as commencé à renseigner ton niveau"
+        description="Tes modifications sont sauvegardées localement — tu les retrouveras si tu reviens. Tu veux quand même retourner à l'étape précédente ?"
+        dataMentioned={[]}
+        duration="Tes données restent enregistrées localement"
+        beneficiary="Toi — tu reprends où tu t'es arrêté(e)"
+        acceptLabel="Oui, retour"
+        refuseLabel="Rester ici"
+        isAcceptDestructive={false}
+        onAccept={() => router.push("/onboarding/step-1")}
       />
     </>
   );

@@ -267,7 +267,18 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
 
 
 class OnboardingStep2ReadSerializer(serializers.ModelSerializer):
-    """GET /api/v1/students/me/onboarding/level response shape."""
+    """GET /api/v1/students/me/onboarding/level response shape.
+
+    #20 — specialites are filtered against the current referential so clients
+    never see stale IDs that were removed in a later ref_version.
+    """
+
+    specialites = serializers.SerializerMethodField()
+
+    def get_specialites(self, obj: StudentLevelProfile) -> list[str]:
+        from apps.students.onboarding.levels import SPECIALITE_IDS, SPECIALITE_PRO_IDS
+        valid = SPECIALITE_IDS | SPECIALITE_PRO_IDS
+        return [s for s in (obj.specialites or []) if s in valid]
 
     class Meta:
         model = StudentLevelProfile
@@ -384,6 +395,12 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
 
     def validate(self, data: dict) -> dict:
         """Full matrix validation (Story 2.2 §4.5) — only when commit=True."""
+        # #23 — skip and commit are mutually exclusive.
+        if data.get("skip") and data.get("commit"):
+            raise serializers.ValidationError(
+                {"non_field_errors": "skip and commit cannot both be true."}
+            )
+
         if not data.get("commit"):
             return data
 
@@ -474,6 +491,20 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
         data = self.validated_data
 
         if data.get("skip"):
+            # #21 — persist any draft fields present in this payload before skipping
+            # so the partial state is not lost (AC8 "le draft n'est pas perdu").
+            for field in (
+                "level",
+                "filiere",
+                "sous_filiere_techno",
+                "intended_track",
+                "postbac_year",
+                "postbac_formation_type",
+            ):
+                if field in data and data[field] is not None:
+                    setattr(level_profile, field, data[field])
+            if "specialites" in data and data["specialites"]:
+                level_profile.specialites = data["specialites"]
             level_profile.mark_skipped()
             return level_profile
 
@@ -493,6 +524,10 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
             level_profile.specialites = data["specialites"]
 
         if data.get("commit"):
+            # #27 — stamp ref_version server-side (canonical source of truth).
+            from apps.students.onboarding.levels import REF_VERSION as CURRENT_REF
+            level_profile.level_ref_version = CURRENT_REF
+
             # Normalize stale branch fields that are incompatible with the committed level.
             level = level_profile.level
             if level == "college_3eme":

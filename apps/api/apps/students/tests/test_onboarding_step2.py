@@ -52,6 +52,12 @@ def client_for(student):
     return client
 
 
+@pytest.fixture
+def with_step1(student):
+    """Creates a StudentProfile for `student` so the step-1 ordering guard passes."""
+    StudentProfile.objects.get_or_create(user=student)
+
+
 # ---------------------------------------------------------------------------
 # GET
 # ---------------------------------------------------------------------------
@@ -95,14 +101,21 @@ def test_get_401_anonymous(db):
 # ---------------------------------------------------------------------------
 
 
-def test_patch_partial_saves_level(db, student, client_for):
+def test_patch_requires_step1_profile(db, student, client_for):
+    """Decision #19 — step-1 ordering guard: no StudentProfile → 400."""
+    resp = client_for.patch(LEVEL_URL, {"level": "lycee_terminale"}, format="json")
+    assert resp.status_code == 400
+    assert "Step 1" in resp.json()["detail"]
+
+
+def test_patch_partial_saves_level(db, student, client_for, with_step1):
     resp = client_for.patch(LEVEL_URL, {"level": "lycee_terminale"}, format="json")
     assert resp.status_code == 200
     assert resp.json()["level"] == "lycee_terminale"
     assert resp.json()["onboarding_step2_status"] == "in_progress"
 
 
-def test_patch_partial_does_not_wipe_other_fields(db, student, client_for):
+def test_patch_partial_does_not_wipe_other_fields(db, student, client_for, with_step1):
     # Establish a profile with level + filiere
     client_for.patch(LEVEL_URL, {"level": "lycee_terminale"}, format="json")
     client_for.patch(LEVEL_URL, {"filiere": "general"}, format="json")
@@ -160,7 +173,7 @@ def test_commit_college_3eme_with_filiere_returns_400(db, student, client_for):
     assert resp.status_code == 400
 
 
-def test_commit_college_3eme_success(db, student, client_for):
+def test_commit_college_3eme_success(db, student, client_for, with_step1):
     payload = {
         "commit": True,
         "level": "college_3eme",
@@ -198,7 +211,7 @@ def test_commit_terminale_general_rejects_3_specs(db, student, client_for):
     assert resp.status_code == 400
 
 
-def test_commit_terminale_general_success(db, student, client_for):
+def test_commit_terminale_general_success(db, student, client_for, with_step1):
     payload = {
         "commit": True,
         "level": "lycee_terminale",
@@ -235,7 +248,7 @@ def test_commit_1ere_techno_requires_sous_filiere(db, student, client_for):
     assert resp.status_code == 400
 
 
-def test_commit_1ere_techno_with_sous_filiere_success(db, student, client_for):
+def test_commit_1ere_techno_with_sous_filiere_success(db, student, client_for, with_step1):
     payload = {
         "commit": True,
         "level": "lycee_1ere",
@@ -258,7 +271,7 @@ def test_commit_postbac_requires_year_and_formation(db, student, client_for):
     assert resp.status_code == 400
 
 
-def test_commit_postbac_pause_aucune_is_valid(db, student, client_for):
+def test_commit_postbac_pause_aucune_is_valid(db, student, client_for, with_step1):
     """Léa ré-orientation — 'pause' + 'aucune' must be accepted without error."""
     payload = {
         "commit": True,
@@ -279,7 +292,7 @@ def test_commit_postbac_pause_aucune_is_valid(db, student, client_for):
 # ---------------------------------------------------------------------------
 
 
-def test_skip_sets_status_to_skipped(db, student, client_for):
+def test_skip_sets_status_to_skipped(db, student, client_for, with_step1):
     resp = client_for.patch(LEVEL_URL, {"skip": True}, format="json")
     assert resp.status_code == 200
     assert resp.json()["onboarding_step2_status"] == "skipped"

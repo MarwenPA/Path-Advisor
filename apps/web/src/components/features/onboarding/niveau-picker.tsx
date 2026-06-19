@@ -3,7 +3,15 @@
 import * as React from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { LEVELS, type NiveauId } from "@/lib/onboarding/levels";
+import { LEVELS, TRACKS_3EME, FILIERES_LYCEE, POSTBAC_YEARS, type NiveauId } from "@/lib/onboarding/levels";
+
+const BRANCH_OPTION_COUNT: Partial<Record<NiveauId, number>> = {
+  college_3eme: TRACKS_3EME.length,
+  lycee_2nde: FILIERES_LYCEE.length,
+  lycee_1ere: FILIERES_LYCEE.length,
+  lycee_terminale: FILIERES_LYCEE.length,
+  postbac: POSTBAC_YEARS.length,
+};
 
 type NiveauPickerProps = {
   value: NiveauId | null;
@@ -22,9 +30,13 @@ export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProp
           // AC10 — aria-live announce branch change
           if (announcerRef?.current) {
             const item = LEVELS.find((l) => l.id === v);
-            announcerRef.current.textContent = item
-              ? `${item.label} sélectionné. Les options correspondantes s'affichent maintenant.`
-              : "";
+            if (item) {
+              const count = BRANCH_OPTION_COUNT[item.id as NiveauId];
+              const countHint = count !== undefined ? ` ${count} option${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""}.` : "";
+              announcerRef.current.textContent = `${item.label} sélectionné.${countHint} Les options correspondantes s'affichent maintenant.`;
+            } else {
+              announcerRef.current.textContent = "";
+            }
           }
         }}
         className="flex flex-col gap-3"

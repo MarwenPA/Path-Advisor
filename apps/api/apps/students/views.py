@@ -121,6 +121,13 @@ class OnboardingLevelView(APIView):
         serializer = OnboardingStep2PatchSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # #19 — enforce step-1-before-step-2 ordering: StudentProfile must exist.
+        if not StudentProfile.objects.filter(user=request.user).exists():
+            return Response(
+                {"detail": "Step 1 must be started before step 2."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         level_profile = self._get_or_create(request)
 
         from apps.students.models import OnboardingStep2Status as S2
