@@ -1,7 +1,7 @@
 # Story 2.2: Onboarding step 2 — Niveau scolaire, filière et spécialités
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review
+**Status:** review (post-review patches + all decisions applied 2026-06-20)
 **Sprint:** 4 (Onboarding & Profil)
 **Story Key:** `2-2-onboarding-niveau-filiere-specialites`
 **Estimation:** M (medium) — branching dynamique côté front + référentiel filières/spés versionné + endpoint PATCH + adaptation downstream du moteur de reco. Pas d'OCR, pas de modèle ML. Sized ~1.5–2 j focused work, **avec un sous-risque** sur la justesse du référentiel bac pro (couverture Mehdi — à valider sprint review).
@@ -808,3 +808,49 @@ _(à remplir)_
 ### Change Log
 
 - 2026-05-24 — Story 2.2 contextée et passée en `ready-for-dev` par Marwen + Claude (Opus 4.7) dans le cadre du démarrage parallèle UX Epic 2 pendant que Epic 1 finit (Stories 1.5 / 1.7 / 1.8 / 1.11 / 1.12 encore en cours).
+
+---
+
+## 8. Senior Developer Review (AI)
+
+**Review date:** 2026-06-20
+**Outcome:** Changes Requested
+**Reviewers:** Blind Hunter + Edge Case Hunter + Acceptance Auditor (Claude Opus, parallel adversarial)
+**Raw findings:** 41 → after triage: 5 HIGH, 12 MEDIUM, 12 LOW (29 total), 8 dismissed
+
+### Action Items
+
+#### ✅ Applied patches (15)
+
+- [x] [Review][Patch] Guard completed profile — stale tab no-op replaced by early return [views.py]
+- [x] [Review][Patch] Event transition-gated — student_level_declared only on real PENDING→COMPLETED [views.py]
+- [x] [Review][Patch] Stale branch fields normalized on commit (matrix consistency) [serializers.py]
+- [x] [Review][Patch] Duplicate specialite IDs rejected [serializers.py:validate_specialites]
+- [x] [Review][Patch] 2nde général non-empty specialites rejected (expected=None branch) [serializers.py:validate]
+- [x] [Review][Patch] declared_at added to Celery event payload (AC9) [tasks.py]
+- [x] [Review][Patch] mark_skipped clears completed_at [models.py]
+- [x] [Review][Patch] tenant_id stamped at creation, not lazy in save() [views.py:_get_or_create]
+- [x] [Review][Patch] draftKeyFor returns null when userId undefined (no shared-key leak) [use-onboarding-step-2.ts]
+- [x] [Review][Patch] readDraft validates shape before trusting parsed JSON [use-onboarding-step-2.ts]
+- [x] [Review][Patch] toggleSpecialite guards null level + null expected treated as 0-cap [use-onboarding-step-2.ts]
+- [x] [Review][Patch] div onClick removed from card rows → Label wrapper (keyboard a11y, no double-fire) [niveau-picker, branche-3eme, branche-lycee]
+- [x] [Review][Patch] commitLevel network error surfaced with role=alert [onboarding-step-2.tsx]
+- [x] [Review][Patch] continueHelper spés hint only when expectedSpecCount != null [onboarding-step-2.tsx]
+- [x] [Review][Patch] RecapCard React key uses spec id not display label [recap-card.tsx]
+
+### Review Follow-ups (AI) — decision needed
+
+- [x] [Review][Decision] #16 HIGH — localStorage fallback key when userId undefined now returns null (applied with patch #11); skip/saveDraft userId-undefined paths verified safe
+- [x] [Review][Decision] #17 HIGH — AC9 audit log deferred to Epic 3 / Story 1.13 (explicit sprint decision: out of scope for 2.2)
+- [x] [Review][Decision] #18 MEDIUM — outbox/DLQ deferred to Epic 3 (transactional outbox pattern not in 2.2 scope)
+- [x] [Review][Decision] #19 MEDIUM — ordering guard added: PATCH returns 400 if StudentProfile doesn't exist; tests updated with with_step1 fixture
+- [x] [Review][Decision] #20 MEDIUM — OnboardingStep2ReadSerializer.get_specialites() filters unknown IDs against SPECIALITE_IDS | SPECIALITE_PRO_IDS
+- [x] [Review][Decision] #21 MEDIUM — AC8: skip now persists non-null draft fields server-side before mark_skipped()
+- [x] [Review][Decision] #22 MEDIUM — AC1: back chevron wrapped with ConsentDialog anti-perte guard (backOpen state)
+- [x] [Review][Decision] #23 LOW — skip+commit mutual exclusion: serializer raises 400 when both true
+- [x] [Review][Decision] #24 LOW — AC11 server-side: stale-tab guard in views.py returns current snapshot on non-commit PATCH to completed profile
+- [x] [Review][Decision] #25 LOW — LevelForm refactor deferred (no /profile/edit/level route yet in current sprint)
+- [x] [Review][Decision] #26 LOW — AC7: localStorage-only draft acceptable for now; server-draft already works via PATCH (confirmed)
+- [x] [Review][Decision] #27 LOW — level_ref_version now server-stamped from CURRENT_REF on commit
+- [x] [Review][Decision] #28 LOW — AC10: aria-live announcer now includes branch option count (BRANCH_OPTION_COUNT map)
+- [x] [Review][Decision] #29 LOW — AC4: bac pro single-mandatory spec kept as capped chip (chips UX equivalent, noted in story)
