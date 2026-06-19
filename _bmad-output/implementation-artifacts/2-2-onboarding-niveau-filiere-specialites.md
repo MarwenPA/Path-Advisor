@@ -1,7 +1,7 @@
 # Story 2.2: Onboarding step 2 — Niveau scolaire, filière et spécialités
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review (post-review patches + all decisions applied 2026-06-20)
+**Status:** done
 **Sprint:** 4 (Onboarding & Profil)
 **Story Key:** `2-2-onboarding-niveau-filiere-specialites`
 **Estimation:** M (medium) — branching dynamique côté front + référentiel filières/spés versionné + endpoint PATCH + adaptation downstream du moteur de reco. Pas d'OCR, pas de modèle ML. Sized ~1.5–2 j focused work, **avec un sous-risque** sur la justesse du référentiel bac pro (couverture Mehdi — à valider sprint review).

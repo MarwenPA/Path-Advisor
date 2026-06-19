@@ -1,7 +1,7 @@
 # Story 2.7: Maturité de profil — Indicateur qualitatif 3 états
 
 **Epic:** 2 — Profil Élève & Onboarding
-**Status:** review
+**Status:** done
 **Sprint:** 6 (Post-onboarding, profil & continuité)
 **Story Key:** `2-7-score-completude-profil`
 **Estimation:** S (small) — composant Couche 3 indicateur + endpoint compute + intégration en haut de page profil Story 2.6. Pas de calcul ML, juste logique déterministe sur l'état du profil. Sized ~0.5–1 j focused work.
