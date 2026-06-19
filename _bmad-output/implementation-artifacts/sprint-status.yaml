@@ -65,8 +65,8 @@ development_status:
   2-1-onboarding-passions-interets-valeurs: done
   2-2-onboarding-niveau-filiere-specialites: done
   2-3-import-bulletins-pdf-ocr: done
-  2-4-saisie-manuelle-notes: ready-for-dev
-  2-5-mode-degrade-plus-tard-bulletins: review
+  2-4-saisie-manuelle-notes: in-progress
+  2-5-mode-degrade-plus-tard-bulletins: done
   2-6-mise-a-jour-profil: ready-for-dev
   2-7-score-completude-profil: done
   2-8-composant-scenario-loader: done
