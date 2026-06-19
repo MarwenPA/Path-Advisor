@@ -255,3 +255,11 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 
 - **`aria-label="Révocation à venir"` documented but never observable** — Story 1.9's disabled-button contract (§AC5) was overwritten by Story 1.10's active button in the same merge. The 1.9 surface in isolation was never reviewable.
 - **`error.tsx` Next.js boundary missing for `/parametres/confidentialite/acces-tiers`** — acknowledged in the page comment ("added Q3"). Fallback to default Next 500 page is acceptable for MVP.
+
+## Deferred from: code review of 2-3-import-bulletins-pdf-ocr (2026-06-20)
+
+- **Sheet vs Dialog desktop (AC2)** — `file-picker-sheet.tsx` toujours en Sheet bottom; Dialog centré desktop non implémenté. Acceptable pour MVP mobile-first. Target: Story 2.6 ou Epic 7 polish pass.
+- **Thumbnail preview 32×32 pour images (AC2)** — `fileIcon()` rend seulement une icône Lucide, pas de `URL.createObjectURL` pour aperçu. Target: Story 2.6 polish.
+- **Low-confidence fields pas remontés en premier dans le tab order (AC6)** — implémentation de réordonnancement `tabIndex` complexe et fragile. Target: Q3 a11y audit pass.
+- **`ScenarioLoader` `aria-live` non vérifiable (AC10)** — dépend de Story 2.8; comportement correct présumé. Target: a11y audit Story 2.8.
+- **Retry XHR: `refetchInterval` actif pendant retries TanStack Query** — cas où retries et polling s'interfolient; impact négligeable en pratique. Target: fast-follow si observé en prod.

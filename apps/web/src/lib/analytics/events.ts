@@ -60,7 +60,19 @@ export type AnalyticsEvent =
       context: GracefulFallbackContext;
       tertiary_label: string;
       seconds_since_shown: number;
-    };
+    }
+  // Story 2.3 — bulletin OCR onboarding
+  | { name: "onboarding_step3_card_selected"; card: "scan" | "manual" | "later" }
+  | { name: "onboarding_step3_upload_started"; file_count: number; total_size_bytes: number }
+  | {
+      name: "onboarding_step3_upload_completed";
+      file_count: number;
+      success_count: number;
+      failed_count: number;
+    }
+  | { name: "onboarding_step3_ocr_manual_fallback"; trigger: "overrun_button" | "graceful_fallback_cta" }
+  | { name: "onboarding_step3_bulletin_finalized"; bulletin_id: string; corrections_made: number }
+  | { name: "onboarding_step3_completed"; bulletin_count: number };
 
 type Tracker = (event: AnalyticsEvent) => void;
 
