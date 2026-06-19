@@ -1,4 +1,4 @@
-"""Student onboarding profile — Story 2.1.
+"""Student onboarding profile — Stories 2.1 + 2.2 + 2.7.
 
 `StudentProfile` carries the declarative signals the recommendation engine
 (Epic 3) crosses with bulletins (Epic 2 step 3) to produce vocational scores.
@@ -26,9 +26,28 @@ def _default_profile_id() -> str:
     return generate_id("sprf")
 
 
+def _default_level_profile_id() -> str:
+    return generate_id("slvl")
+
+
 def _default_interets() -> dict[str, str | None]:
     """JSONB default: three nullable free-form fields (AC4)."""
     return {"1": None, "2": None, "3": None}
+
+
+class BulletinsStatus(models.TextChoices):
+    """Lifecycle of bulletin uploads — set by Stories 2.3/2.4/2.5, read by Story 2.7.
+
+    `pending`   — student hasn't interacted with bulletins yet (default).
+    `postponed` — student explicitly chose "Plus tard" for bulletins.
+    `partial`   — at least 1 trimestre uploaded (OCR or manual). → 'enriched'.
+    `completed` — ≥ 2 trimestres remplis OR profile explicitly flagged complete. → 'complete'.
+    """
+
+    PENDING = "pending", "En attente"
+    POSTPONED = "postponed", "Reporté"
+    PARTIAL = "partial", "Partiel"
+    COMPLETED = "completed", "Terminé"
 
 
 class OnboardingStep1Status(models.TextChoices):
@@ -103,6 +122,19 @@ class StudentProfile(models.Model):
     )
     onboarding_step1_completed_at = models.DateTimeField(null=True, blank=True)
 
+    # Story 2.7 — bulletins lifecycle (managed by Stories 2.3/2.4/2.5)
+    bulletins_status = models.CharField(
+        max_length=15,
+        choices=BulletinsStatus.choices,
+        default=BulletinsStatus.PENDING,
+        db_index=True,
+    )
+
+    # Story 2.7 AC8 — one-shot celebration flags per level transition.
+    # Set server-side so the toast fires exactly once even across sessions/devices.
+    maturity_celebration_shown_for_enriched_at = models.DateTimeField(null=True, blank=True)
+    maturity_celebration_shown_for_complete_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -156,3 +188,91 @@ class StudentProfile(models.Model):
         self.onboarding_step1_status = (
             OnboardingStep1Status.PARTIAL_SKIPPED if partial else OnboardingStep1Status.SKIPPED
         )
+
+
+class OnboardingStep2Status(models.TextChoices):
+    """Lifecycle of step-2 completion (Story 2.2 §T2)."""
+
+    PENDING = "pending", "En attente"
+    IN_PROGRESS = "in_progress", "En cours"
+    COMPLETED = "completed", "Terminé"
+    SKIPPED = "skipped", "Reporté"
+
+
+class StudentLevelProfile(models.Model):
+    """Step-2 onboarding — niveau scolaire, filière, spécialités (Story 2.2).
+
+    Stored separately from `StudentProfile` so step-1 and step-2 can
+    evolve independently. The FK to `StudentProfile` (not to `User` directly)
+    enforces that level data can only exist once step-1 is at least created.
+
+    Tenant isolation follows the same pattern as `StudentProfile` (Story 1.8).
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        default=_default_level_profile_id,
+        editable=False,
+    )
+    profile = models.OneToOneField(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="level_profile",
+    )
+    tenant_id = models.UUIDField(null=True, blank=True, db_index=True)
+
+    # Core level declaration
+    level = models.CharField(max_length=20, null=True, blank=True, db_index=True)
+    filiere = models.CharField(max_length=10, null=True, blank=True)
+    sous_filiere_techno = models.CharField(max_length=10, null=True, blank=True)
+    # specialites stores an array of ID strings (lycée général or bac pro)
+    specialites = models.JSONField(default=list, blank=True)
+    intended_track = models.CharField(max_length=15, null=True, blank=True)
+
+    # Post-bac specific
+    postbac_year = models.CharField(max_length=15, null=True, blank=True)
+    postbac_formation_type = models.CharField(max_length=25, null=True, blank=True)
+
+    # Lifecycle
+    onboarding_step2_status = models.CharField(
+        max_length=15,
+        choices=OnboardingStep2Status.choices,
+        default=OnboardingStep2Status.PENDING,
+        db_index=True,
+    )
+    onboarding_step2_completed_at = models.DateTimeField(null=True, blank=True)
+
+    # Audit longitudinal — which referential version was displayed (Story 2.2 §T1)
+    level_ref_version = models.CharField(max_length=20, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "student_level_profiles"
+
+    def __str__(self) -> str:
+        return (
+            f"StudentLevelProfile({self.id}, level={self.level}, "
+            f"status={self.onboarding_step2_status})"
+        )
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.tenant_id is None and self.profile_id:
+            self.tenant_id = (
+                StudentProfile.objects.filter(pk=self.profile_id)
+                .values_list("tenant_id", flat=True)
+                .first()
+            )
+        super().save(*args, **kwargs)
+
+    def mark_completed(self) -> None:
+        """Idempotent: calling on an already-completed profile is a no-op."""
+        if self.onboarding_step2_status == OnboardingStep2Status.COMPLETED:
+            return
+        self.onboarding_step2_status = OnboardingStep2Status.COMPLETED
+        self.onboarding_step2_completed_at = timezone.now()
+
+    def mark_skipped(self) -> None:
+        self.onboarding_step2_status = OnboardingStep2Status.SKIPPED

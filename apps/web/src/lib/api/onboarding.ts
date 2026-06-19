@@ -81,3 +81,69 @@ export function patchOnboardingStep1(
     csrfToken,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Step-2 — Niveau scolaire (Story 2.2)
+// ---------------------------------------------------------------------------
+
+const LEVEL_ENDPOINT = "/api/v1/students/me/onboarding/level";
+
+export type OnboardingStep2Status = "pending" | "in_progress" | "completed" | "skipped";
+
+export type OnboardingStep2Snapshot = {
+  level: string | null;
+  filiere: string | null;
+  sous_filiere_techno: string | null;
+  specialites: readonly string[];
+  intended_track: string | null;
+  postbac_year: string | null;
+  postbac_formation_type: string | null;
+  onboarding_step2_status: OnboardingStep2Status;
+  onboarding_step2_completed_at: string | null;
+  level_ref_version: string | null;
+};
+
+export type OnboardingStep2Patch = {
+  commit?: boolean;
+  skip?: boolean;
+  level?: string | null;
+  filiere?: string | null;
+  sous_filiere_techno?: string | null;
+  specialites?: readonly string[];
+  intended_track?: string | null;
+  postbac_year?: string | null;
+  postbac_formation_type?: string | null;
+  level_ref_version?: string;
+};
+
+export function makeEmptyStep2Snapshot(): OnboardingStep2Snapshot {
+  return {
+    level: null,
+    filiere: null,
+    sous_filiere_techno: null,
+    specialites: [],
+    intended_track: null,
+    postbac_year: null,
+    postbac_formation_type: null,
+    onboarding_step2_status: "pending",
+    onboarding_step2_completed_at: null,
+    level_ref_version: null,
+  };
+}
+
+export function fetchOnboardingStep2Snapshot(
+  signal?: AbortSignal,
+): Promise<OnboardingStep2Snapshot> {
+  return apiFetch<OnboardingStep2Snapshot>(LEVEL_ENDPOINT, { signal });
+}
+
+export function patchOnboardingStep2(
+  payload: OnboardingStep2Patch,
+  csrfToken: string,
+): Promise<OnboardingStep2Snapshot> {
+  return apiFetch<OnboardingStep2Snapshot>(LEVEL_ENDPOINT, {
+    method: "PATCH",
+    body: payload,
+    csrfToken,
+  });
+}

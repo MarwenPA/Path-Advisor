@@ -29,10 +29,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAuthenticatedAndActive, IsStudent
-from apps.students.models import StudentProfile
+from apps.students.models import StudentLevelProfile, StudentProfile
 from apps.students.serializers import (
     OnboardingStep1PatchSerializer,
     OnboardingStep1ReadSerializer,
+    OnboardingStep2PatchSerializer,
+    OnboardingStep2ReadSerializer,
 )
 
 
@@ -94,3 +96,95 @@ class OnboardingPassionsView(APIView):
             "onboarding_step1_status": "pending",
             "onboarding_step1_completed_at": None,
         }
+
+
+class OnboardingLevelView(APIView):
+    """GET + PATCH `/api/v1/students/me/onboarding/level` — Story 2.2.
+
+    GET  — returns the current step-2 state (empty defaults if no row yet).
+    PATCH — partial draft saves (commit=False) or final commit (commit=True).
+           Final commit validates the full matrix (§4.5) and publishes the
+           `student_level_declared` domain event (AC9).
+    """
+
+    permission_classes = (IsAuthenticatedAndActive, IsStudent)
+
+    def get(self, request: Request) -> Response:
+        level_profile = self._get_or_none(request)
+        if level_profile is None:
+            return Response(self._empty_payload(), status=status.HTTP_200_OK)
+        return Response(
+            OnboardingStep2ReadSerializer(level_profile).data, status=status.HTTP_200_OK
+        )
+
+    def patch(self, request: Request) -> Response:
+        serializer = OnboardingStep2PatchSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        level_profile = self._get_or_create(request)
+
+        # Once completed, only skips are accepted (stale tab safety)
+        from apps.students.models import OnboardingStep2Status as S2
+
+        if (
+            level_profile.onboarding_step2_status == S2.COMPLETED
+            and not serializer.validated_data.get("skip")
+            and not serializer.validated_data.get("commit")
+        ):
+            # Allow idempotent re-commit (récap resubmit edge case)
+            pass
+
+        serializer.apply(level_profile)
+        level_profile.save()
+
+        if level_profile.onboarding_step2_status == S2.COMPLETED:
+            self._emit_level_declared(level_profile, request)
+
+        return Response(
+            OnboardingStep2ReadSerializer(level_profile).data, status=status.HTTP_200_OK
+        )
+
+    # --- helpers --------------------------------------------------------
+
+    @staticmethod
+    def _get_or_none(request: Request) -> StudentLevelProfile | None:
+        profile = StudentProfile.objects.filter(user=request.user).first()
+        if profile is None:
+            return None
+        return StudentLevelProfile.objects.filter(profile=profile).first()
+
+    @staticmethod
+    def _get_or_create(request: Request) -> StudentLevelProfile:
+        profile, _ = StudentProfile.objects.get_or_create(user=request.user)
+        level_profile, _ = StudentLevelProfile.objects.get_or_create(profile=profile)
+        return level_profile
+
+    @staticmethod
+    def _empty_payload() -> dict:
+        return {
+            "level": None,
+            "filiere": None,
+            "sous_filiere_techno": None,
+            "specialites": [],
+            "intended_track": None,
+            "postbac_year": None,
+            "postbac_formation_type": None,
+            "onboarding_step2_status": "pending",
+            "onboarding_step2_completed_at": None,
+            "level_ref_version": None,
+        }
+
+    @staticmethod
+    def _emit_level_declared(level_profile: StudentLevelProfile, request: Request) -> None:
+        """Publish `student_level_declared` domain event (AC9) via Celery."""
+        try:
+            from apps.students.tasks import emit_student_level_declared
+
+            emit_student_level_declared.delay(str(level_profile.id))
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).exception(
+                "Failed to emit student_level_declared",
+                extra={"level_profile_id": str(level_profile.id)},
+            )

@@ -1,4 +1,4 @@
-"""Serializers for the onboarding step-1 endpoints (Story 2.1 AC5).
+"""Serializers for the onboarding endpoints (Stories 2.1 + 2.2).
 
 `OnboardingStep1ReadSerializer` shapes the GET response.
 
@@ -26,7 +26,12 @@ from typing import Any
 
 from rest_framework import serializers
 
-from apps.students.models import OnboardingStep1Status, StudentProfile
+from apps.students.models import (
+    OnboardingStep1Status,
+    OnboardingStep2Status,
+    StudentLevelProfile,
+    StudentProfile,
+)
 from apps.students.onboarding.referentials import (
     MIN_PASSIONS,
     MIN_VALEURS,
@@ -254,3 +259,238 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
         """Move pending → in_progress; preserve completed/skipped if already there."""
         if profile.onboarding_step1_status == OnboardingStep1Status.PENDING:
             profile.onboarding_step1_status = OnboardingStep1Status.IN_PROGRESS
+
+
+# ---------------------------------------------------------------------------
+# Step-2 serializers (Story 2.2)
+# ---------------------------------------------------------------------------
+
+
+class OnboardingStep2ReadSerializer(serializers.ModelSerializer):
+    """GET /api/v1/students/me/onboarding/level response shape."""
+
+    class Meta:
+        model = StudentLevelProfile
+        fields = [
+            "level",
+            "filiere",
+            "sous_filiere_techno",
+            "specialites",
+            "intended_track",
+            "postbac_year",
+            "postbac_formation_type",
+            "onboarding_step2_status",
+            "onboarding_step2_completed_at",
+            "level_ref_version",
+        ]
+
+
+class OnboardingStep2PatchSerializer(serializers.Serializer):
+    """PATCH /api/v1/students/me/onboarding/level.
+
+    Accepts a partial payload during editing (draft saves) or a full commit
+    payload when `commit=true`. The full validation matrix (Story 2.2 §4.5)
+    is enforced only when `commit=true`. Partial PATCHes only validate the
+    fields that are present.
+    """
+
+    # Whether this is a final commit (récap → step-3) or a draft save
+    commit = serializers.BooleanField(default=False)
+
+    level = serializers.CharField(max_length=20, required=False, allow_null=True)
+    filiere = serializers.CharField(max_length=10, required=False, allow_null=True)
+    sous_filiere_techno = serializers.CharField(
+        max_length=10, required=False, allow_null=True
+    )
+    specialites = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
+    intended_track = serializers.CharField(
+        max_length=15, required=False, allow_null=True
+    )
+    postbac_year = serializers.CharField(max_length=15, required=False, allow_null=True)
+    postbac_formation_type = serializers.CharField(
+        max_length=25, required=False, allow_null=True
+    )
+    skip = serializers.BooleanField(default=False)
+    level_ref_version = serializers.CharField(
+        max_length=20, required=False, allow_null=True
+    )
+
+    def validate_level(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import NIVEAU_IDS
+
+        if value is not None and value not in NIVEAU_IDS:
+            raise serializers.ValidationError(
+                f"Unknown level '{value}'. Valid values: {sorted(NIVEAU_IDS)}"
+            )
+        return value
+
+    def validate_filiere(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import FILIERE_IDS
+
+        if value is not None and value not in FILIERE_IDS:
+            raise serializers.ValidationError(
+                f"Unknown filiere '{value}'. Valid values: {sorted(FILIERE_IDS)}"
+            )
+        return value
+
+    def validate_sous_filiere_techno(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import SOUS_FILIERE_IDS
+
+        if value is not None and value not in SOUS_FILIERE_IDS:
+            raise serializers.ValidationError(
+                f"Unknown sous_filiere_techno '{value}'."
+            )
+        return value
+
+    def validate_intended_track(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import TRACK_3EME_IDS
+
+        if value is not None and value not in TRACK_3EME_IDS:
+            raise serializers.ValidationError(
+                f"Unknown intended_track '{value}'."
+            )
+        return value
+
+    def validate_postbac_year(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import POSTBAC_YEAR_IDS
+
+        if value is not None and value not in POSTBAC_YEAR_IDS:
+            raise serializers.ValidationError(f"Unknown postbac_year '{value}'.")
+        return value
+
+    def validate_postbac_formation_type(self, value: str | None) -> str | None:
+        from apps.students.onboarding.levels import POSTBAC_FORMATION_IDS
+
+        if value is not None and value not in POSTBAC_FORMATION_IDS:
+            raise serializers.ValidationError(
+                f"Unknown postbac_formation_type '{value}'."
+            )
+        return value
+
+    def validate_specialites(self, value: list[str]) -> list[str]:
+        from apps.students.onboarding.levels import SPECIALITE_IDS, SPECIALITE_PRO_IDS
+
+        all_valid = SPECIALITE_IDS | SPECIALITE_PRO_IDS
+        unknown = [s for s in value if s not in all_valid]
+        if unknown:
+            raise serializers.ValidationError(
+                f"Unknown specialite IDs: {unknown}"
+            )
+        return value
+
+    def validate(self, data: dict) -> dict:
+        """Full matrix validation (Story 2.2 §4.5) — only when commit=True."""
+        if not data.get("commit"):
+            return data
+
+        from apps.students.onboarding.levels import (
+            SPECIALITE_IDS,
+            SPECIALITE_PRO_IDS,
+            expected_spec_count,
+            requires_sous_filiere,
+        )
+
+        level = data.get("level")
+        filiere = data.get("filiere")
+        sous_filiere = data.get("sous_filiere_techno")
+        specialites = data.get("specialites", [])
+        intended_track = data.get("intended_track")
+        postbac_year = data.get("postbac_year")
+        postbac_formation_type = data.get("postbac_formation_type")
+        errors: dict[str, str] = {}
+
+        if not level:
+            errors["level"] = "Level is required for commit."
+
+        if level == "college_3eme":
+            if not intended_track:
+                errors["intended_track"] = "intended_track is required for college_3eme."
+            if filiere is not None:
+                errors["filiere"] = "filiere must be null for college_3eme."
+            if specialites:
+                errors["specialites"] = "specialites must be empty for college_3eme."
+
+        elif level in ("lycee_2nde", "lycee_1ere", "lycee_terminale"):
+            if not filiere:
+                errors["filiere"] = "filiere is required for lycee levels."
+            if intended_track is not None:
+                errors["intended_track"] = "intended_track must be null for lycee levels."
+
+            if filiere and level:
+                expected = expected_spec_count(level, filiere)
+                if expected is not None:
+                    # Validate specialite IDs belong to the right pool
+                    if filiere == "general":
+                        invalid = [s for s in specialites if s not in SPECIALITE_IDS]
+                    else:  # pro
+                        invalid = [s for s in specialites if s not in SPECIALITE_PRO_IDS]
+                    if invalid:
+                        errors["specialites"] = f"Invalid specialite IDs for {filiere}: {invalid}"
+                    elif len(specialites) != expected:
+                        errors["specialites"] = (
+                            f"Expected {expected} specialite(s) for {level}/{filiere}, "
+                            f"got {len(specialites)}."
+                        )
+                else:
+                    # techno → no general specialites but sous_filiere required for 1ère/Terminale
+                    if specialites and filiere == "techno":
+                        errors["specialites"] = "specialites must be empty for techno filiere."
+
+                if requires_sous_filiere(level, filiere) and not sous_filiere:
+                    errors["sous_filiere_techno"] = (
+                        f"sous_filiere_techno is required for {level}/{filiere}."
+                    )
+                if not requires_sous_filiere(level, filiere) and sous_filiere:
+                    errors["sous_filiere_techno"] = (
+                        "sous_filiere_techno must be null for this level/filiere."
+                    )
+
+        elif level == "postbac":
+            if not postbac_year:
+                errors["postbac_year"] = "postbac_year is required for postbac."
+            if not postbac_formation_type:
+                errors["postbac_formation_type"] = (
+                    "postbac_formation_type is required for postbac."
+                )
+            if filiere is not None:
+                errors["filiere"] = "filiere must be null for postbac."
+            if specialites:
+                errors["specialites"] = "specialites must be empty for postbac."
+            if intended_track is not None:
+                errors["intended_track"] = "intended_track must be null for postbac."
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        return data
+
+    def apply(self, level_profile: StudentLevelProfile) -> StudentLevelProfile:
+        """Apply validated data to the model instance (does not save)."""
+        data = self.validated_data
+
+        if data.get("skip"):
+            level_profile.mark_skipped()
+            return level_profile
+
+        for field in (
+            "level",
+            "filiere",
+            "sous_filiere_techno",
+            "intended_track",
+            "postbac_year",
+            "postbac_formation_type",
+            "level_ref_version",
+        ):
+            if field in data:
+                setattr(level_profile, field, data[field])
+
+        if "specialites" in data:
+            level_profile.specialites = data["specialites"]
+
+        if data.get("commit"):
+            level_profile.mark_completed()
+        elif level_profile.onboarding_step2_status == OnboardingStep2Status.PENDING:
+            level_profile.onboarding_step2_status = OnboardingStep2Status.IN_PROGRESS
+
+        return level_profile
