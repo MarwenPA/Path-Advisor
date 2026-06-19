@@ -130,6 +130,11 @@ class StudentProfile(models.Model):
         db_index=True,
     )
 
+    # Story 2.5 — postpone metadata set by POST /me/bulletins/postpone
+    bulletins_postponed_at = models.DateTimeField(null=True, blank=True)
+    # TTL for banner dismiss (AC3): POST /me/bulletins/banner/dismiss sets now() + 7 days
+    bulletins_postponed_banner_dismissed_until = models.DateTimeField(null=True, blank=True)
+
     # Story 2.7 AC8 — one-shot celebration flags per level transition.
     # Set server-side so the toast fires exactly once even across sessions/devices.
     maturity_celebration_shown_for_enriched_at = models.DateTimeField(null=True, blank=True)

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from .views_bulletins_status import BulletinsBannerDismissView, BulletinsPostponeView
 from .views_maturity import ProfileMaturityView
 
 app_name = "students"
@@ -20,5 +21,15 @@ urlpatterns = [
         "me/profile/maturity",
         ProfileMaturityView.as_view(),
         name="me-profile-maturity",
+    ),
+    path(
+        "me/bulletins/postpone",
+        BulletinsPostponeView.as_view(),
+        name="me-bulletins-postpone",
+    ),
+    path(
+        "me/bulletins/banner/dismiss",
+        BulletinsBannerDismissView.as_view(),
+        name="me-bulletins-banner-dismiss",
     ),
 ]
