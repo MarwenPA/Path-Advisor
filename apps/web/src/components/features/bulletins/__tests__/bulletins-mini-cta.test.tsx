@@ -10,6 +10,8 @@ vi.mock("../../../../hooks/use-student-profile", () => ({
 
 import { useStudentProfile } from "../../../../hooks/use-student-profile";
 
+type MockReturn = ReturnType<typeof useStudentProfile>;
+
 function wrap(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -20,7 +22,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "postponed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
 
     wrap(
       <BulletinsMiniCTA
@@ -37,7 +39,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "completed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
 
     wrap(
       <BulletinsMiniCTA
@@ -53,7 +55,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "postponed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
     const onAddClick = vi.fn();
 
     wrap(<BulletinsMiniCTA context="graph" onAddClick={onAddClick} />);
@@ -66,7 +68,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "postponed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
 
     wrap(<BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />);
 
@@ -77,7 +79,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "postponed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
 
     wrap(<BulletinsMiniCTA context="stat" onAddClick={vi.fn()} />);
 
@@ -89,7 +91,7 @@ describe("BulletinsMiniCTA", () => {
     vi.mocked(useStudentProfile).mockReturnValue({
       data: { bulletins_status: "postponed" },
       isLoading: false,
-    } as any);
+    } as unknown as MockReturn);
 
     const { container } = wrap(
       <BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />

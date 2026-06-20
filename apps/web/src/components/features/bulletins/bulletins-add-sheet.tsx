@@ -33,7 +33,7 @@ export function BulletinsAddSheet({
         <SheetHeader className="mb-6">
           <SheetTitle>Ajoute tes bulletins</SheetTitle>
           <p className="text-sm text-muted-foreground">
-            En moins d'une minute, tes stats deviennent personnalisées.
+            En moins d&apos;une minute, tes stats deviennent personnalisées.
           </p>
         </SheetHeader>
 

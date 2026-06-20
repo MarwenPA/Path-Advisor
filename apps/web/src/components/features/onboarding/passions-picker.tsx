@@ -62,6 +62,7 @@ export function PassionsPicker({
 
   React.useEffect(() => {
     if (searchDebounceMs <= 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDebouncedQuery(rawQuery);
       return;
     }
