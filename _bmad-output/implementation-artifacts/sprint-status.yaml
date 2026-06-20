@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-20  # Story 3.11 → in-progress
+last_updated: 2026-06-20  # Story 3.12 → review
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -85,8 +85,8 @@ development_status:
   3-8-signaler-erreur-fiche-metier: ready-for-dev
   3-9-adaptation-recos-par-niveau-scolaire: backlog
   3-10-niveau-confiance-profil-incomplet: backlog
-  3-11-composant-score-vocationnel: in-progress
-  3-12-composant-fiche-metier: ready-for-dev
+  3-11-composant-score-vocationnel: review
+  3-12-composant-fiche-metier: review
   epic-3-retrospective: optional
 
   # Epic 4 — Graphe de parcours & Stats admission (2e aha)

@@ -263,3 +263,8 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 - **Low-confidence fields pas remontés en premier dans le tab order (AC6)** — implémentation de réordonnancement `tabIndex` complexe et fragile. Target: Q3 a11y audit pass.
 - **`ScenarioLoader` `aria-live` non vérifiable (AC10)** — dépend de Story 2.8; comportement correct présumé. Target: a11y audit Story 2.8.
 - **Retry XHR: `refetchInterval` actif pendant retries TanStack Query** — cas où retries et polling s'interfolient; impact négligeable en pratique. Target: fast-follow si observé en prod.
+
+## Deferred from: code review of 3-11-composant-score-vocationnel (2026-06-20)
+
+- **`aria-label` on `<span>` role `generic` (ScoreChip) not reliably exposed to real screen readers** — `ScoreVocationnel.tsx:28-42`. jsdom tests pass (the Blind Hunter's test-failure claim is a false positive), but the score's accessible name may be dropped by real AT. Fold into the global RGAA AA accessibility pass (semantic wrapper or sr-only text).
+- **No dedup of `signals` by `id`** — `ScoreVocationnel.tsx:114-120`. Duplicate ids cause React key collisions and indistinguishable chips. Belongs to the data contract (scoring engine, Story 3.3), not this pure UI component.
