@@ -85,7 +85,7 @@ development_status:
   3-8-signaler-erreur-fiche-metier: ready-for-dev
   3-9-adaptation-recos-par-niveau-scolaire: backlog
   3-10-niveau-confiance-profil-incomplet: backlog
-  3-11-composant-score-vocationnel: review
+  3-11-composant-score-vocationnel: done
   3-12-composant-fiche-metier: done
   epic-3-retrospective: optional
 
