@@ -195,6 +195,52 @@ class StudentProfile(models.Model):
         )
 
 
+def _default_history_id() -> str:
+    return generate_id("sphi")
+
+
+class StudentProfileHistory(models.Model):
+    """Snapshot of a student's profile at a major change point (Story 2.6 §T1).
+
+    Created when the student changes filière/level in a way that would invalidate
+    prior recommendation scores. The `previous_state` JSONB column holds the
+    entire profile shape at the moment of change so the recommendation engine
+    (Epic 3) can trace score drift over time.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        default=_default_history_id,
+        editable=False,
+    )
+    student = models.ForeignKey(
+        StudentProfile,
+        on_delete=models.CASCADE,
+        related_name="profile_history",
+    )
+    tenant_id = models.UUIDField(null=True, blank=True, db_index=True)
+    archived_reason = models.CharField(max_length=50)
+    previous_state = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "student_profile_history"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"StudentProfileHistory({self.id}, reason={self.archived_reason})"
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.tenant_id is None and self.student_id:
+            self.tenant_id = (
+                StudentProfile.objects.filter(pk=self.student_id)
+                .values_list("tenant_id", flat=True)
+                .first()
+            )
+        super().save(*args, **kwargs)
+
+
 class OnboardingStep2Status(models.TextChoices):
     """Lifecycle of step-2 completion (Story 2.2 §T2)."""
 
