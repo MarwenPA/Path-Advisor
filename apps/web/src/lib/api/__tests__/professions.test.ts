@@ -54,12 +54,15 @@ describe("fetchProfession", () => {
     expect(result.signals_json.passions).toContain("soins");
   });
 
-  it("propagates ApiError on 404", async () => {
+  it("propagates ApiError on 404 with correct status", async () => {
     const { apiFetch, ApiError } = await import("../client");
-    vi.mocked(apiFetch).mockRejectedValueOnce(new ApiError("Not found", 404));
+    const err = new ApiError("Not found", 404);
+    vi.mocked(apiFetch).mockRejectedValueOnce(err);
 
     const { fetchProfession } = await import("../professions");
-    await expect(fetchProfession("slug-inconnu")).rejects.toThrow();
+    const caught = await fetchProfession("slug-inconnu").catch((e) => e);
+    expect(caught).toBeInstanceOf(ApiError);
+    expect(caught.status).toBe(404);
   });
 
   it("passes slug correctly in URL", async () => {

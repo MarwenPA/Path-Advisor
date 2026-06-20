@@ -34,8 +34,13 @@ export default async function MetierDetailPage({
   }
 
   const score = scoreStr !== undefined ? parseInt(scoreStr, 10) : undefined;
+  const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
   const confidenceLevel: "normal" | "indicative" | undefined =
-    confidence === "low" ? "indicative" : confidence ? "normal" : undefined;
+    confidence && VALID_CONFIDENCE.has(confidence)
+      ? confidence === "low"
+        ? "indicative"
+        : "normal"
+      : undefined;
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">

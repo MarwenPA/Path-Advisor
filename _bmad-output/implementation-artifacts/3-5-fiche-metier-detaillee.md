@@ -1,6 +1,6 @@
 # Story 3.5 — Fiche métier détaillée
 
-## Status: ready-for-dev
+## Status: done
 
 ## Story
 
@@ -262,6 +262,19 @@ vi.mock("../client", () => ({
 feat(story-3-4): liste métiers scorés — Django RecommendationService + ...
 feat(story-3-1): activate ai-service for vocational scoring — JWT HS256 ...
 ```
+
+## Senior Developer Review (AI)
+
+**Outcome:** Changes Requested — 3 patches applied
+**Date:** 2026-06-20
+
+### Review Findings
+
+- [x] [Review][Patch] Confidence mapping truthy check accepts invalid strings (`page.tsx`) — replaced with explicit Set whitelist
+- [x] [Review][Patch] Double network fetch: `generateMetadata` + page both call `fetchProfession` — fixed with `React.cache()`
+- [x] [Review][Patch] Test 404 assertion too weak (`rejects.toThrow()`) — now checks `instanceof ApiError` + `status === 404`
+- [x] [Review][Defer] `generateMetadata` swallows all errors — acceptable Next.js metadata fallback pattern — deferred
+- [x] [Review][Defer] Back link missing `aria-label` — text is screen-reader readable, non-blocking — deferred
 
 ## Dev Agent Record
 
