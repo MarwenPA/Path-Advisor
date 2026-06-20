@@ -60,7 +60,7 @@ def test_score_metiers_with_valid_jwt(auth_client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["student_id"] == "stu_01HXJ123"
-    assert body["model_version"] == "0.1.0-statistical"
+    assert body["model_version"] == "0.2.0-statistical"
     assert len(body["scored_occupations"]) == 3
     assert "computation_time_ms" in body
 
@@ -92,8 +92,38 @@ def test_score_metiers_low_confidence_without_bulletins(auth_client: TestClient)
         assert occ["confidence_level"] == "low"
 
 
-def test_score_metiers_medium_confidence_with_bulletins(auth_client: TestClient) -> None:
+def test_score_metiers_high_confidence_with_bulletins(auth_client: TestClient) -> None:
+    # VALID_BODY has average=14.2 >= 14.0 → "high" confidence with real scorer
     response = auth_client.post("/v1/score-metiers", json=VALID_BODY)
     assert response.status_code == 200
     for occ in response.json()["scored_occupations"]:
-        assert occ["confidence_level"] == "medium"
+        assert occ["confidence_level"] == "high"
+
+
+def test_score_metiers_with_professions_data(auth_client: TestClient) -> None:
+    """professions_data reaches the scorer and produces a non-trivial passion_overlap score."""
+    body = {
+        **VALID_BODY,
+        "occupation_ids": ["occ_infirmier"],
+        "professions_data": [
+            {
+                "occupation_id": "occ_infirmier",
+                "signals_json": {
+                    "passions": ["biologie", "bénévolat"],
+                    "valeurs": ["utilité_sociale"],
+                },
+                "level_compatibility": ["terminale_generale"],
+            }
+        ],
+    }
+    response = auth_client.post("/v1/score-metiers", json=body)
+    assert response.status_code == 200
+    occ = response.json()["scored_occupations"][0]
+    assert occ["occupation_id"] == "occ_infirmier"
+    passion_signal = next(
+        s for s in occ["signals_contributifs"] if s["signal"] == "passion_overlap"
+    )
+    assert passion_signal["contribution"] > 0, (
+        "passion_overlap contribution must be non-zero when passions overlap"
+    )
+    assert occ["score"] > 20

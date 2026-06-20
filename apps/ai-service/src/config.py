@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="AI_SERVICE_", extra="ignore")
 
     app_version: str = "0.1.0"
-    model_version: str = "0.1.0-statistical"
+    model_version: str = "0.2.0-statistical"
     jwt_secret: str
     jwt_ttl_seconds: int = 300
     jwt_algorithm: str = "HS256"

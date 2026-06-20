@@ -14,15 +14,15 @@ from apps.recommendations.services.ai_client import AIClient, AIServiceUnavailab
 
 SAMPLE_RESPONSE = {
     "student_id": "stu_01HXJ123",
-    "model_version": "0.1.0-statistical",
+    "model_version": "0.2.0-statistical",
     "scored_occupations": [
         {
             "occupation_id": "occ_01",
             "score": 75,
             "signals_contributifs": [
-                {"signal": "passions_overlap", "weight": 0.35, "contribution": 26}
+                {"signal": "passion_overlap", "weight": 0.35, "contribution": 26}
             ],
-            "confidence_level": "medium",
+            "confidence_level": "high",
         }
     ],
     "computation_time_ms": 42,
@@ -81,8 +81,42 @@ class TestScoreMetiers:
                 occupation_ids=["occ_01"],
             )
 
-        assert result["model_version"] == "0.1.0-statistical"
+        assert result["model_version"] == "0.2.0-statistical"
         assert len(result["scored_occupations"]) == 1
+
+    def test_payload_omits_professions_data_when_none(self, client: AIClient) -> None:
+        """When professions_data is None, the key must be absent from the payload (T1 fix)."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = SAMPLE_RESPONSE
+        mock_resp.raise_for_status.return_value = None
+
+        with patch(
+            "apps.recommendations.services.ai_client.httpx.post", return_value=mock_resp
+        ) as mock_post:
+            client.score_metiers(
+                "stu_01", {"has_bulletins": False}, ["occ_01"], professions_data=None
+            )
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert "professions_data" not in payload
+
+    def test_payload_includes_professions_data_when_set(self, client: AIClient) -> None:
+        """When professions_data is provided it must be forwarded verbatim (T1 fix)."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = SAMPLE_RESPONSE
+        mock_resp.raise_for_status.return_value = None
+
+        professions = [{"occupation_id": "occ_01", "signals_json": {}, "level_compatibility": []}]
+
+        with patch(
+            "apps.recommendations.services.ai_client.httpx.post", return_value=mock_resp
+        ) as mock_post:
+            client.score_metiers(
+                "stu_01", {"has_bulletins": False}, ["occ_01"], professions_data=professions
+            )
+
+        payload = mock_post.call_args.kwargs["json"]
+        assert payload["professions_data"] == professions
 
     def test_sends_bearer_jwt_header(self, client: AIClient) -> None:
         mock_resp = MagicMock()
@@ -102,10 +136,13 @@ class TestScoreMetiers:
         assert payload["sub"] == "django-api"
 
     def test_timeout_raises_unavailable_error(self, client: AIClient) -> None:
-        with patch(
-            "apps.recommendations.services.ai_client.httpx.post",
-            side_effect=httpx.TimeoutException("timeout"),
-        ), pytest.raises(AIServiceUnavailableError):
+        with (
+            patch(
+                "apps.recommendations.services.ai_client.httpx.post",
+                side_effect=httpx.TimeoutException("timeout"),
+            ),
+            pytest.raises(AIServiceUnavailableError),
+        ):
             client.score_metiers("stu_01", {}, [])
 
     def test_http_5xx_raises_unavailable_error(self, client: AIClient) -> None:
@@ -113,10 +150,13 @@ class TestScoreMetiers:
         mock_resp.status_code = 503
         http_error = httpx.HTTPStatusError("503", request=MagicMock(), response=mock_resp)
 
-        with patch(
-            "apps.recommendations.services.ai_client.httpx.post",
-            side_effect=http_error,
-        ), pytest.raises(AIServiceUnavailableError):
+        with (
+            patch(
+                "apps.recommendations.services.ai_client.httpx.post",
+                side_effect=http_error,
+            ),
+            pytest.raises(AIServiceUnavailableError),
+        ):
             client.score_metiers("stu_01", {}, [])
 
     def test_posts_to_correct_url(self, client: AIClient) -> None:

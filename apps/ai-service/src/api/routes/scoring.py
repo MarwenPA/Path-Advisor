@@ -21,7 +21,10 @@ async def score_metiers(
     _claims: Annotated[dict, Depends(verify_jwt)],
 ) -> ScoreMeResponse:
     start = time.monotonic()
-    scored = score_occupations(body.profile.model_dump(), body.occupation_ids)
+    professions_data = (
+        [p.model_dump() for p in body.professions_data] if body.professions_data else None
+    )
+    scored = score_occupations(body.profile.model_dump(), body.occupation_ids, professions_data)
     elapsed_ms = int((time.monotonic() - start) * 1000)
     return ScoreMeResponse(
         student_id=body.student_id,

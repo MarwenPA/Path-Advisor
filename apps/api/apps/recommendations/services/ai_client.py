@@ -42,20 +42,30 @@ class AIClient:
         student_id: str,
         profile: dict,
         occupation_ids: list[str],
+        professions_data: list[dict] | None = None,
     ) -> dict:
         """Call POST /v1/score-metiers and return the parsed JSON response.
+
+        Args:
+            professions_data: Optional list of profession signal dicts
+                (occupation_id, signals_json, level_compatibility) for
+                content-based scoring. When None, the AI service scores
+                without profession signals (niveau + bulletin only).
 
         Raises AIServiceUnavailableError on timeout or HTTP 5xx.
         """
         token = self._generate_token()
+        payload: dict = {
+            "student_id": student_id,
+            "profile": profile,
+            "occupation_ids": occupation_ids,
+        }
+        if professions_data is not None:
+            payload["professions_data"] = professions_data
         try:
             response = httpx.post(
                 f"{settings.AI_SERVICE_URL}/v1/score-metiers",
-                json={
-                    "student_id": student_id,
-                    "profile": profile,
-                    "occupation_ids": occupation_ids,
-                },
+                json=payload,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=5.0,
             )

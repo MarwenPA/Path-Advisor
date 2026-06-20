@@ -26,10 +26,19 @@ class StudentProfile(BaseModel):
     bulletin_summary: BulletinSummary | None = None
 
 
+class ProfessionSignals(BaseModel):
+    """Profession data passed by Django for content-based scoring."""
+
+    occupation_id: str
+    signals_json: dict = {}
+    level_compatibility: list[str] = []
+
+
 class ScoreMeRequest(BaseModel):
     student_id: str
     profile: StudentProfile
     occupation_ids: list[str]
+    professions_data: list[ProfessionSignals] | None = None
 
 
 class SignalContributif(BaseModel):

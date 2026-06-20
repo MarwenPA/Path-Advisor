@@ -13,7 +13,7 @@ def test_model_version_no_auth_required(client: TestClient) -> None:
 def test_model_version_response_shape(client: TestClient) -> None:
     response = client.get("/v1/model-version")
     body = response.json()
-    assert body["model_version"] == "0.1.0-statistical"
+    assert body["model_version"] == "0.2.0-statistical"
     assert body["model_type"] == "statistical_content_based"
     assert "deployed_at" in body
     assert isinstance(body["features"], list)
