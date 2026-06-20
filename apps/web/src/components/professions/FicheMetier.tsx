@@ -7,12 +7,8 @@ import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 import { ScoreVocationnel } from "./ScoreVocationnel";
 import { FicheMetierTOC } from "./FicheMetierTOC";
-import type {
-  FicheMetierProps,
-  Profession,
-  RequirementItem,
-  SignalsByCategory,
-} from "./types";
+import { ReportErrorButton } from "./ReportErrorButton";
+import type { FicheMetierProps, Profession, RequirementItem, SignalsByCategory } from "./types";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -37,11 +33,7 @@ const SECTION_DEFS = [
 
 type SectionKey = (typeof SECTION_DEFS)[number]["key"];
 
-const ACCORDION_KEYS: SectionKey[] = [
-  "pour-qui",
-  "comment-y-aller",
-  "infos-pratiques",
-];
+const ACCORDION_KEYS: SectionKey[] = ["pour-qui", "comment-y-aller", "infos-pratiques"];
 
 // D1: category keys for signal IDs
 const SIGNAL_CATEGORIES: [string, string, keyof SignalsByCategory][] = [
@@ -60,8 +52,7 @@ function useMediaQuery(query: string): boolean {
       mq.addEventListener("change", callback);
       return () => mq.removeEventListener("change", callback);
     },
-    () =>
-      typeof window !== "undefined" ? window.matchMedia(query).matches : false,
+    () => (typeof window !== "undefined" ? window.matchMedia(query).matches : false),
     () => false,
   );
 }
@@ -93,9 +84,7 @@ function RequirementsList({ requirements }: { requirements: RequirementItem[] })
     <div className="flex flex-col gap-4">
       {Object.entries(grouped).map(([type, labels]) => (
         <div key={type}>
-          <h3 className="mb-1 text-body font-semibold text-text">
-            {typeLabels[type] ?? type}
-          </h3>
+          <h3 className="mb-1 text-body font-semibold text-text">{typeLabels[type] ?? type}</h3>
           <ul className="list-inside list-disc space-y-0.5 text-body text-text-muted">
             {labels.map((label) => (
               <li key={label}>{label}</li>
@@ -242,11 +231,7 @@ function SectionContent({
       );
 
     case "comment-y-aller":
-      return (
-        <p className="whitespace-pre-line text-body text-text">
-          {profession.prospects_text}
-        </p>
-      );
+      return <p className="whitespace-pre-line text-body text-text">{profession.prospects_text}</p>;
 
     case "infos-pratiques":
       return <SalaryInfo profession={profession} />;
@@ -318,9 +303,7 @@ function HeroSection({
                 <span className="ml-2 text-body-sm font-normal text-text-muted">(indicatif)</span>
               )}
             </p>
-            <p className="text-body italic text-text-muted">
-              {phraseRecopiable ?? genericPhrase}
-            </p>
+            <p className="text-body italic text-text-muted">{phraseRecopiable ?? genericPhrase}</p>
           </div>
         ) : (
           <div className="mt-4">
@@ -430,10 +413,7 @@ function FicheMetierMobile({
               role="region"
               aria-labelledby={headingId}
               hidden={!isOpen}
-              className={cn(
-                "overflow-hidden",
-                !reducedMotion && "transition-all duration-quick",
-              )}
+              className={cn("overflow-hidden", !reducedMotion && "transition-all duration-quick")}
             >
               <div className="pb-4 pt-2">
                 <SectionContent
@@ -472,6 +452,11 @@ function FicheMetierMobile({
       >
         Tout afficher
       </button>
+
+      {/* AC1: bouton Signaler — pied de fiche, toujours visible (hors print) */}
+      <div className="mt-4 flex justify-center">
+        <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
+      </div>
     </div>
   );
 }
@@ -548,15 +533,8 @@ function FicheMetierDesktop({
         {/* All sections scrollable — D2 */}
         <div className="flex flex-col gap-16">
           {SECTION_DEFS.map((def) => (
-            <section
-              key={def.key}
-              data-section={def.key}
-              aria-labelledby={`section-${def.key}`}
-            >
-              <h2
-                id={`section-${def.key}`}
-                className="mb-4 text-h2 font-semibold text-text"
-              >
+            <section key={def.key} data-section={def.key} aria-labelledby={`section-${def.key}`}>
+              <h2 id={`section-${def.key}`} className="mb-4 text-h2 font-semibold text-text">
                 {def.label}
               </h2>
               <SectionContent
@@ -567,6 +545,11 @@ function FicheMetierDesktop({
             </section>
           ))}
         </div>
+      </div>
+
+      {/* AC1: bouton Signaler — pied de fiche, toujours visible (hors print) */}
+      <div className="mx-auto mt-8 flex max-w-4xl justify-end px-6">
+        <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
       </div>
     </div>
   );
@@ -596,17 +579,10 @@ function FicheMetierPrint({
 
       {SECTION_DEFS.map((def) => (
         <section key={def.key} aria-labelledby={`section-print-${def.key}`}>
-          <h2
-            id={`section-print-${def.key}`}
-            className="mb-3 text-h2 font-semibold"
-          >
+          <h2 id={`section-print-${def.key}`} className="mb-3 text-h2 font-semibold">
             {def.label}
           </h2>
-          <SectionContent
-            sectionKey={def.key}
-            profession={profession}
-            interactive={false}
-          />
+          <SectionContent sectionKey={def.key} profession={profession} interactive={false} />
         </section>
       ))}
     </div>

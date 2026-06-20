@@ -113,6 +113,8 @@ urlpatterns = [
     path("api/v1/students/", include("apps.students.urls")),
     # Story 2.3 — bulletin upload + OCR.
     path("api/v1/students/", include("apps.bulletins.urls")),
+    # Story 3.2 — professions referential (admin + student endpoints).
+    path("api/v1/", include("apps.professions.urls")),
     # OpenAPI / docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

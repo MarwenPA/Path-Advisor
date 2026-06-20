@@ -1,8 +1,15 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { FicheMetier } from "../FicheMetier";
 import type { Profession } from "../types";
+
+// Wrap renders with QueryClientProvider for ReportErrorButton (Story 3.8)
+function withQueryClient(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
+}
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
@@ -77,7 +84,8 @@ beforeEach(() => {
     observe = vi.fn();
     unobserve = vi.fn();
     disconnect = vi.fn();
-    constructor(_cb: IntersectionObserverCallback, _opts?: IntersectionObserverInit) {}
+     
+    constructor(..._: unknown[]) {}
   }
   vi.stubGlobal("IntersectionObserver", MockIO);
 
@@ -94,18 +102,22 @@ afterEach(() => {
 
 describe("AC8 — render de base", () => {
   it("affiche les 6 sections sur mobile (Hero, C'est quoi, 3 accordéons, Signaux)", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
-    expect(screen.getByRole("heading", { level: 1, name: /Infirmier·ère de bloc opératoire/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 1, name: /Infirmier·ère de bloc opératoire/i }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: /C'est quoi/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Pour qui/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Comment y aller/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Infos pratiques/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: /Signaux contributifs/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: /Signaux contributifs/i }),
+    ).toBeInTheDocument();
   });
 
   it("le h1 contient le nom du métier", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const h1 = screen.getByRole("heading", { level: 1 });
     expect(h1).toHaveTextContent("Infirmier·ère de bloc opératoire");
   });
@@ -115,16 +127,25 @@ describe("AC8 — render de base", () => {
 
 describe("AC8 — mobile : sections 3-5 en accordéon, collapsées par défaut", () => {
   it("les sections accordéon ont aria-expanded=false par défaut", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
-    expect(screen.getByRole("button", { name: /Pour qui/i })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /Comment y aller/i })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: /Infos pratiques/i })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: /Pour qui/i })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /Comment y aller/i })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.getByRole("button", { name: /Infos pratiques/i })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
   });
 
   // P4: panel always in DOM with hidden attr → toBeVisible() instead of toBeInTheDocument()
   it("le contenu des sections accordéon est masqué par défaut", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     // "BTS IBODE" is in the DOM (hidden attr) — must not be visible
     expect(screen.getByText("BTS IBODE")).not.toBeVisible();
@@ -132,7 +153,7 @@ describe("AC8 — mobile : sections 3-5 en accordéon, collapsées par défaut",
   });
 
   it("Hero et 'C'est quoi' sont toujours visibles", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     expect(screen.getByText(/professionnel de santé spécialisé/i)).toBeInTheDocument();
@@ -143,7 +164,7 @@ describe("AC8 — mobile : sections 3-5 en accordéon, collapsées par défaut",
 
 describe("AC8 — accordéon : tap sur section 3 → expand, aria-expanded=true", () => {
   it("clic sur 'Pour qui' → aria-expanded=true et contenu visible", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     const btn = screen.getByRole("button", { name: /Pour qui/i });
     fireEvent.click(btn);
@@ -153,13 +174,22 @@ describe("AC8 — accordéon : tap sur section 3 → expand, aria-expanded=true"
   });
 
   it("'Tout afficher' déploie les 3 accordéons", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     fireEvent.click(screen.getByRole("button", { name: /Tout afficher/i }));
 
-    expect(screen.getByRole("button", { name: /Pour qui/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Comment y aller/i })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: /Infos pratiques/i })).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /Pour qui/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Comment y aller/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: /Infos pratiques/i })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
   });
 });
 
@@ -171,17 +201,17 @@ describe("AC8 — desktop : TOC présente, toutes sections visibles (scrollable)
   });
 
   it("affiche la nav TOC avec aria-label", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     expect(screen.getByRole("navigation", { name: /sections de la fiche/i })).toBeInTheDocument();
   });
 
   it("pas de tablist en desktop (D2 — scrollable sections, pas de tabs)", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 
   it("les 5 sections sont toutes visibles en desktop", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     // Toutes sections rendues sans accordéon ni tabs
     expect(screen.getByText(/professionnel de santé spécialisé/i)).toBeInTheDocument();
     expect(screen.getByText("BTS IBODE")).toBeInTheDocument();
@@ -190,7 +220,7 @@ describe("AC8 — desktop : TOC présente, toutes sections visibles (scrollable)
   });
 
   it("clic sur TOC link appelle scrollIntoView", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const links = screen.getAllByRole("link");
     const pourQuiLink = links.find((l) => /pour qui/i.test(l.textContent ?? ""));
     expect(pourQuiLink).toBeTruthy();
@@ -204,7 +234,7 @@ describe("AC8 — desktop : TOC présente, toutes sections visibles (scrollable)
 describe("D3 — variant='mobile' force le layout mobile même sur desktop", () => {
   it("variant='mobile' sur desktop → affiche accordéons (pas de TOC)", () => {
     mockMatchMedia(true); // viewport ≥ 1024 px
-    render(<FicheMetier profession={profession} variant="mobile" />);
+    render(withQueryClient(<FicheMetier profession={profession} variant="mobile" />));
 
     // Mobile layout: accordion buttons présents
     expect(screen.getByRole("button", { name: /Pour qui/i })).toBeInTheDocument();
@@ -218,19 +248,19 @@ describe("D3 — variant='mobile' force le layout mobile même sur desktop", () 
 describe("AC8 — score fourni vs absent", () => {
   it("score fourni → chip score présent (aria-label score)", () => {
     render(
-      <FicheMetier
-        profession={profession}
-        score={78}
-        phraseRecopiable="Mon projet est de travailler en salle d'op."
-      />,
+      withQueryClient(
+        <FicheMetier
+          profession={profession}
+          score={78}
+          phraseRecopiable="Mon projet est de travailler en salle d'op."
+        />,
+      ),
     );
-    expect(
-      screen.getByRole("generic", { name: /compatible à 78 %/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("generic", { name: /compatible à 78 %/i })).toBeInTheDocument();
   });
 
   it("score absent → chip score absent", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     expect(screen.queryByRole("generic", { name: /compatible/i })).not.toBeInTheDocument();
   });
 });
@@ -239,22 +269,22 @@ describe("AC8 — score fourni vs absent", () => {
 
 describe("AC8 — variant print", () => {
   it("pas d'accordéons en mode print", () => {
-    render(<FicheMetier profession={profession} variant="print" />);
+    render(withQueryClient(<FicheMetier profession={profession} variant="print" />));
     expect(screen.queryByRole("button", { name: /Pour qui/i })).not.toBeInTheDocument();
   });
 
   it("pas de tablist en mode print", () => {
-    render(<FicheMetier profession={profession} variant="print" />);
+    render(withQueryClient(<FicheMetier profession={profession} variant="print" />));
     expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
   });
 
   it("pas de TOC en mode print", () => {
-    render(<FicheMetier profession={profession} variant="print" />);
+    render(withQueryClient(<FicheMetier profession={profession} variant="print" />));
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 
   it("toutes les sections sont linéarisées en print", () => {
-    render(<FicheMetier profession={profession} variant="print" />);
+    render(withQueryClient(<FicheMetier profession={profession} variant="print" />));
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     const headings = screen.getAllByRole("heading", { level: 2 });
@@ -264,12 +294,14 @@ describe("AC8 — variant print", () => {
   // P5: print + score → pas de CopyButton (ScoreVocationnel non rendu)
   it("print + score → affichage statique, pas de CopyButton", () => {
     render(
-      <FicheMetier
-        profession={profession}
-        score={82}
-        phraseRecopiable="Mon projet est de devenir infirmier."
-        variant="print"
-      />,
+      withQueryClient(
+        <FicheMetier
+          profession={profession}
+          score={82}
+          phraseRecopiable="Mon projet est de devenir infirmier."
+          variant="print"
+        />,
+      ),
     );
 
     // Score statique visible
@@ -287,12 +319,7 @@ describe("AC8 — onSignalClick", () => {
   // D1: signalId inclut le préfixe catégorie → "passions-biologie"
   it("chip signal déclenche onSignalClick avec id préfixé par catégorie", () => {
     const onSignalClick = vi.fn();
-    render(
-      <FicheMetier
-        profession={profession}
-        onSignalClick={onSignalClick}
-      />,
-    );
+    render(withQueryClient(<FicheMetier profession={profession} onSignalClick={onSignalClick} />));
 
     // "biologie" uniquement dans Passions → id = "passions-biologie"
     const chip = screen.getByRole("button", { name: /Signal contributif : biologie/i });
@@ -303,7 +330,7 @@ describe("AC8 — onSignalClick", () => {
   });
 
   it("sans onSignalClick, les chips sont en lecture seule (span, pas button)", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     const signalButtons = screen
       .queryAllByRole("button")
@@ -317,20 +344,20 @@ describe("AC8 — onSignalClick", () => {
 
 describe("AC8 — hiérarchie heading", () => {
   it("exactement 1 h1 sur mobile", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
   });
 
   it("h2 pour chaque section visible sur mobile (C'est quoi + 3 accordéons + Signaux = 5 h2)", () => {
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const h2s = screen.getAllByRole("heading", { level: 2 });
     expect(h2s.length).toBeGreaterThanOrEqual(5);
   });
 
   it("exactement 1 h1 sur desktop", () => {
     mockMatchMedia(true);
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const h1s = screen.getAllByRole("heading", { level: 1 });
     expect(h1s).toHaveLength(1);
   });
@@ -341,7 +368,7 @@ describe("AC8 — hiérarchie heading", () => {
 describe("AC8 — reduced motion", () => {
   it("pas de classe transition-* sur les chevrons accordéon si prefers-reduced-motion", () => {
     mockReducedMotion(true);
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
 
     const btn = screen.getByRole("button", { name: /Pour qui/i });
     const chevron = btn.querySelector("svg");
@@ -355,14 +382,14 @@ describe("AC8 — reduced motion", () => {
 describe("FicheMetierTOC — TOC autonome", () => {
   it("TOC a aria-label='Sections de la fiche'", () => {
     mockMatchMedia(true);
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const nav = screen.getByRole("navigation", { name: /sections de la fiche/i });
     expect(nav).toBeInTheDocument();
   });
 
   it("TOC contient des liens <a> vers chaque section", () => {
     mockMatchMedia(true);
-    render(<FicheMetier profession={profession} />);
+    render(withQueryClient(<FicheMetier profession={profession} />));
     const links = screen.getAllByRole("link");
     expect(links.length).toBeGreaterThanOrEqual(5);
     expect(links[0]).toHaveAttribute("href", expect.stringContaining("#section-"));

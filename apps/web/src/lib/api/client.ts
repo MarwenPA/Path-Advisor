@@ -22,6 +22,23 @@ const API_BASE_URL =
     ? (process.env.API_URL_SERVER ?? "http://api:8000")
     : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
 
+async function getServerCookieHeader(): Promise<string | undefined> {
+  if (typeof window !== "undefined") return undefined;
+  try {
+    const { cookies } = await import("next/headers");
+    const jar = await cookies();
+    // Forward only the cookies strictly required for Django auth — never the full jar.
+    const needed = ["sessionid", "csrftoken"];
+    const parts = needed.flatMap((name) => {
+      const v = jar.get(name)?.value;
+      return v ? [`${name}=${v}`] : [];
+    });
+    return parts.length > 0 ? parts.join("; ") : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface ProblemDetails {
   type: string;
   title: string;
@@ -75,6 +92,8 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     effectiveSignal = composed.signal;
   }
 
+  const serverCookie = await getServerCookieHeader();
+
   const response = await fetch(url, {
     ...rest,
     credentials: "include",
@@ -83,6 +102,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
       "Content-Type": "application/json",
       Accept: "application/json",
       ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      ...(serverCookie ? { Cookie: serverCookie } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
