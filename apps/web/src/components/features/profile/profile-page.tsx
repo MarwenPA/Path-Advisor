@@ -131,7 +131,7 @@ export function ProfilePage() {
           className="text-sm text-muted-foreground hover:underline"
           aria-label="Voir l'historique des changements"
         >
-          Voir l'historique des changements →
+          Voir l&apos;historique des changements →
         </Link>
       </div>
 

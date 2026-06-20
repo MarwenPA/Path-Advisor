@@ -16,6 +16,9 @@ import {
   useDismissBulletinsBanner,
 } from "../../../../hooks/use-student-profile";
 
+type MockStudentProfile = ReturnType<typeof useStudentProfile>;
+type MockDismissBanner = ReturnType<typeof useDismissBulletinsBanner>;
+
 function wrap(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
@@ -37,7 +40,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -56,7 +59,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(false);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -75,7 +78,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(false);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -92,7 +95,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -105,7 +108,7 @@ describe("BulletinsPostponedBanner", () => {
     const mutateMock = vi.fn();
     vi.mocked(useDismissBulletinsBanner).mockReturnValue({
       mutate: mutateMock,
-    } as any);
+    } as unknown as MockDismissBanner);
     vi.mocked(useStudentProfile).mockReturnValue({
       data: {
         bulletins_status: "postponed",
@@ -114,7 +117,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -132,7 +135,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
@@ -150,7 +153,7 @@ describe("BulletinsPostponedBanner", () => {
       },
       isLoading: false,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
     const { container } = wrap(
@@ -169,7 +172,7 @@ describe("BulletinsPostponedBanner", () => {
       data: undefined,
       isLoading: true,
       isError: false,
-    } as any);
+    } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(false);
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);

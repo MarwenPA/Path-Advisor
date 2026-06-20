@@ -55,6 +55,7 @@ export function useMaturityCelebration(
     if (isLevelUp) {
       const celebMsg = CELEBRATION_MESSAGES[currentLevel];
       if (celebMsg) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setMessage(celebMsg);
         // Mark as seen for this session so returning to the page doesn't re-fire
         sessionStorage.setItem(key, currentLevel);
