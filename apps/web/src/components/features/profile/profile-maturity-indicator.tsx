@@ -252,7 +252,7 @@ function MaturityInlineCompact({ level }: { level: MaturityLevel }) {
 // Public default export — ProfileMaturityIndicator (AC1)
 // ---------------------------------------------------------------------------
 
-let _uidCounter = 0;
+const _uidCounter = 0;
 
 export function ProfileMaturityIndicator({
   level,

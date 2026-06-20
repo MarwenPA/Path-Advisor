@@ -263,3 +263,16 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 - **Low-confidence fields pas remontés en premier dans le tab order (AC6)** — implémentation de réordonnancement `tabIndex` complexe et fragile. Target: Q3 a11y audit pass.
 - **`ScenarioLoader` `aria-live` non vérifiable (AC10)** — dépend de Story 2.8; comportement correct présumé. Target: a11y audit Story 2.8.
 - **Retry XHR: `refetchInterval` actif pendant retries TanStack Query** — cas où retries et polling s'interfolient; impact négligeable en pratique. Target: fast-follow si observé en prod.
+
+## Deferred from: code review of 3-11-composant-score-vocationnel (2026-06-20)
+
+- **`aria-label` on `<span>` role `generic` (ScoreChip) not reliably exposed to real screen readers** — `ScoreVocationnel.tsx:28-42`. jsdom tests pass (the Blind Hunter's test-failure claim is a false positive), but the score's accessible name may be dropped by real AT. Fold into the global RGAA AA accessibility pass (semantic wrapper or sr-only text).
+- **No dedup of `signals` by `id`** — `ScoreVocationnel.tsx:114-120`. Duplicate ids cause React key collisions and indistinguishable chips. Belongs to the data contract (scoring engine, Story 3.3), not this pure UI component.
+
+## Deferred from: code review of 3-12-composant-fiche-metier (2026-06-20)
+
+- **Hydratation SSR flash** — `FicheMetier.tsx:48-57`. `getServerSnapshot` retourne `false` → arbre mobile côté serveur, swap desktop côté client. Inhérent à `useSyncExternalStore` + viewport-detection sans SSR guard. Adresser lors de la page d'intégration (Story 3.5) avec `suppressHydrationWarning` ou `useState(mounted)`.
+- **`mockReducedMotion` et `mockMatchMedia` mutuellement exclusifs** — `FicheMetier.test.tsx:52-66`. Impossible de tester reduced-motion + desktop simultanément. Adresser lors d'un refactor de la test infra hooks.
+- **`SalaryInfo` section blanche si tous champs null** — `FicheMetier.tsx:104-144`. Pas d'empty-state "Information non disponible". Adresser en Story 3.5 (intégration page) ou lors du quality pass UX.
+- **`level_compatibility` tokens bruts affichés** — `FicheMetier.tsx:137`. Libellés lisibles manquants (ex. "lycee 1ere tle general" au lieu de "Lycée 1ère/Tle générale"). Adresser avec un mapping i18n lors de l'Epic 7 ou du quality pass.
+- **"Tout afficher" one-way sans "Tout masquer"** — `FicheMetier.tsx:348-355`. UX mineure. Adresser si retour utilisateur lors des tests terrain.

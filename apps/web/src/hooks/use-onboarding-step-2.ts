@@ -162,12 +162,14 @@ export function useOnboardingStep2({ userId }: UseOnboardingStep2Options): UseOn
     if (!snapshot) return;
     const stored = readDraft(draftKey);
     if (!stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraft(snapshotToDraft(snapshot));
     }
   }, [snapshot, draftKey]);
 
   // Auto-persist on change (debounce 500 ms per AC7)
   const draftRef = React.useRef(draft);
+  // eslint-disable-next-line react-hooks/refs
   draftRef.current = draft;
   React.useEffect(() => {
     const tid = setTimeout(() => writeDraft(draftKey, draftRef.current), 500);

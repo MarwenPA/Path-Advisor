@@ -305,7 +305,7 @@ export function OnboardingStep3() {
             Tes bulletins, comment tu préfères ?
           </h1>
           <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
-            3 façons de faire. Aucune n'est mieux qu'une autre — choisis selon ton humeur du moment.
+            3 façons de faire. Aucune n&apos;est mieux qu&apos;une autre — choisis selon ton humeur du moment.
           </p>
         </div>
         <ImportChoice3Cards onSelect={handleCardSelect} />
@@ -317,6 +317,7 @@ export function OnboardingStep3() {
     return (
       <FilePickerSheet
         open
+        // eslint-disable-next-line react-hooks/refs
         files={pickerFilesRef.current}
         onFilesChange={(files) => {
           pickerFilesRef.current = files;
@@ -333,6 +334,7 @@ export function OnboardingStep3() {
 
   if (state.matches("uploading")) {
     // Live progress from hook, keyed by picker file ID
+    // eslint-disable-next-line react-hooks/refs
     const uploadFiles: UploadFile[] = pickerFilesRef.current.map((pf) => {
       const progress = fileProgress[pf.id] ?? 0;
       return {

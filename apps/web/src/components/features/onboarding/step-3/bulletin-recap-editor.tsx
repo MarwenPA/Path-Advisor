@@ -48,6 +48,8 @@ function NoteInput({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Sync external `value` prop into local draft state — intentional derived-state pattern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraft(value);
   }, [value]);
 
@@ -142,7 +144,7 @@ function SubjectRow({
                     aria-describedby={warnId}
                   />
                 </TooltipTrigger>
-                <TooltipContent>À vérifier — l'OCR a un doute sur ce champ</TooltipContent>
+                <TooltipContent>À vérifier — l&apos;OCR a un doute sur ce champ</TooltipContent>
               </Tooltip>
             )}
             <span id={warnId} className="sr-only">
@@ -169,7 +171,7 @@ function SubjectRow({
                       aria-hidden
                     />
                   </TooltipTrigger>
-                  <TooltipContent>À vérifier — l'OCR a un doute sur cette note</TooltipContent>
+                  <TooltipContent>À vérifier — l&apos;OCR a un doute sur cette note</TooltipContent>
                 </Tooltip>
               )}
               <NoteInput
@@ -216,7 +218,7 @@ function SubjectRow({
                     />
                   </TooltipTrigger>
                   <TooltipContent>
-                    À vérifier — l'OCR a un doute sur cette appréciation
+                    À vérifier — l&apos;OCR a un doute sur cette appréciation
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -513,7 +515,7 @@ export function BulletinRecapEditor({
   return (
     <section aria-label="Récapitulatif des bulletins" className="flex flex-col gap-4">
       <h2 className="text-[var(--text-h2)] font-semibold text-[var(--color-text)]">
-        Voilà ce qu'on a lu
+        Voilà ce qu&apos;on a lu
       </h2>
       <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
         Corrige si besoin — on peut se tromper. Toi seul·e sais ce qui est juste.
@@ -648,7 +650,7 @@ export function BulletinRecapEditor({
       <div className="sticky bottom-0 bg-[var(--color-bg)] pt-4 pb-6 border-t border-[var(--color-border)]">
         {allValidated ? (
           <Button onClick={onAllValidated} className="w-full" size="lg">
-            Terminer l'onboarding →
+            Terminer l&apos;onboarding →
           </Button>
         ) : (
           <Button

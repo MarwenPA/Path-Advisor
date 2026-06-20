@@ -76,7 +76,7 @@ export default function ProfileHistoryPage() {
                   href={`/profile/history/${entry.id}`}
                   className="text-xs underline"
                 >
-                  Revoir l'ancien profil
+                  Revoir l&apos;ancien profil
                 </Link>
               </Card>
             </li>

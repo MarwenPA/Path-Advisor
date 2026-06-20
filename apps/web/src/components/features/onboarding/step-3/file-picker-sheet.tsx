@@ -91,7 +91,7 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
         <SheetHeader>
           <SheetTitle className="text-[var(--text-h3)]">Tes bulletins</SheetTitle>
           <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
-            Jusqu'à 6 fichiers. PDF, JPEG, PNG ou HEIC.
+            Jusqu&apos;à 6 fichiers. PDF, JPEG, PNG ou HEIC.
           </p>
         </SheetHeader>
 
@@ -183,7 +183,7 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
 
         {hasError && (
           <p role="alert" className="mt-2 text-sm text-[var(--color-warning)]">
-            Corrige les fichiers en rouge avant de lancer l'analyse.
+            Corrige les fichiers en rouge avant de lancer l&apos;analyse.
           </p>
         )}
 
@@ -194,7 +194,7 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
             aria-disabled={validFiles.length === 0 || hasError}
             className="w-full"
           >
-            Lancer l'analyse →
+            Lancer l&apos;analyse →
           </Button>
           <Button variant="ghost" onClick={onCancel} className="w-full">
             Annuler
