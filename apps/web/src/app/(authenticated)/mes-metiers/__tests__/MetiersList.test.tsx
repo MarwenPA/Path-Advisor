@@ -85,11 +85,13 @@ describe("MetiersList", () => {
     expect(() => render(<MetiersList professions={professions} />)).not.toThrow();
   });
 
-  it("links each card to /metiers/:slug", () => {
-    const professions = [makeProfession({ slug: "infirmier-ssr" })];
+  it("links each card to /metiers/:slug with score and confidence query params", () => {
+    const professions = [
+      makeProfession({ slug: "infirmier-ssr", score: 85, confidence_level: "high" }),
+    ];
     render(<MetiersList professions={professions} />);
     const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/metiers/infirmier-ssr");
+    expect(link).toHaveAttribute("href", "/metiers/infirmier-ssr?score=85&confidence=high");
   });
 
   it("limits signal chips to top 2", () => {
