@@ -16,11 +16,13 @@ pre-commit:
       stage_fixed: true
 
     lint-py-api:
+      root: "apps/api/"
       glob: "apps/api/**/*.py"
-      run: cd apps/api && uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      run: uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
       stage_fixed: true
 
     lint-py-ai:
+      root: "apps/ai-service/"
       glob: "apps/ai-service/**/*.py"
-      run: cd apps/ai-service && uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      run: uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
       stage_fixed: true
