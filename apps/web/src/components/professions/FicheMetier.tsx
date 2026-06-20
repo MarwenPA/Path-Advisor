@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ScoreVocationnel } from "./ScoreVocationnel";
 import { FicheMetierTOC } from "./FicheMetierTOC";
 import { ReportErrorButton } from "./ReportErrorButton";
+import { ReviewRequestButton } from "./ReviewRequestButton";
 import type { FicheMetierProps, Profession, RequirementItem, SignalsByCategory } from "./types";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -453,9 +454,14 @@ function FicheMetierMobile({
         Tout afficher
       </button>
 
-      {/* AC1: bouton Signaler — pied de fiche, toujours visible (hors print) */}
-      <div className="mt-4 flex justify-center">
+      {/* Pied de fiche — boutons signalement (hors print) */}
+      <div className="mt-4 flex flex-wrap justify-center gap-3">
         <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
+        <ReviewRequestButton
+          professionSlug={profession.slug}
+          professionName={profession.name}
+          hasScore={score !== undefined}
+        />
       </div>
     </div>
   );
@@ -547,9 +553,14 @@ function FicheMetierDesktop({
         </div>
       </div>
 
-      {/* AC1: bouton Signaler — pied de fiche, toujours visible (hors print) */}
-      <div className="mx-auto mt-8 flex max-w-4xl justify-end px-6">
+      {/* Pied de fiche — boutons signalement (hors print) */}
+      <div className="mx-auto mt-8 flex max-w-4xl flex-wrap justify-end gap-3 px-6">
         <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
+        <ReviewRequestButton
+          professionSlug={profession.slug}
+          professionName={profession.name}
+          hasScore={score !== undefined}
+        />
       </div>
     </div>
   );

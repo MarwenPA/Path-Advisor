@@ -83,6 +83,8 @@ ignore = [
 # DJ001: null=True on nullable optional text fields is intentional (location/comment/rome_code).
 # RUF001: EN DASH in help_text doc strings is intentional typographic choice.
 "apps/professions/**" = ["RUF012", "DJ001", "RUF001"]
+# Django convention: permission_classes is a class-level list. DJ001: nullable comment field intentional.
+"apps/recommendations/**" = ["RUF012", "DJ001"]
 
 [tool.ruff.format]
 quote-style = "double"
