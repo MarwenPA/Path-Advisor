@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from src.api.routes import health
+from src.api.routes import health, model_info, scoring
 
 app = FastAPI(
     title="Path-Advisor AI Service",
@@ -11,3 +11,5 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
+app.include_router(scoring.router)
+app.include_router(model_info.router)

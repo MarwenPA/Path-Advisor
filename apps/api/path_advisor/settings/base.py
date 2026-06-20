@@ -58,6 +58,10 @@ INSTALLED_APPS = [
     "apps.students",
     # Story 2.3 — bulletin upload + OCR
     "apps.bulletins",
+    # Story 3.1 — vocationnel scoring client + recommendations
+    "apps.recommendations",
+    # Story 3.2 — curated professions referential
+    "apps.professions",
 ]
 
 MIDDLEWARE = [
@@ -343,6 +347,12 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY", "minio_local_pas
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
 # Story 2.3 — encrypted bulletin storage (SSE-S3 at rest, prefix per student)
 BULLETINS_BUCKET = os.environ.get("BULLETINS_BUCKET", "bulletins-encrypted")
+
+# --- AI Service (FastAPI scoring microservice) ---
+# Story 3.1: Django → ai-service communication via JWT HS256
+AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "http://localhost:8001")
+AI_SERVICE_JWT_SECRET = os.environ.get("AI_SERVICE_JWT_SECRET", "")
+AI_SERVICE_JWT_TTL_SECONDS = int(os.environ.get("AI_SERVICE_JWT_TTL_SECONDS", "300"))
 
 # --- Email (overridden per environment) ---
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@path-advisor.local")
