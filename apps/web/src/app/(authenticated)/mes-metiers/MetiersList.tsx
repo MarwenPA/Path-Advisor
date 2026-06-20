@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { ScoreVocationnel } from "@/components/professions/ScoreVocationnel";
+import { SignauxDrawer } from "@/components/professions/SignauxDrawer";
 import type { Signal } from "@/components/professions/types";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import type { ScoredProfession } from "@/lib/api/recommendations";
@@ -38,6 +39,9 @@ export function MetiersList({ professions }: MetiersListProps) {
   const [visibleCount, setVisibleCount] = useState(skipAnimation ? professions.length : 0);
   const animationStarted = useRef(false);
 
+  // Drawer state — which profession's signals to show
+  const [drawerProfession, setDrawerProfession] = useState<ScoredProfession | null>(null);
+
   useEffect(() => {
     if (skipAnimation) return;
     if (animationStarted.current) return;
@@ -66,36 +70,51 @@ export function MetiersList({ professions }: MetiersListProps) {
   }
 
   return (
-    <ul className="flex flex-col gap-4" data-testid="metiers-list">
-      {professions.map((p, idx) => {
-        const visible = idx < visibleCount;
-        return (
-          <li
-            key={p.id}
-            className="transition-all duration-500"
-            style={{
-              opacity: visible ? 1 : 0,
-              transform: visible ? "translateY(0)" : "translateY(12px)",
-            }}
-            aria-hidden={!visible}
-          >
-            <Link
-              href={`/metiers/${p.slug}?score=${p.score}&confidence=${p.confidence_level}`}
-              className="block rounded-xl border border-gray-200 p-4 hover:border-blue-400 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+    <>
+      <ul className="flex flex-col gap-4" data-testid="metiers-list">
+        {professions.map((p, idx) => {
+          const visible = idx < visibleCount;
+          const encodedSignals = encodeURIComponent(JSON.stringify(p.signals_contributifs));
+          return (
+            <li
+              key={p.id}
+              className="transition-all duration-500"
+              style={{
+                opacity: visible ? 1 : 0,
+                transform: visible ? "translateY(0)" : "translateY(12px)",
+              }}
+              aria-hidden={!visible}
             >
-              <ScoreVocationnel
-                metierId={p.id}
-                metiersName={p.name}
-                score={p.score}
-                phraseRecopiable={p.phrase_recopiable}
-                signals={toSignals(p)}
-                variant="compact"
-                confidenceLevel={mapConfidence(p.confidence_level)}
-              />
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+              <Link
+                href={`/metiers/${p.slug}?score=${p.score}&confidence=${p.confidence_level}&signals=${encodedSignals}`}
+                className="block rounded-xl border border-gray-200 p-4 hover:border-blue-400 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <ScoreVocationnel
+                  metierId={p.id}
+                  metiersName={p.name}
+                  score={p.score}
+                  phraseRecopiable={p.phrase_recopiable}
+                  signals={toSignals(p)}
+                  variant="compact"
+                  confidenceLevel={mapConfidence(p.confidence_level)}
+                  onSignalClick={() => {
+                    setDrawerProfession(p);
+                  }}
+                />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
+      <SignauxDrawer
+        open={drawerProfession !== null}
+        onOpenChange={(open) => {
+          if (!open) setDrawerProfession(null);
+        }}
+        metiersName={drawerProfession?.name ?? ""}
+        signals={drawerProfession?.signals_contributifs ?? []}
+      />
+    </>
   );
 }

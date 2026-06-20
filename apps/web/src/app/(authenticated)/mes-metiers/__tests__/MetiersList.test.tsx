@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import type { ScoredProfession } from "@/lib/api/recommendations";
 
@@ -14,13 +14,54 @@ vi.mock("@/hooks/use-prefers-reduced-motion", () => ({
 }));
 
 vi.mock("@/components/professions/ScoreVocationnel", () => ({
-  ScoreVocationnel: ({ metiersName, score }: { metiersName: string; score: number }) => (
+  ScoreVocationnel: ({
+    metiersName,
+    score,
+    onSignalClick,
+  }: {
+    metiersName: string;
+    score: number;
+    onSignalClick?: (id: string) => void;
+  }) => (
     <div data-testid="score-vocationnel">
       <span>{metiersName}</span>
       <span>{score}</span>
+      <button
+        type="button"
+        data-testid="signal-chip-btn"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSignalClick?.("passion_soins");
+        }}
+      >
+        Signal chip
+      </button>
     </div>
   ),
 }));
+
+vi.mock("@/components/professions/SignauxDrawer", () => ({
+  SignauxDrawer: ({
+    open,
+    metiersName,
+  }: {
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+    metiersName: string;
+    signals: unknown[];
+  }) => (open ? <div data-testid="signaux-drawer">Drawer: {metiersName}</div> : null),
+}));
+
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 const makeProfession = (overrides: Partial<ScoredProfession> = {}): ScoredProfession => ({
   id: "prof_01",
@@ -79,24 +120,23 @@ describe("MetiersList", () => {
   });
 
   it("maps confidence_level=low to indicative", () => {
-    // Test via rendered component — since ScoreVocationnel is mocked,
-    // just verify MetiersList doesn't crash with low confidence_level.
     const professions = [makeProfession({ confidence_level: "low" })];
     expect(() => render(<MetiersList professions={professions} />)).not.toThrow();
   });
 
-  it("links each card to /metiers/:slug with score and confidence query params", () => {
-    const professions = [
-      makeProfession({ slug: "infirmier-ssr", score: 85, confidence_level: "high" }),
-    ];
-    render(<MetiersList professions={professions} />);
+  it("links each card to /metiers/:slug with score, confidence, and signals query params", () => {
+    const profession = makeProfession({
+      slug: "infirmier-ssr",
+      score: 85,
+      confidence_level: "high",
+    });
+    render(<MetiersList professions={[profession]} />);
     const link = screen.getByRole("link");
-    expect(link).toHaveAttribute("href", "/metiers/infirmier-ssr?score=85&confidence=high");
+    const href = link.getAttribute("href") ?? "";
+    expect(href).toMatch(/^\/metiers\/infirmier-ssr\?score=85&confidence=high&signals=/);
   });
 
   it("limits signal chips to top 2", () => {
-    // The mock doesn't render chips, but toSignals slices [:2].
-    // Smoke test: 3 signals → no error.
     const professions = [
       makeProfession({
         signals_contributifs: [
@@ -107,5 +147,25 @@ describe("MetiersList", () => {
       }),
     ];
     expect(() => render(<MetiersList professions={professions} />)).not.toThrow();
+  });
+
+  it("opens SignauxDrawer when a signal chip is clicked", () => {
+    const professions = [makeProfession({ name: "Infirmier·ère SSR" })];
+    render(<MetiersList professions={professions} />);
+
+    expect(screen.queryByTestId("signaux-drawer")).not.toBeInTheDocument();
+
+    const chip = screen.getByTestId("signal-chip-btn");
+    fireEvent.click(chip);
+
+    expect(screen.getByTestId("signaux-drawer")).toBeInTheDocument();
+    expect(screen.getByTestId("signaux-drawer")).toHaveTextContent("Infirmier·ère SSR");
+  });
+
+  it("does not open drawer when card body is clicked (link navigates normally)", () => {
+    const professions = [makeProfession()];
+    render(<MetiersList professions={professions} />);
+    // Clicking the link itself (not chip) should NOT open the drawer
+    expect(screen.queryByTestId("signaux-drawer")).not.toBeInTheDocument();
   });
 });

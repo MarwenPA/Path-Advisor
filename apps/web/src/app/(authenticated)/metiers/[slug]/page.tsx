@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { FicheMetier } from "@/components/professions/FicheMetier";
 import { ApiError } from "@/lib/api/client";
 import { fetchProfession } from "@/lib/api/professions";
+import type { SignalContributif } from "@/lib/api/recommendations";
+
+import { FicheMetierClient } from "./FicheMetierClient";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -15,15 +17,32 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 }
 
+function parseSignals(raw: string | undefined): SignalContributif[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(decodeURIComponent(raw));
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (s) =>
+        typeof s === "object" &&
+        s !== null &&
+        typeof s.signal === "string" &&
+        typeof s.contribution === "number",
+    );
+  } catch {
+    return [];
+  }
+}
+
 export default async function MetierDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ score?: string; confidence?: string }>;
+  searchParams: Promise<{ score?: string; confidence?: string; signals?: string }>;
 }) {
   const { slug } = await params;
-  const { score: scoreStr, confidence } = await searchParams;
+  const { score: scoreStr, confidence, signals: rawSignals } = await searchParams;
 
   let profession;
   try {
@@ -42,6 +61,8 @@ export default async function MetierDetailPage({
         : "normal"
       : undefined;
 
+  const signalsContributifs = parseSignals(rawSignals);
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <Link
@@ -50,10 +71,11 @@ export default async function MetierDetailPage({
       >
         ← Mes métiers
       </Link>
-      <FicheMetier
+      <FicheMetierClient
         profession={profession}
         score={Number.isFinite(score) ? score : undefined}
         confidenceLevel={confidenceLevel}
+        signalsContributifs={signalsContributifs}
       />
     </main>
   );

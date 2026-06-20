@@ -141,7 +141,10 @@ function SignalChips({ signals, maxVisible, onSignalClick }: SignalChipsProps) {
           <button
             type="button"
             aria-label={`Signal contributif : ${s.label}`}
-            onClick={() => onSignalClick?.(s.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSignalClick?.(s.id);
+            }}
           >
             {s.label}
           </button>
@@ -183,17 +186,18 @@ export function ScoreVocationnel({
 
   const phrase = (
     <p
-      className={cn(
-        "flex-1 text-body italic text-text",
-        isCompact && "line-clamp-1",
-      )}
+      className={cn("flex-1 text-body italic text-text", isCompact && "line-clamp-1")}
       aria-label={
         hasPhrase
           ? `Phrase défendable pour ${metiersName} : ${trimmedPhrase}`
           : `Aucune phrase défendable disponible pour ${metiersName}`
       }
     >
-      {hasPhrase ? <>&ldquo;{trimmedPhrase}&rdquo;</> : <span className="text-text-muted not-italic">Phrase à venir</span>}
+      {hasPhrase ? (
+        <>&ldquo;{trimmedPhrase}&rdquo;</>
+      ) : (
+        <span className="not-italic text-text-muted">Phrase à venir</span>
+      )}
     </p>
   );
 
@@ -259,10 +263,7 @@ export function ScoreVocationnel({
 
 interface ScoreVocationnelComparisonProps {
   /** Exactly two cards to compare. Each is rendered with variant="comparison". */
-  items: [
-    Omit<ScoreVocationnelProps, "variant">,
-    Omit<ScoreVocationnelProps, "variant">,
-  ];
+  items: [Omit<ScoreVocationnelProps, "variant">, Omit<ScoreVocationnelProps, "variant">];
   onSignalClick?: (signalId: string) => void;
   onExplainClick?: () => void;
 }
@@ -291,10 +292,7 @@ export function ScoreVocationnelComparison({
       )}
     >
       {items.map((item) => (
-        <div
-          key={item.metierId}
-          className="min-w-[85%] shrink-0 snap-center lg:min-w-0 lg:shrink"
-        >
+        <div key={item.metierId} className="min-w-[85%] shrink-0 snap-center lg:min-w-0 lg:shrink">
           <ScoreVocationnel
             {...item}
             variant="comparison"
