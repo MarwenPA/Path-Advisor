@@ -1,5 +1,11 @@
 import "@testing-library/jest-dom/vitest";
 
+// jsdom does not implement Element.scrollIntoView, which Radix UI Select uses
+// to scroll the selected item into view when the dropdown opens.
+if (typeof Element.prototype.scrollIntoView !== "function") {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 // jsdom does not implement ResizeObserver, which several Radix primitives rely on
 // (Checkbox, Dialog, Tooltip, …). Provide a no-op shim for the entire test run so
 // components do not crash before assertions run.

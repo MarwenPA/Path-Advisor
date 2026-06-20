@@ -79,6 +79,10 @@ ignore = [
 # cases (login_failed, anonymous events) where NULL and "" carry different meaning.
 # Meta's `indexes` / `ordering` are the Django convention and not actually mutable defaults.
 "apps/audit/models.py" = ["DJ001", "RUF012"]
+# Django convention: permission_classes, fields, etc. are class-level lists — not actual mutable defaults.
+# DJ001: null=True on nullable optional text fields is intentional (location/comment/rome_code).
+# RUF001: EN DASH in help_text doc strings is intentional typographic choice.
+"apps/professions/**" = ["RUF012", "DJ001", "RUF001"]
 
 [tool.ruff.format]
 quote-style = "double"
