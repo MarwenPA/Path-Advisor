@@ -1,7 +1,7 @@
 # Story 3.1: Service IA `apps/ai-service` activé pour le scoring vocationnel
 
 **Epic:** 3 — Recommandation Vocationnelle (Premier Aha)
-**Status:** review
+**Status:** done
 **Sprint:** 7 (Moteur de recommandation — fondations IA)
 **Story Key:** `3-1-ai-service-scoring-vocationnel`
 **Estimation:** M (medium) — activation JWT réelle + 2 nouveaux endpoints REST (`/v1/score-metiers`, `/v1/model-version`) + schémas Pydantic + client Django `ai_client.py` + ADR + tests. Sized ~1.5 j focused work.

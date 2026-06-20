@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-20  # Story 3.1 → review
+last_updated: 2026-06-20  # Story 3.1 → done (PR #27 merged)
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -75,7 +75,7 @@ development_status:
 
   # Epic 3 — Recommandation vocationnelle (1er aha)
   epic-3: in-progress
-  3-1-ai-service-scoring-vocationnel: review
+  3-1-ai-service-scoring-vocationnel: done
   3-2-referentiel-professions-mvp: ready-for-dev
   3-3-moteur-scoring-statistique-content-based: backlog
   3-4-liste-metiers-scores: backlog
