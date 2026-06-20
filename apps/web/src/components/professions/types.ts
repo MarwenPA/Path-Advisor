@@ -57,6 +57,6 @@ export interface FicheMetierProps {
   score?: number;
   phraseRecopiable?: string;
   confidenceLevel?: "normal" | "indicative";
-  variant?: "default" | "print";
+  variant?: "default" | "mobile" | "print";
   onSignalClick?: (signalId: string) => void;
 }
