@@ -80,7 +80,7 @@ export function MetiersList({ professions }: MetiersListProps) {
             aria-hidden={!visible}
           >
             <Link
-              href={`/metiers/${p.slug}`}
+              href={`/metiers/${p.slug}?score=${p.score}&confidence=${p.confidence_level}`}
               className="block rounded-xl border border-gray-200 p-4 hover:border-blue-400 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <ScoreVocationnel

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-20  # Story 3.4 → done after merge of PR #36
+last_updated: 2026-06-20  # Story 3.5 → in-progress
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -79,7 +79,7 @@ development_status:
   3-2-referentiel-professions-mvp: done
   3-3-moteur-scoring-statistique-content-based: done
   3-4-liste-metiers-scores: done
-  3-5-fiche-metier-detaillee: backlog
+  3-5-fiche-metier-detaillee: in-progress
   3-6-explicabilite-signaux-rgpd-art22: backlog
   3-7-revue-humaine-recommandation: backlog
   3-8-signaler-erreur-fiche-metier: done
