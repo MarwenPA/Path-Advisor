@@ -3,9 +3,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export type BulletinsStatus = "pending" | "postponed" | "partial" | "completed";
 
 export interface StudentProfile {
+  id?: string;
+  passions?: string[];
+  valeurs?: string[];
+  interets?: Record<string, string | null>;
+  onboarding_step1_status?: string;
   bulletins_status: BulletinsStatus;
   bulletins_postponed_at: string | null;
   bulletins_postponed_banner_dismissed_until: string | null;
+  level?: string | null;
+  filiere?: string | null;
+  specialites?: string[];
+  sous_filiere_techno?: string | null;
+  updated_at?: string;
 }
 
 const PROFILE_QUERY_KEY = ["student-profile"] as const;
