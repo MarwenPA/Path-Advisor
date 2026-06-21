@@ -1,12 +1,14 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.6.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6.
 
-Routes:
+Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
   GET /api/v1/admin/schools/{id}/               — admin detail
   GET /api/v1/admin/formations/                 — admin formations list
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
+Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
-  GET /api/v1/metiers/{slug}/parcours/          — parcours list for a given metier (Story 4.6)
+Routes (Story 4.3 / 4.6):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list for a profession with filter metadata
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -85,24 +87,40 @@ class AdmissionStatView(APIView):
         return Response(serializer.data)
 
 
-class ParcoursListView(APIView):
-    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a metier.
+class ParcoursListView(ListAPIView):
+    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
-    Story 4.6 — returns all Parcours linked to the given profession, with
-    denormalized target_school metadata so the front-end can apply client-side
-    filters (cost, selectivity, mode) without extra round-trips.
+    Story 4.3: base endpoint returning parcours with nodes/edges.
+    Story 4.6: serializer now includes denormalized target_school filter metadata
+    (tuition_max, selectivity, apprenticeship, internship) so the front-end can apply
+    client-side filtering without extra round-trips.
 
     The queryset uses select_related('target_school') to avoid N+1 queries.
+    Returns 200 + empty list if profession not found (graceful degradation).
+    Supports optional ?niveau_scolaire= filter.
     """
 
+    serializer_class = ParcoursSerializer
     permission_classes: ClassVar = [IsAuthenticated]
 
-    def get(self, request: Request, slug: str) -> Response:
-        profession = get_object_or_404(Profession, slug=slug, is_active=True)
-        queryset = (
+    def get_queryset(self):
+        slug = self.kwargs["slug"]
+
+        try:
+            profession = Profession.objects.get(slug=slug)
+        except Profession.DoesNotExist:
+            # Return empty queryset — caller gets 200 [] instead of 404 so the
+            # frontend can gracefully display the empty state (AC6).
+            return Parcours.objects.none()
+
+        qs = (
             Parcours.objects.filter(profession=profession)
             .select_related("target_school")
-            .order_by("created_at")
+            .order_by("-is_default", "niveau_scolaire")
         )
-        serializer = ParcoursSerializer(queryset, many=True)
-        return Response(serializer.data)
+
+        niveau_scolaire = self.request.query_params.get("niveau_scolaire")
+        if niveau_scolaire:
+            qs = qs.filter(niveau_scolaire=niveau_scolaire)
+
+        return qs

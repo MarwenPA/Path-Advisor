@@ -1,4 +1,4 @@
-"""URL patterns for the Schools & Formations referential — Story 4.1 / 4.2 / 4.6."""
+"""URL patterns for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3 / 4.6."""
 
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
@@ -25,7 +25,7 @@ urlpatterns = [
         AdmissionStatView.as_view(),
         name="school-admission-stat",
     ),
-    # Story 4.6 — parcours list for a given metier
+    # Story 4.3 / 4.6 — parcours list for a given metier
     path(
         "metiers/<slug:slug>/parcours/",
         ParcoursListView.as_view(),

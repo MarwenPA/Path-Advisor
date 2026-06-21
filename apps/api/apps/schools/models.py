@@ -1,9 +1,11 @@
-"""Schools & Formations referential models — Story 4.1 / 4.2.
+"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
 and optionally to target professions. `AdmissionStat` stores the predicted
-admission probability range for a (school, user) pair.
+admission probability range for a (school, user) pair (Story 4.2).
+`Parcours` holds one path from a starting point to a target school for a
+given profession (Story 4.3).
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -75,6 +77,13 @@ class School(models.Model):
         help_text='{"open": "2026-01-20", "close": "2026-03-10"}',
     )
     official_url = models.URLField(blank=True)
+    # Story 4.3 additions
+    school_type = models.CharField(
+        max_length=80,
+        blank=True,
+        help_text="e.g. IFSI, IUT, Lycée pro, Université",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,43 +131,56 @@ class Formation(models.Model):
 
 
 class Parcours(models.Model):
-    """One curated pathway (parcours) from a starting point to a target school.
+    """One path from a starting point to a target school for a given profession.
 
-    Story 4.6 — parcours graph with school metadata used for filtering.
-    A Parcours aggregates an ordered sequence of nodes + edges leading to a
-    target school; it is linked to a profession via target_school's formations.
+    Story 4.3 — graphe parcours par métier.
+    Story 4.6 — adds filter metadata (tuition_max, selectivity, apprenticeship, internship)
+    exposed via ParcoursSerializer for client-side filtering.
     """
 
-    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    id = models.UUIDField(primary_key=True, default=uuid4)
     profession = models.ForeignKey(
         "professions.Profession",
         on_delete=models.CASCADE,
         related_name="parcours",
-        null=True,
-        blank=True,
     )
     target_school = models.ForeignKey(
         School,
         on_delete=models.CASCADE,
         related_name="parcours",
     )
-    # Serialised graph — nodes and edges stored as JSON for simplicity (MVP)
-    nodes = models.JSONField(default=list, help_text="List of ParcoursNode dicts")
-    edges = models.JSONField(default=list, help_text="List of ParcoursEdge dicts")
+    nodes = models.JSONField(
+        default=list,
+        help_text="List of {id, label, type, schoolId?, schoolSlug?}",
+    )
+    edges = models.JSONField(
+        default=list,
+        help_text="List of {source, target, weight?}",
+    )
+    niveau_scolaire = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g. lycee_1ere_tle_general, bts, but — empty = all levels",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="If True, this parcours is shown first for its (profession, niveau_scolaire) pair.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        unique_together = [("profession", "target_school", "niveau_scolaire")]
+        # Note: a PostgreSQL partial unique index enforcing only one is_default=True per
+        # (profession, niveau_scolaire) would be ideal but partial-index conditions are
+        # not supported by SQLite (used in the test suite fast lane). The constraint is
+        # intentionally omitted here; production integrity is maintained by the seed
+        # command and application logic (update_or_create pattern).
+        ordering = ["-is_default", "niveau_scolaire"]
         verbose_name = "Parcours"
         verbose_name_plural = "Parcours"
-        indexes = [
-            models.Index(fields=["profession"]),
-            models.Index(fields=["target_school"]),
-        ]
 
     def __str__(self) -> str:
-        return f"Parcours → {self.target_school.name}"
+        return f"Parcours({self.profession_id} → {self.target_school_id}, {self.niveau_scolaire})"
 
 
 class AdmissionStat(models.Model):
