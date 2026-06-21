@@ -1,9 +1,12 @@
 /**
  * API types and fetchers for schools / admission stats.
  *
+ * Story 4.4: School + Formation types + fetchSchool helper.
  * Story 4.11: `AdmissionStat` type + `fetchAdmissionStat` helper.
  * All JSON field names stay snake_case (project-wide convention).
  */
+
+import { cache } from "react";
 
 import { apiFetch } from "./client";
 
@@ -37,8 +40,6 @@ export interface School {
   postal_code: string;
   lat?: number;
   lon?: number;
-  tuition_min_eur?: number;
-  tuition_max_eur?: number;
   apprenticeship: boolean;
   internship: boolean;
   selectivity_index: number;
@@ -48,9 +49,17 @@ export interface School {
   parcoursup_dates: Record<string, string>;
   affelnet_dates: Record<string, string>;
   official_url: string;
+  tuition_min_eur?: number;
+  tuition_max_eur?: number;
   formations: Formation[];
   admission_stat?: AdmissionStat;
 }
+
+// React.cache() deduplicates concurrent calls within a single server render,
+// ensuring generateMetadata and the page component share one network request.
+export const fetchSchool = cache(async (slug: string): Promise<School> => {
+  return apiFetch<School>(`/api/v1/schools/${slug}/`);
+});
 
 export async function fetchAdmissionStat(schoolSlug: string): Promise<AdmissionStat> {
   return apiFetch<AdmissionStat>("/api/v1/schools/predict-admission/", {
