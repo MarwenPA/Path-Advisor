@@ -22,10 +22,11 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
-from apps.schools.models import Formation, School
+from apps.schools.models import Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
+    ParcoursSerializer,
     SchoolAdminSerializer,
     SchoolDetailSerializer,
 )
@@ -57,12 +58,39 @@ class AdminFormationViewSet(ReadOnlyModelViewSet):
 
 
 class SchoolDetailView(RetrieveAPIView):
-    """GET /api/v1/schools/{slug}/ — full school detail for authenticated users."""
+    """GET /api/v1/schools/{slug}/ — full school detail for authenticated users.
+
+    Story 4.5: queryset prefetches admission_stats so get_admission_stat avoids N+1.
+    formation_id is injected into serializer context for future use (Story 4.5 T1).
+    """
 
     permission_classes: ClassVar = [IsAuthenticated]
-    queryset = School.objects.prefetch_related("formations")
+    queryset = School.objects.prefetch_related("formations", "admission_stats")
     serializer_class = SchoolDetailSerializer
     lookup_field = "slug"
+
+    def get_serializer_context(self) -> dict:
+        context = super().get_serializer_context()
+        context["formation_id"] = self.request.query_params.get("formation_id")
+        return context
+
+
+class ParcoursListView(APIView):
+    """GET /api/v1/metiers/{slug}/parcours/ — list of Parcours for a profession.
+
+    Story 4.5: passes request to serializer context so ParcoursSerializer can
+    enrich nodes with personalised admission_stat inline (AC2).
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+
+    def get(self, request: Request, slug: str) -> Response:
+        from apps.professions.models import Profession
+
+        profession = get_object_or_404(Profession, slug=slug, is_active=True)
+        queryset = Parcours.objects.filter(profession=profession)
+        serializer = ParcoursSerializer(queryset, many=True, context={"request": request})
+        return Response(serializer.data)
 
 
 class AdmissionStatView(APIView):

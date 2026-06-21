@@ -2,6 +2,7 @@
 
 import type { School, Formation } from "@/lib/api/schools";
 import { cn } from "@/lib/utils";
+import { CarteAdmission } from "./CarteAdmission";
 
 interface FicheEcoleProps {
   school: School;
@@ -101,6 +102,25 @@ export function FicheEcole({ school, variant = "card", className }: FicheEcolePr
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Statistique d'admission — only in expanded variant (Story 4.5 AC1, AC5) */}
+      {variant === "expanded" && (
+        <section aria-label="Statistique d'admission" className="mt-4">
+          <h3 className="mb-2 text-sm font-medium">Tes chances d&apos;admission</h3>
+          {school.admission_stat ? (
+            <CarteAdmission
+              admissionStat={school.admission_stat}
+              variant="medium"
+              schoolName={school.name}
+              schoolSlug={school.slug}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Donn&eacute;es d&apos;admission non disponibles
+            </p>
+          )}
         </section>
       )}
     </article>

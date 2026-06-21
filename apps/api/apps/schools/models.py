@@ -166,3 +166,33 @@ class AdmissionStat(models.Model):
     def __str__(self) -> str:
         user_repr = str(self.user) if self.user else "baseline"
         return f"{self.school.name} — {user_repr} ({self.expected_proba}%)"
+
+
+class Parcours(models.Model):
+    """A pathway (sequence of steps) toward a profession — Story 4.3.
+
+    `nodes` is a JSON array of node dicts:
+      [{"id": str, "label": str, "type": "start"|"intermediate"|"target", "schoolSlug": str|null}]
+    `edges` is a JSON array of edge dicts:
+      [{"source": str, "target": str, "weight": float}]
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    profession = models.ForeignKey(
+        "professions.Profession",
+        on_delete=models.CASCADE,
+        related_name="parcours",
+    )
+    title = models.CharField(max_length=200)
+    nodes = models.JSONField(default=list, help_text="List of node dicts.")
+    edges = models.JSONField(default=list, help_text="List of edge dicts.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["title"]
+        verbose_name = "Parcours"
+        verbose_name_plural = "Parcours"
+
+    def __str__(self) -> str:
+        return f"{self.title} → {self.profession}"
