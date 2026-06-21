@@ -1,11 +1,12 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.7.
 
 Routes:
-  GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
-  GET /api/v1/admin/schools/{id}/               — admin detail
-  GET /api/v1/admin/formations/                 — admin formations list
-  GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
-  GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
+  GET /api/v1/admin/schools/                       — admin list (paginated 100/page)
+  GET /api/v1/admin/schools/{id}/                  — admin detail
+  GET /api/v1/admin/formations/                    — admin formations list
+  GET /api/v1/schools/{slug}/                      — public school detail (authenticated)
+  GET /api/v1/schools/{slug}/admission-stat/       — admission prediction for authenticated user
+  GET /api/v1/metiers/{slug}/parcours/             — parcours list for a profession (Story 4.7)
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -22,10 +23,12 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
-from apps.schools.models import Formation, School
+from apps.professions.models import Profession
+from apps.schools.models import Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
+    ParcoursSerializer,
     SchoolAdminSerializer,
     SchoolDetailSerializer,
 )
@@ -80,3 +83,42 @@ class AdmissionStatView(APIView):
         stat = service.upsert_stat(school=school, user=request.user)
         serializer = AdmissionStatSerializer(stat)
         return Response(serializer.data)
+
+
+class ParcoursListView(ListAPIView):
+    """GET /api/v1/metiers/{slug}/parcours/ — list parcours for a profession.
+
+    Story 4.7 — returns parcours ordered by niveau match then is_default.
+    Accepts optional ?niveau_scolaire= query param.
+
+    Fallback logic (AC4):
+      1. If ?niveau_scolaire= matches exactly → return those rows.
+      2. Else if terminale_generale parcours exist → fall back to them.
+      3. Else return all parcours for the profession.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+    serializer_class = ParcoursSerializer
+    # Parcours lists are short — disable pagination to avoid cursor ordering issues.
+    pagination_class = None
+
+    def get_queryset(self):
+        slug = self.kwargs.get("slug")
+        try:
+            profession = Profession.objects.get(slug=slug)
+        except Profession.DoesNotExist:
+            return Parcours.objects.none()
+
+        niveau = self.request.query_params.get("niveau_scolaire", "")
+        qs = Parcours.objects.filter(profession=profession).select_related("target_school")
+
+        if niveau:
+            exact = qs.filter(niveau_scolaire=niveau)
+            if exact.exists():
+                return exact.order_by("-is_default", "niveau_scolaire")
+            fallback = qs.filter(niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE)
+            if fallback.exists():
+                return fallback.order_by("-is_default")
+            return qs.order_by("-is_default", "niveau_scolaire")
+
+        return qs.order_by("-is_default", "niveau_scolaire")

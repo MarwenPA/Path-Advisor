@@ -1,9 +1,10 @@
-"""Schools & Formations referential models — Story 4.1 / 4.2.
+"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.7.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
 and optionally to target professions. `AdmissionStat` stores the predicted
-admission probability range for a (school, user) pair.
+admission probability range for a (school, user) pair. `Parcours` holds
+the pathway graph for a given profession and niveau scolaire.
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -166,3 +167,82 @@ class AdmissionStat(models.Model):
     def __str__(self) -> str:
         user_repr = str(self.user) if self.user else "baseline"
         return f"{self.school.name} — {user_repr} ({self.expected_proba}%)"
+
+
+class Parcours(models.Model):
+    """Pathway graph for a profession, tailored to a student's niveau scolaire.
+
+    Story 4.7 — Adaptation graphe par niveau scolaire.
+    Each Parcours holds a list of nodes and edges that describe the route
+    from a student's current level to a target school/profession.
+
+    `is_default=True` means this parcours is the recommended one for the
+    (profession, niveau_scolaire) pair. A partial unique index ensures at
+    most one default per pair (enforced in DB for PostgreSQL).
+    """
+
+    class NiveauScolaire(models.TextChoices):
+        TROISIEME_BAC_PRO = "troisieme_bac_pro", "3ème → Bac Pro"
+        TERMINALE_GENERALE = "terminale_generale", "Terminale Générale"
+        TERMINALE_TECHNOLOGIQUE = "terminale_technologique", "Terminale Technologique"
+        TERMINALE_PRO = "terminale_pro", "Terminale Pro"
+        AUTRE = "autre", "Autre"
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    profession = models.ForeignKey(
+        "professions.Profession",
+        on_delete=models.CASCADE,
+        related_name="parcours",
+    )
+    target_school = models.ForeignKey(
+        School,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="parcours",
+    )
+    niveau_scolaire = models.CharField(
+        max_length=30,
+        choices=NiveauScolaire.choices,
+        default=NiveauScolaire.TERMINALE_GENERALE,
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="True = recommended parcours for this (profession, niveau_scolaire) pair.",
+    )
+    nodes = models.JSONField(
+        default=list,
+        help_text='[{"id": "n1", "label": "Bac Pro", "type": "diplome", "schoolSlug": "..."}]',
+    )
+    edges = models.JSONField(
+        default=list,
+        help_text='[{"source": "n1", "target": "n2", "weight": 1}]',
+    )
+    label = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Short descriptive label for this parcours alternative.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-is_default", "niveau_scolaire"]
+        verbose_name = "Parcours"
+        verbose_name_plural = "Parcours"
+        indexes = [
+            models.Index(fields=["profession", "niveau_scolaire"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["profession", "niveau_scolaire"],
+                condition=models.Q(is_default=True),
+                name="parcours_unique_default_per_profession_niveau",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"Parcours({self.profession_id} / {self.niveau_scolaire}"
+            f"{'*' if self.is_default else ''})"
+        )

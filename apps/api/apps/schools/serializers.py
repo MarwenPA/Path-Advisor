@@ -1,10 +1,10 @@
-"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.7."""
 
 from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.schools.models import AdmissionStat, Formation, School
+from apps.schools.models import AdmissionStat, Formation, Parcours, School
 
 
 class FormationInlineSerializer(serializers.ModelSerializer):
@@ -134,3 +134,45 @@ class AdmissionStatSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+
+class ParcoursSerializer(serializers.ModelSerializer):
+    """Serializer for Parcours — Story 4.7 parcours list per profession."""
+
+    target_school_slug = serializers.SlugRelatedField(
+        source="target_school",
+        slug_field="slug",
+        read_only=True,
+        allow_null=True,
+    )
+    target_school_name = serializers.SerializerMethodField()
+    target_school_affelnet_dates = serializers.SerializerMethodField()
+    target_school_parcoursup_dates = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Parcours
+        fields = (
+            "id",
+            "profession",
+            "target_school_slug",
+            "target_school_name",
+            "niveau_scolaire",
+            "is_default",
+            "nodes",
+            "edges",
+            "label",
+            "target_school_affelnet_dates",
+            "target_school_parcoursup_dates",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = fields
+
+    def get_target_school_name(self, obj: Parcours) -> str | None:
+        return obj.target_school.name if obj.target_school else None
+
+    def get_target_school_affelnet_dates(self, obj: Parcours) -> dict | None:
+        return obj.target_school.affelnet_dates if obj.target_school else None
+
+    def get_target_school_parcoursup_dates(self, obj: Parcours) -> dict | None:
+        return obj.target_school.parcoursup_dates if obj.target_school else None
