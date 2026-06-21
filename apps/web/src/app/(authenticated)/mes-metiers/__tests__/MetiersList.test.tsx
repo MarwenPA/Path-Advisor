@@ -197,4 +197,21 @@ describe("MetiersList", () => {
     const drawer = screen.getByTestId("signaux-drawer");
     expect(drawer).toHaveAttribute("data-confidence", "high");
   });
+
+  it("shows niveau-adapted banner when niveauAdapted=true", () => {
+    render(<MetiersList professions={[makeProfession()]} niveauAdapted={true} />);
+    const banner = screen.getByTestId("niveau-adapted-banner");
+    expect(banner).toBeInTheDocument();
+    expect(banner.textContent).toMatch(/niveau scolaire/i);
+  });
+
+  it("hides niveau-adapted banner when niveauAdapted=false", () => {
+    render(<MetiersList professions={[makeProfession()]} niveauAdapted={false} />);
+    expect(screen.queryByTestId("niveau-adapted-banner")).not.toBeInTheDocument();
+  });
+
+  it("hides niveau-adapted banner when niveauAdapted is omitted", () => {
+    render(<MetiersList professions={[makeProfession()]} />);
+    expect(screen.queryByTestId("niveau-adapted-banner")).not.toBeInTheDocument();
+  });
 });

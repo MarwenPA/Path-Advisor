@@ -27,9 +27,10 @@ function toSignals(profession: ScoredProfession): Signal[] {
 
 interface MetiersListProps {
   professions: ScoredProfession[];
+  niveauAdapted?: boolean;
 }
 
-export function MetiersList({ professions }: MetiersListProps) {
+export function MetiersList({ professions, niveauAdapted }: MetiersListProps) {
   const reducedMotion = usePrefersReducedMotion();
 
   const skipAnimation =
@@ -70,6 +71,15 @@ export function MetiersList({ professions }: MetiersListProps) {
 
   return (
     <>
+      {niveauAdapted && (
+        <p
+          role="status"
+          className="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800"
+          data-testid="niveau-adapted-banner"
+        >
+          Certaines recommandations ont été adaptées à ton niveau scolaire.
+        </p>
+      )}
       <ul className="flex flex-col gap-4" data-testid="metiers-list">
         {professions.map((p, idx) => {
           const visible = idx < visibleCount;

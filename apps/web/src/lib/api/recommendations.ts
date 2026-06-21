@@ -19,6 +19,7 @@ export interface ScoredProfession {
 
 export interface RecommendationsResponse {
   results: ScoredProfession[];
+  niveau_adapted?: boolean;
   computed_at: string;
 }
 

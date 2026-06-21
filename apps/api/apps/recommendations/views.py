@@ -34,7 +34,7 @@ class RecommendationsView(APIView):
 
     def get(self, request: Request) -> Response:
         try:
-            results = compute_recommendations(request.user)
+            data = compute_recommendations(request.user)
         except ai_client.AIServiceUnavailableError as exc:
             return Response(
                 {"title": "Service IA indisponible", "detail": str(exc)},
@@ -43,7 +43,8 @@ class RecommendationsView(APIView):
 
         return Response(
             {
-                "results": results,
+                "results": data["results"],
+                "niveau_adapted": data["niveau_adapted"],
                 "computed_at": timezone.now().isoformat(),
             }
         )
