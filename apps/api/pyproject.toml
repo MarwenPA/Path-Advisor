@@ -85,6 +85,8 @@ ignore = [
 "apps/professions/**" = ["RUF012", "DJ001", "RUF001"]
 # Django convention: permission_classes is a class-level list. DJ001: nullable comment field intentional.
 "apps/recommendations/**" = ["RUF012", "DJ001"]
+# Django convention: permission_classes, fields, ordering, indexes are class-level lists.
+"apps/schools/**" = ["RUF012", "DJ001"]
 
 [tool.ruff.format]
 quote-style = "double"

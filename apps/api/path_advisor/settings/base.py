@@ -62,6 +62,8 @@ INSTALLED_APPS = [
     "apps.recommendations",
     # Story 3.2 — curated professions referential
     "apps.professions",
+    # Story 4.1 — schools & formations referential
+    "apps.schools",
 ]
 
 MIDDLEWARE = [
