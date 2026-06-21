@@ -1,4 +1,4 @@
-// Parcours types — Story 4.3
+// Parcours types — Story 4.3 / 4.6
 
 export interface ParcoursNode {
   id: string;
@@ -21,6 +21,10 @@ export interface AdmissionStatInline {
   label: "audacieux" | "realiste" | "sur" | "estimation_indicative";
 }
 
+/**
+ * Parcours item returned by GET /api/v1/metiers/{slug}/parcours/
+ * Story 4.3 base fields + Story 4.6 target school metadata for client-side filtering.
+ */
 export interface Parcours {
   id: string;
   profession: string;
@@ -33,4 +37,9 @@ export interface Parcours {
   niveau_scolaire: string;
   is_default: boolean;
   created_at?: string;
+  // Story 4.6 filter metadata
+  target_school_tuition_max: number | null;
+  target_school_selectivity: number;
+  target_school_apprenticeship: boolean;
+  target_school_internship: boolean;
 }

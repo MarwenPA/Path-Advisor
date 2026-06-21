@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6.
 
 Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -7,8 +7,8 @@ Routes (Story 4.1):
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
 Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
-Routes (Story 4.3):
-  GET /api/v1/metiers/{slug}/parcours/          — list parcours for a profession (IsAuthenticated)
+Routes (Story 4.3 / 4.6):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list for a profession with filter metadata
 """
 
 from __future__ import annotations
@@ -88,15 +88,20 @@ class AdmissionStatView(APIView):
 
 
 class ParcoursListView(ListAPIView):
-    """GET /api/v1/metiers/{slug}/parcours/
+    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
-    Returns all Parcours for the given profession slug, ordered by is_default DESC
-    then niveau_scolaire. Supports optional ?niveau_scolaire= filter.
+    Story 4.3: base endpoint returning parcours with nodes/edges.
+    Story 4.6: serializer now includes denormalized target_school filter metadata
+    (tuition_max, selectivity, apprenticeship, internship) so the front-end can apply
+    client-side filtering without extra round-trips.
+
+    The queryset uses select_related('target_school') to avoid N+1 queries.
     Returns 200 + empty list if profession not found (graceful degradation).
+    Supports optional ?niveau_scolaire= filter.
     """
 
     serializer_class = ParcoursSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes: ClassVar = [IsAuthenticated]
 
     def get_queryset(self):
         slug = self.kwargs["slug"]
