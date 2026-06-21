@@ -1,4 +1,4 @@
-"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.7.
+"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.7 / 4.8.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
@@ -7,6 +7,8 @@ admission probability range for a (school, user) pair (Story 4.2).
 `Parcours` holds the pathway graph for a given profession and niveau scolaire
 (Story 4.3 base, Story 4.7 adds NiveauScolaire enum, label, nullable school,
 partial unique constraint for is_default).
+`FavoriteSchool` records which schools a user has bookmarked as "mes paris"
+(Story 4.8).
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -254,3 +256,33 @@ class Parcours(models.Model):
             f"Parcours({self.profession_id} / {self.niveau_scolaire}"
             f"{'*' if self.is_default else ''})"
         )
+
+
+class FavoriteSchool(models.Model):
+    """A school bookmarked as a "pari" by a user — Story 4.8.
+
+    One row per (user, school) pair.  The unique_together constraint prevents
+    duplicates even under concurrent POSTs.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="favorite_schools",
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="favorited_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("user", "school")]
+        ordering = ["-created_at"]
+        verbose_name = "Favorite School"
+        verbose_name_plural = "Favorite Schools"
+
+    def __str__(self) -> str:
+        return f"{self.user} ♥ {self.school.name}"
