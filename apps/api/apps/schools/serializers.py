@@ -1,10 +1,10 @@
-"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3."""
 
 from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.schools.models import AdmissionStat, Formation, School
+from apps.schools.models import AdmissionStat, Formation, Parcours, School
 
 
 class FormationInlineSerializer(serializers.ModelSerializer):
@@ -134,3 +134,36 @@ class AdmissionStatSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = fields
+
+
+class ParcoursSerializer(serializers.ModelSerializer):
+    """Serializer for Parcours — Story 4.3 graphe parcours par métier."""
+
+    target_school_name = serializers.SerializerMethodField()
+    target_school_slug = serializers.SerializerMethodField()
+    target_school_city = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Parcours
+        fields = [
+            "id",
+            "profession",
+            "target_school",
+            "target_school_name",
+            "target_school_slug",
+            "target_school_city",
+            "nodes",
+            "edges",
+            "niveau_scolaire",
+            "is_default",
+            "created_at",
+        ]
+
+    def get_target_school_name(self, obj: Parcours) -> str:
+        return obj.target_school.name
+
+    def get_target_school_slug(self, obj: Parcours) -> str:
+        return obj.target_school.slug
+
+    def get_target_school_city(self, obj: Parcours) -> str:
+        return obj.target_school.city
