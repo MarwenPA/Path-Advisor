@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.6 / 4.7.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.6 / 4.7 / 4.8.
 
 Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -9,6 +9,10 @@ Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
 Routes (Story 4.3 / 4.5 / 4.6 / 4.7):
   GET /api/v1/metiers/{slug}/parcours/          — parcours list with inline stats, filter metadata, niveau fallback
+Routes (Story 4.8):
+  POST   /api/v1/schools/{slug}/favorite/       — add school to favorites
+  DELETE /api/v1/schools/{slug}/favorite/       — remove school from favorites
+  GET    /api/v1/mes-paris/                     — list favorited schools for current user
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
+from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
@@ -26,7 +31,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
 from apps.professions.models import Profession
-from apps.schools.models import Formation, Parcours, School
+from apps.schools.models import FavoriteSchool, Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
@@ -147,3 +152,43 @@ class AdmissionStatView(APIView):
         stat = service.upsert_stat(school=school, user=request.user)
         serializer = AdmissionStatSerializer(stat)
         return Response(serializer.data)
+
+
+class SchoolFavoriteView(APIView):
+    """POST/DELETE /api/v1/schools/{slug}/favorite/ — toggle school favorite.
+
+    Story 4.8:
+      POST   → get_or_create FavoriteSchool row, return 201 {"favorited": true}.
+      DELETE → delete FavoriteSchool row if exists, return 200 {"favorited": false}.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+
+    def post(self, request: Request, slug: str) -> Response:
+        school = get_object_or_404(School, slug=slug)
+        FavoriteSchool.objects.get_or_create(user=request.user, school=school)
+        return Response({"favorited": True}, status=status.HTTP_201_CREATED)
+
+    def delete(self, request: Request, slug: str) -> Response:
+        school = get_object_or_404(School, slug=slug)
+        FavoriteSchool.objects.filter(user=request.user, school=school).delete()
+        return Response({"favorited": False}, status=status.HTTP_200_OK)
+
+
+class MesParisListView(ListAPIView):
+    """GET /api/v1/mes-paris/ — list schools favorited by the authenticated user.
+
+    Story 4.8: returns School objects (SchoolDetailSerializer) ordered by most
+    recently added to favorites.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+    serializer_class = SchoolDetailSerializer
+    pagination_class = None  # Client consumes the full list at once
+
+    def get_queryset(self):
+        return (
+            School.objects.filter(favorited_by__user=self.request.user)
+            .prefetch_related("formations", "admission_stats")
+            .order_by("-favorited_by__created_at")
+        )

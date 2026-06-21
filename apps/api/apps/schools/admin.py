@@ -1,4 +1,4 @@
-"""Django admin registrations for the Schools & Formations referential — Story 4.1."""
+"""Django admin registrations for the Schools & Formations referential — Story 4.1 / 4.8."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from django.contrib import admin
 
-from apps.schools.models import Formation, School
+from apps.schools.models import FavoriteSchool, Formation, School
 
 
 class FormationInline(admin.TabularInline):
@@ -44,5 +44,14 @@ class FormationAdmin(admin.ModelAdmin):
     )
     list_filter: ClassVar = ("parcoursup_open", "affelnet_open", "duration_years")
     search_fields: ClassVar = ("name", "school__name")
+    readonly_fields: ClassVar = ("id", "created_at")
+    autocomplete_fields: ClassVar = ("school",)
+
+
+@admin.register(FavoriteSchool)
+class FavoriteSchoolAdmin(admin.ModelAdmin):
+    list_display: ClassVar = ("user", "school", "created_at")
+    list_filter: ClassVar = ("created_at",)
+    search_fields: ClassVar = ("user__email", "school__name", "school__slug")
     readonly_fields: ClassVar = ("id", "created_at")
     autocomplete_fields: ClassVar = ("school",)
