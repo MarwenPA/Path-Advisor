@@ -1,8 +1,9 @@
-"""Schools & Formations referential models — Story 4.1.
+"""Schools & Formations referential models — Story 4.1 + 4.3.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
-and optionally to target professions.
+and optionally to target professions. `Parcours` holds one path from a
+starting point to a target school for a given profession (Story 4.3).
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -117,3 +118,51 @@ class Formation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} @ {self.school.name}"
+
+
+class Parcours(models.Model):
+    """One path from a starting point to a target school for a given profession — Story 4.3."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    profession = models.ForeignKey(
+        "professions.Profession",
+        on_delete=models.CASCADE,
+        related_name="parcours",
+    )
+    target_school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="parcours",
+    )
+    nodes = models.JSONField(
+        default=list,
+        help_text="List of {id, label, type, schoolId?, schoolSlug?}",
+    )
+    edges = models.JSONField(
+        default=list,
+        help_text="List of {source, target, weight?}",
+    )
+    niveau_scolaire = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g. lycee_1ere_tle_general, bts, but — empty = all levels",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="If True, this parcours is shown first for its (profession, niveau_scolaire) pair.",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("profession", "target_school", "niveau_scolaire")]
+        # Note: a PostgreSQL partial unique index enforcing only one is_default=True per
+        # (profession, niveau_scolaire) would be ideal but partial-index conditions are
+        # not supported by SQLite (used in the test suite fast lane). The constraint is
+        # intentionally omitted here; production integrity is maintained by the seed
+        # command and application logic (update_or_create pattern).
+        ordering = ["-is_default", "niveau_scolaire"]
+        verbose_name = "Parcours"
+        verbose_name_plural = "Parcours"
+
+    def __str__(self) -> str:
+        return f"Parcours({self.profession_id} → {self.target_school_id}, {self.niveau_scolaire})"
