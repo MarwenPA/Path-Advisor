@@ -116,4 +116,35 @@ describe("SignauxDrawer", () => {
     );
     expect(screen.queryByText(/Voilà les ingrédients/i)).not.toBeInTheDocument();
   });
+
+  // ── Story 3.10: confidence level context block ────────────────────────────
+
+  it("shows incomplete-profile context when confidenceLevel='low'", () => {
+    renderDrawer({ confidenceLevel: "low" });
+    expect(screen.getByTestId("incomplete-profile-context")).toBeInTheDocument();
+    expect(screen.getByText(/±5 pts/i)).toBeInTheDocument();
+    expect(screen.getByText(/±15/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ajouter mes bulletins/i })).toBeInTheDocument();
+  });
+
+  it("does NOT show incomplete-profile context when confidenceLevel='medium'", () => {
+    renderDrawer({ confidenceLevel: "medium" });
+    expect(screen.queryByTestId("incomplete-profile-context")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show incomplete-profile context when confidenceLevel='high'", () => {
+    renderDrawer({ confidenceLevel: "high" });
+    expect(screen.queryByTestId("incomplete-profile-context")).not.toBeInTheDocument();
+  });
+
+  it("does NOT show incomplete-profile context when confidenceLevel is absent", () => {
+    renderDrawer();
+    expect(screen.queryByTestId("incomplete-profile-context")).not.toBeInTheDocument();
+  });
+
+  it("context message does not use culpabilizing language", () => {
+    renderDrawer({ confidenceLevel: "low" });
+    const ctx = screen.getByTestId("incomplete-profile-context");
+    expect(ctx.textContent).not.toMatch(/manque de données|profil insuffisant|tu n'as pas/i);
+  });
 });

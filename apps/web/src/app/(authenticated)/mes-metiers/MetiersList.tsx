@@ -62,9 +62,8 @@ export function MetiersList({ professions }: MetiersListProps) {
 
   if (professions.length === 0) {
     return (
-      <p className="text-body text-gray-500">
-        Aucune recommandation disponible pour le moment. Complète ton profil pour obtenir tes
-        premières suggestions.
+      <p className="text-body text-gray-500" data-testid="metiers-empty">
+        Tes premières recommandations apparaîtront ici bientôt.
       </p>
     );
   }
@@ -114,6 +113,7 @@ export function MetiersList({ professions }: MetiersListProps) {
         }}
         metiersName={drawerProfession?.name ?? ""}
         signals={drawerProfession?.signals_contributifs ?? []}
+        confidenceLevel={drawerProfession?.confidence_level}
       />
     </>
   );

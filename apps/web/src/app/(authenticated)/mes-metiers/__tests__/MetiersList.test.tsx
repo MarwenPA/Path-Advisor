@@ -44,12 +44,19 @@ vi.mock("@/components/professions/SignauxDrawer", () => ({
   SignauxDrawer: ({
     open,
     metiersName,
+    confidenceLevel,
   }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     metiersName: string;
     signals: unknown[];
-  }) => (open ? <div data-testid="signaux-drawer">Drawer: {metiersName}</div> : null),
+    confidenceLevel?: string;
+  }) =>
+    open ? (
+      <div data-testid="signaux-drawer" data-confidence={confidenceLevel}>
+        Drawer: {metiersName}
+      </div>
+    ) : null,
 }));
 
 Object.defineProperty(window, "matchMedia", {
@@ -108,9 +115,13 @@ describe("MetiersList", () => {
     expect(screen.getByText("Chirurgien·ne")).toBeInTheDocument();
   });
 
-  it("shows empty state when no professions", () => {
+  it("shows non-culpabilizing empty state when no professions", () => {
     render(<MetiersList professions={[]} />);
-    expect(screen.getByText(/Aucune recommandation/)).toBeInTheDocument();
+    // AC3 Story 3.10: message must be factual and non-culpabilizing
+    const el = screen.getByTestId("metiers-empty");
+    expect(el).toBeInTheDocument();
+    expect(el.textContent).not.toMatch(/Complète ton profil|manque|insuffisant/i);
+    expect(el.textContent).toMatch(/apparaîtront ici/i);
   });
 
   it("passes score to ScoreVocationnel", () => {
@@ -167,5 +178,23 @@ describe("MetiersList", () => {
     render(<MetiersList professions={professions} />);
     // Clicking the link itself (not chip) should NOT open the drawer
     expect(screen.queryByTestId("signaux-drawer")).not.toBeInTheDocument();
+  });
+
+  // ── Story 3.10: confidenceLevel propagated to SignauxDrawer ────────────────
+
+  it("passes confidence_level=low to SignauxDrawer when chip clicked", () => {
+    const professions = [makeProfession({ name: "Kiné", confidence_level: "low" })];
+    render(<MetiersList professions={professions} />);
+    fireEvent.click(screen.getByTestId("signal-chip-btn"));
+    const drawer = screen.getByTestId("signaux-drawer");
+    expect(drawer).toHaveAttribute("data-confidence", "low");
+  });
+
+  it("passes confidence_level=high to SignauxDrawer when chip clicked", () => {
+    const professions = [makeProfession({ name: "Kiné", confidence_level: "high" })];
+    render(<MetiersList professions={professions} />);
+    fireEvent.click(screen.getByTestId("signal-chip-btn"));
+    const drawer = screen.getByTestId("signaux-drawer");
+    expect(drawer).toHaveAttribute("data-confidence", "high");
   });
 });

@@ -27,7 +27,8 @@ function parseSignals(raw: string | undefined): SignalContributif[] {
         typeof s === "object" &&
         s !== null &&
         typeof s.signal === "string" &&
-        typeof s.contribution === "number",
+        typeof s.contribution === "number" &&
+        typeof s.weight === "number",
     );
   } catch {
     return [];
@@ -54,12 +55,12 @@ export default async function MetierDetailPage({
 
   const score = scoreStr !== undefined ? parseInt(scoreStr, 10) : undefined;
   const VALID_CONFIDENCE = new Set(["low", "medium", "high"]);
-  const confidenceLevel: "normal" | "indicative" | undefined =
+  const rawConfidence =
     confidence && VALID_CONFIDENCE.has(confidence)
-      ? confidence === "low"
-        ? "indicative"
-        : "normal"
+      ? (confidence as "low" | "medium" | "high")
       : undefined;
+  const confidenceLevel: "normal" | "indicative" | undefined =
+    rawConfidence === "low" ? "indicative" : rawConfidence ? "normal" : undefined;
 
   const signalsContributifs = parseSignals(rawSignals);
 
@@ -75,6 +76,7 @@ export default async function MetierDetailPage({
         profession={profession}
         score={Number.isFinite(score) ? score : undefined}
         confidenceLevel={confidenceLevel}
+        drawerConfidenceLevel={rawConfidence}
         signalsContributifs={signalsContributifs}
       />
     </main>
