@@ -1,10 +1,10 @@
-"""Serializers for the Schools & Formations referential — Story 4.1."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2."""
 
 from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.schools.models import Formation, School
+from apps.schools.models import AdmissionStat, Formation, School
 
 
 class FormationInlineSerializer(serializers.ModelSerializer):
@@ -110,5 +110,27 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
             "formations",
             "created_at",
             "updated_at",
+        )
+        read_only_fields = fields
+
+
+class AdmissionStatSerializer(serializers.ModelSerializer):
+    """Serializer for AdmissionStat — Story 4.2 prediction output."""
+
+    class Meta:
+        model = AdmissionStat
+        fields = (
+            "id",
+            "school",
+            "user",
+            "min_proba",
+            "expected_proba",
+            "max_proba",
+            "label",
+            "context_line",
+            "action_lever",
+            "previous_proba",
+            "updated_at",
+            "created_at",
         )
         read_only_fields = fields

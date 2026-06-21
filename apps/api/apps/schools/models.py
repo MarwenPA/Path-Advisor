@@ -1,8 +1,9 @@
-"""Schools & Formations referential models — Story 4.1.
+"""Schools & Formations referential models — Story 4.1 / 4.2.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
-and optionally to target professions.
+and optionally to target professions. `AdmissionStat` stores the predicted
+admission probability range for a (school, user) pair.
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -13,6 +14,7 @@ from __future__ import annotations
 from typing import ClassVar
 from uuid import uuid4
 
+from django.conf import settings
 from django.db import models
 
 
@@ -117,3 +119,50 @@ class Formation(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} @ {self.school.name}"
+
+
+class AdmissionStat(models.Model):
+    """Predicted admission probability for a school, optionally personalised.
+
+    Story 4.2 — fourchette personnalisée anti-humiliation.
+    A row with user=None represents the population baseline (no personalisation).
+    """
+
+    class Label(models.TextChoices):
+        AUDACIEUX = "audacieux", "Pari audacieux"
+        REALISTE = "realiste", "Pari réaliste"
+        SUR = "sur", "Valeur sûre"
+        ESTIMATION_INDICATIVE = "estimation_indicative", "Estimation indicative"
+
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="admission_stats",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="admission_stats",
+        help_text="None = population baseline",
+    )
+    min_proba = models.IntegerField()
+    expected_proba = models.IntegerField()
+    max_proba = models.IntegerField()
+    label = models.CharField(max_length=30, choices=Label.choices)
+    context_line = models.CharField(max_length=300)
+    action_lever = models.CharField(max_length=300, blank=True)
+    previous_proba = models.IntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("school", "user")]
+        verbose_name = "Admission Stat"
+        verbose_name_plural = "Admission Stats"
+
+    def __str__(self) -> str:
+        user_repr = str(self.user) if self.user else "baseline"
+        return f"{self.school.name} — {user_repr} ({self.expected_proba}%)"
