@@ -53,17 +53,68 @@ function getEnrichedNodes(parcours: Parcours): ParcoursNode[] {
 // ParcoursList — Story 4.3 component + Story 4.5 inline stat
 // ---------------------------------------------------------------------------
 
-interface ParcoursListProps {
-  parcours: Parcours[];
-  metiersSlug: string;
+// ─── Niveau badge mapping (Story 4.7) ─────────────────────────────────────────
+
+export const NIVEAU_BADGE: Record<string, string> = {
+  troisieme_bac_pro: "Bac Pro",
+  terminale_generale: "Terminale",
+  terminale_technologique: "Terminale Techno",
+  terminale_pro: "Terminale Pro",
+  bts: "BTS",
+  but: "BUT",
+  licence: "Licence",
+  autre: "Autre",
+};
+
+// ─── Admission dates display (Story 4.7) ──────────────────────────────────────
+
+function AdmissionDates({
+  affelnetDates,
+  parcoursupDates,
+  niveauScolaire,
+}: {
+  affelnetDates: Record<string, string> | null;
+  parcoursupDates: Record<string, string> | null;
+  niveauScolaire: string;
+}) {
+  // For lycée pro (bac pro) tracks, show affelnet dates; otherwise show parcoursup dates
+  const isAffelnet = niveauScolaire === "troisieme_bac_pro" || niveauScolaire === "terminale_pro";
+  const dates = isAffelnet ? affelnetDates : parcoursupDates;
+  const platform = isAffelnet ? "Affelnet" : "Parcoursup";
+
+  if (!dates || Object.keys(dates).length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-1 text-xs text-muted-foreground" data-testid="admission-dates">
+      <span className="font-medium">{platform} : </span>
+      {dates.open && <span>ouverture {dates.open}</span>}
+      {dates.close && <span> — clôture {dates.close}</span>}
+      {dates.results && <span> — résultats {dates.results}</span>}
+    </div>
+  );
 }
 
-export function ParcoursList({ parcours, metiersSlug: _metiersSlug }: ParcoursListProps) {
+// ─── ParcoursList ──────────────────────────────────────────────────────────────
+
+export interface ParcoursListProps {
+  parcours: Parcours[];
+  metiersSlug: string;
+  /** Optional: profession name for the heading */
+  professionName?: string;
+}
+
+export function ParcoursList({
+  parcours,
+  metiersSlug: _metiersSlug,
+  professionName,
+}: ParcoursListProps) {
   const [showAlternatives, setShowAlternatives] = useState(false);
 
   if (parcours.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground" data-testid="parcours-empty">
         Aucun parcours disponible pour ce métier pour l&apos;instant.
       </p>
     );
@@ -82,28 +133,53 @@ export function ParcoursList({ parcours, metiersSlug: _metiersSlug }: ParcoursLi
   // Collect school nodes for the school grid (nodes with a schoolSlug).
   const schoolNodes = enrichedNodes.filter((n) => n.schoolSlug);
 
+  const defaultBadgeLabel =
+    NIVEAU_BADGE[defaultParcours.niveau_scolaire] ?? defaultParcours.niveau_scolaire;
+
   return (
-    <section aria-label="Parcours disponibles">
-      <h2 className="mb-3 text-lg font-semibold">Parcours vers ce métier</h2>
+    <section aria-label="Parcours disponibles" data-testid="parcours-list">
+      {professionName && (
+        <h2 className="mb-3 text-base font-semibold">Parcours pour {professionName}</h2>
+      )}
+      {!professionName && <h2 className="mb-3 text-lg font-semibold">Parcours vers ce métier</h2>}
 
       {/* Default parcours */}
-      <div className="mb-4 rounded-lg border p-4">
-        <div className="mb-3">
+      <div
+        className="mb-4 rounded-lg border p-4"
+        data-testid={`parcours-card-${defaultParcours.id}`}
+      >
+        {/* Header: label/school + niveau badge */}
+        <div className="mb-1 flex items-start justify-between gap-2">
           <p className="font-medium">
-            {defaultParcours.target_school_name ?? defaultParcours.target_school}
+            {defaultParcours.label ||
+              defaultParcours.target_school_name ||
+              defaultParcours.target_school}
           </p>
-          {defaultParcours.target_school_city && (
-            <p className="text-xs text-muted-foreground">{defaultParcours.target_school_city}</p>
-          )}
           {defaultParcours.niveau_scolaire && (
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Niveau: {defaultParcours.niveau_scolaire.replace(/_/g, " ")}
-            </p>
+            <span
+              className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
+              data-testid={`niveau-badge-${defaultParcours.id}`}
+            >
+              {defaultBadgeLabel}
+            </span>
           )}
         </div>
 
+        {defaultParcours.target_school_city && (
+          <p className="text-xs text-muted-foreground">{defaultParcours.target_school_city}</p>
+        )}
+
+        {/* Admission dates */}
+        <AdmissionDates
+          affelnetDates={defaultParcours.target_school_affelnet_dates}
+          parcoursupDates={defaultParcours.target_school_parcoursup_dates}
+          niveauScolaire={defaultParcours.niveau_scolaire}
+        />
+
         {/* Graph placeholder — TODO(story-4-9): replace with GraphParcours */}
-        <GraphParcoursPlaceholder nodes={enrichedNodes} />
+        <div className="mt-3">
+          <GraphParcoursPlaceholder nodes={enrichedNodes} />
+        </div>
 
         {/* School grid: cards for each node with a schoolSlug */}
         {schoolNodes.length > 0 && (
@@ -128,14 +204,15 @@ export function ParcoursList({ parcours, metiersSlug: _metiersSlug }: ParcoursLi
         )}
       </div>
 
-      {/* Alternatives toggle button — hidden if no alternatives */}
+      {/* Alternatives toggle button */}
       {altCount > 0 && (
         <div className="mt-2">
           <button
             type="button"
             onClick={() => setShowAlternatives((v) => !v)}
-            className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            className="flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
             aria-expanded={showAlternatives}
+            data-testid="toggle-alternatives-btn"
           >
             {showAlternatives
               ? "Masquer les autres chemins"
@@ -146,12 +223,32 @@ export function ParcoursList({ parcours, metiersSlug: _metiersSlug }: ParcoursLi
 
       {/* Alternative parcours list */}
       {showAlternatives && altCount > 0 && (
-        <ul className="mt-3 space-y-3">
+        <ul className="mt-3 space-y-3" data-testid="alternatives-list">
           {alternatives.map((p) => {
             const altEnrichedNodes = getEnrichedNodes(p);
             return (
-              <li key={p.id} className="rounded-lg border p-4">
-                <p className="font-medium">{p.target_school_name ?? p.target_school}</p>
+              <li
+                key={p.id}
+                className="rounded-lg border p-4"
+                data-testid={`parcours-card-${p.id}`}
+              >
+                {/* Badge + label */}
+                <div className="mb-1 flex items-center gap-2">
+                  {p.niveau_scolaire && (
+                    <span
+                      className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
+                      data-testid={`alt-badge-${p.id}`}
+                    >
+                      {NIVEAU_BADGE[p.niveau_scolaire] ?? p.niveau_scolaire}
+                    </span>
+                  )}
+                  {p.is_default && (
+                    <span className="text-xs text-muted-foreground">
+                      (recommandé pour ce niveau)
+                    </span>
+                  )}
+                </div>
+                <p className="font-medium">{p.label || p.target_school_name || p.target_school}</p>
                 {p.target_school_city && (
                   <p className="text-xs text-muted-foreground">{p.target_school_city}</p>
                 )}
