@@ -1,4 +1,4 @@
-"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.5."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3 / 4.5."""
 
 from __future__ import annotations
 
@@ -175,50 +175,72 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
             return None
 
 
-class ParcoursAdmissionStatInlineSerializer(serializers.ModelSerializer):
-    """Compact AdmissionStat representation embedded in parcours node dicts."""
-
-    class Meta:
-        model = AdmissionStat
-        fields = ("expected_proba", "label", "context_line", "action_lever")
-        read_only_fields = fields
-
-
 class ParcoursSerializer(serializers.ModelSerializer):
-    """Serializer for a Parcours — Story 4.3 / 4.5.
+    """Serializer for Parcours — Story 4.3 graphe parcours par métier.
 
-    `nodes_with_stats` enriches each target node with an inline admission_stat
-    dict if a matching AdmissionStat row exists. Batch-loaded with prefetch to
-    avoid N+1 queries (Story 4.5 T2).
+    Story 4.5: adds nodes_with_stats SerializerMethodField that enriches each
+    target/ecole node with an inline admission_stat dict when a matching
+    AdmissionStat row exists. Schools are batch-fetched with prefetch_related
+    to avoid N+1 queries (AC2).
     """
 
+    target_school_name = serializers.SerializerMethodField()
+    target_school_slug = serializers.SerializerMethodField()
+    target_school_city = serializers.SerializerMethodField()
     nodes_with_stats = serializers.SerializerMethodField()
 
     class Meta:
         model = Parcours
-        fields = ("id", "title", "nodes", "edges", "nodes_with_stats", "created_at", "updated_at")
-        read_only_fields = fields
+        fields = [
+            "id",
+            "profession",
+            "target_school",
+            "target_school_name",
+            "target_school_slug",
+            "target_school_city",
+            "nodes",
+            "edges",
+            "nodes_with_stats",
+            "niveau_scolaire",
+            "is_default",
+            "created_at",
+        ]
 
-    def get_nodes_with_stats(self, parcours) -> list:
-        """Enrich target nodes with inline admission_stat dict (no N+1)."""
+    def get_target_school_name(self, obj: Parcours) -> str:
+        return obj.target_school.name
+
+    def get_target_school_slug(self, obj: Parcours) -> str:
+        return obj.target_school.slug
+
+    def get_target_school_city(self, obj: Parcours) -> str:
+        return obj.target_school.city
+
+    def get_nodes_with_stats(self, parcours: Parcours) -> list:
+        """Enrich target/ecole nodes with inline admission_stat dict (no N+1).
+
+        Story 4.5 AC2: batch-loads all relevant schools + their admission_stats
+        in 2 queries (filter + prefetch), then enriches matching nodes in-memory.
+        """
         try:
             request = self.context.get("request")
             user = request.user if request and request.user.is_authenticated else None
             school_slugs = [
                 n.get("schoolSlug")
                 for n in parcours.nodes
-                if n.get("schoolSlug") and n.get("type") == "target"
+                if n.get("schoolSlug") and n.get("type") in ("target", "ecole")
             ]
-            schools = {
-                s.slug: s
-                for s in School.objects.filter(slug__in=school_slugs).prefetch_related(
-                    "admission_stats"
-                )
-            }
+            schools: dict[str, School] = {}
+            if school_slugs:
+                schools = {
+                    s.slug: s
+                    for s in School.objects.filter(slug__in=school_slugs).prefetch_related(
+                        "admission_stats"
+                    )
+                }
             result = []
             for node in parcours.nodes:
                 node_copy = dict(node)
-                if node.get("type") == "target" and node.get("schoolSlug"):
+                if node.get("type") in ("target", "ecole") and node.get("schoolSlug"):
                     school = schools.get(node["schoolSlug"])
                     if school:
                         user_id = user.id if user else None

@@ -99,7 +99,7 @@ def profession(db):
 def parcours_with_target(school, profession):
     return Parcours.objects.create(
         profession=profession,
-        title="Parcours test vers l'école",
+        target_school=school,
         nodes=[
             {"id": "n1", "label": "Terminale", "type": "start"},
             {
@@ -110,6 +110,8 @@ def parcours_with_target(school, profession):
             },
         ],
         edges=[{"source": "n1", "target": "n2", "weight": 1}],
+        niveau_scolaire="lycee_1ere_tle_general",
+        is_default=True,
     )
 
 
@@ -175,7 +177,7 @@ def test_parcours_nodes_have_stats(
     student_client, school, admission_stat, profession, parcours_with_target
 ):
     """GET /api/v1/metiers/{slug}/parcours/ nodes_with_stats populated for target node."""
-    url = reverse("schools:parcours-list", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
     response = student_client.get(url)
     assert response.status_code == 200, response.content
     data = response.json()
@@ -202,7 +204,7 @@ def test_parcours_nodes_stat_null_when_no_stat(
     student_client, school, profession, parcours_with_target
 ):
     """Target node admission_stat is absent (not injected) when no AdmissionStat row."""
-    url = reverse("schools:parcours-list", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
     response = student_client.get(url)
     assert response.status_code == 200, response.content
     data = response.json()
@@ -219,6 +221,6 @@ def test_parcours_nodes_stat_null_when_no_stat(
 def test_parcours_list_unauthenticated(school, profession, parcours_with_target):
     """Unauthenticated request to parcours endpoint returns 401."""
     client = APIClient()
-    url = reverse("schools:parcours-list", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
     response = client.get(url)
     assert response.status_code in (401, 403)

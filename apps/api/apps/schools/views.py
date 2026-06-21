@@ -1,11 +1,14 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5.
 
-Routes:
+Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
   GET /api/v1/admin/schools/{id}/               — admin detail
   GET /api/v1/admin/formations/                 — admin formations list
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
+Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
+Routes (Story 4.3 / 4.5):
+  GET /api/v1/metiers/{slug}/parcours/          — list parcours for a profession (IsAuthenticated)
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ from __future__ import annotations
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
@@ -22,6 +25,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
+from apps.professions.models import Profession
 from apps.schools.models import Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
@@ -75,22 +79,48 @@ class SchoolDetailView(RetrieveAPIView):
         return context
 
 
-class ParcoursListView(APIView):
-    """GET /api/v1/metiers/{slug}/parcours/ — list of Parcours for a profession.
+class ParcoursListView(ListAPIView):
+    """GET /api/v1/metiers/{slug}/parcours/
 
-    Story 4.5: passes request to serializer context so ParcoursSerializer can
-    enrich nodes with personalised admission_stat inline (AC2).
+    Story 4.3: returns all Parcours for the given profession slug, ordered by
+    is_default DESC then niveau_scolaire. Supports optional ?niveau_scolaire= filter.
+    Returns 200 + empty list if profession not found (graceful degradation).
+
+    Story 4.5: overrides get_serializer_context() so ParcoursSerializer can access
+    the authenticated user and inject personalised admission_stat on each node (AC2).
     """
 
-    permission_classes: ClassVar = [IsAuthenticated]
+    serializer_class = ParcoursSerializer
+    permission_classes = [IsAuthenticated]
 
-    def get(self, request: Request, slug: str) -> Response:
-        from apps.professions.models import Profession
+    def get_queryset(self):
+        slug = self.kwargs["slug"]
 
-        profession = get_object_or_404(Profession, slug=slug, is_active=True)
-        queryset = Parcours.objects.filter(profession=profession)
-        serializer = ParcoursSerializer(queryset, many=True, context={"request": request})
-        return Response(serializer.data)
+        try:
+            profession = Profession.objects.get(slug=slug)
+        except Profession.DoesNotExist:
+            # Return empty queryset — caller gets 200 [] instead of 404 so the
+            # frontend can gracefully display the empty state (AC6).
+            return Parcours.objects.none()
+
+        qs = (
+            Parcours.objects.filter(profession=profession)
+            .select_related("target_school")
+            .order_by("-is_default", "niveau_scolaire")
+        )
+
+        niveau_scolaire = self.request.query_params.get("niveau_scolaire")
+        if niveau_scolaire:
+            qs = qs.filter(niveau_scolaire=niveau_scolaire)
+
+        return qs
+
+    def get_serializer_context(self) -> dict:
+        """Inject request so ParcoursSerializer.get_nodes_with_stats can personalise stats."""
+        context = super().get_serializer_context()
+        # request is already included by GenericAPIView.get_serializer_context,
+        # but we document it explicitly for reviewers (Story 4.5 T2).
+        return context
 
 
 class AdmissionStatView(APIView):

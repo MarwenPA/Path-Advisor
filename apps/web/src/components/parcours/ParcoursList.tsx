@@ -1,114 +1,169 @@
 "use client";
 
-import type { ParcoursNode, ParcoursEdge, AdmissionStatInline } from "./types";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+
+import { GraphParcoursPlaceholder } from "./GraphParcoursPlaceholder";
+import type { AdmissionStatInline, Parcours, ParcoursNode } from "./types";
 
 // ---------------------------------------------------------------------------
-// Label badge color helpers (consistent with CarteAdmission)
+// Inline admission stat helpers (Story 4.5 AC2)
 // ---------------------------------------------------------------------------
 
-function getLabelBadgeClass(label: AdmissionStatInline["label"]): string {
-  const map: Record<AdmissionStatInline["label"], string> = {
-    audacieux: "text-red-700 bg-red-50",
-    realiste: "text-blue-700 bg-blue-50",
-    sur: "text-green-700 bg-green-50",
-    estimation_indicative: "text-slate-700 bg-slate-50",
-  };
-  return map[label];
-}
+const LABEL_BADGE_CLASS: Record<AdmissionStatInline["label"], string> = {
+  audacieux: "text-red-700 bg-red-50",
+  realiste: "text-blue-700 bg-blue-50",
+  sur: "text-green-700 bg-green-50",
+  estimation_indicative: "text-slate-700 bg-slate-50",
+};
 
-function getLabelText(label: AdmissionStatInline["label"]): string {
-  const map: Record<AdmissionStatInline["label"], string> = {
-    audacieux: "pari audacieux",
-    realiste: "pari réaliste",
-    sur: "pari sûr",
-    estimation_indicative: "estimation indicative",
-  };
-  return map[label];
-}
+const LABEL_TEXT: Record<AdmissionStatInline["label"], string> = {
+  audacieux: "pari audacieux",
+  realiste: "pari réaliste",
+  sur: "pari sûr",
+  estimation_indicative: "estimation indicative",
+};
 
-// ---------------------------------------------------------------------------
-// NodeCard — renders a single step card
-// ---------------------------------------------------------------------------
-
-interface NodeCardProps {
-  node: ParcoursNode;
-  step: number;
-  total: number;
-}
-
-function NodeCard({ node, step, total }: NodeCardProps) {
-  const isTarget = node.type === "target";
-  const isStart = node.type === "start";
-
+/**
+ * Renders an inline admission stat badge when node.admission_stat is present.
+ * Hidden (renders nothing) when absent — UX-DR25.
+ */
+function NodeAdmissionStatBadge({ stat }: { stat: AdmissionStatInline }) {
+  const badgeClass = LABEL_BADGE_CLASS[stat.label] ?? "text-slate-700 bg-slate-50";
+  const labelText = LABEL_TEXT[stat.label] ?? stat.label;
   return (
-    <li
-      data-testid={`parcours-node-${node.id}`}
-      className={cn(
-        "flex flex-col gap-1 rounded-lg border px-4 py-3",
-        isTarget && "border-blue-200 bg-blue-50",
-        isStart && "border-slate-200 bg-slate-50",
-        !isTarget && !isStart && "border-gray-200 bg-white",
-      )}
+    <span
+      className={`mt-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
+      data-testid="node-admission-stat-badge"
     >
-      {/* Step label */}
-      <span className="text-xs font-medium text-muted-foreground">
-        Étape {step} / {total}
-      </span>
-
-      {/* Node label */}
-      <span className={cn("text-sm font-semibold", isTarget && "text-blue-900")}>{node.label}</span>
-
-      {/* Inline admission stat — Story 4.5 AC2 */}
-      {node.admission_stat && (
-        <span
-          className={cn(
-            "mt-0.5 inline-flex items-center gap-1.5 text-xs font-medium",
-            getLabelBadgeClass(node.admission_stat.label),
-            "rounded-full px-2 py-0.5",
-          )}
-          data-testid={`node-admission-stat-${node.id}`}
-        >
-          {node.admission_stat.expected_proba}% &middot; {getLabelText(node.admission_stat.label)}
-        </span>
-      )}
-    </li>
+      {stat.expected_proba}% &middot; {labelText}
+    </span>
   );
 }
 
 // ---------------------------------------------------------------------------
-// ParcoursList — accessible list representation of a parcours
+// Helpers to resolve nodes_with_stats or fall back to nodes
 // ---------------------------------------------------------------------------
 
-export interface ParcoursListProps {
-  nodes: ParcoursNode[];
-  edges?: ParcoursEdge[];
-  targetSchool: string;
-  className?: string;
+function getEnrichedNodes(parcours: Parcours): ParcoursNode[] {
+  // Prefer nodes_with_stats (Story 4.5) if present; fall back to plain nodes.
+  return parcours.nodes_with_stats ?? parcours.nodes;
 }
 
-/**
- * Accessible list view of a parcours with inline admission stats.
- *
- * Story 4.5 — AC2: each target node displays `expected_proba% · label` when
- * `node.admission_stat` is present. If null, nothing extra is shown (UX-DR25).
- */
-export function ParcoursList({ nodes, targetSchool, className }: ParcoursListProps) {
-  if (nodes.length === 0) {
-    return <p className="text-sm text-muted-foreground">Aucune étape de parcours disponible.</p>;
+// ---------------------------------------------------------------------------
+// ParcoursList — Story 4.3 component + Story 4.5 inline stat
+// ---------------------------------------------------------------------------
+
+interface ParcoursListProps {
+  parcours: Parcours[];
+  metiersSlug: string;
+}
+
+export function ParcoursList({ parcours, metiersSlug: _metiersSlug }: ParcoursListProps) {
+  const [showAlternatives, setShowAlternatives] = useState(false);
+
+  if (parcours.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Aucun parcours disponible pour ce métier pour l&apos;instant.
+      </p>
+    );
   }
 
+  // Find default parcours (is_default=true) or fall back to first item.
+  const defaultIndex = parcours.findIndex((p) => p.is_default);
+  const effectiveDefaultIndex = defaultIndex >= 0 ? defaultIndex : 0;
+  const defaultParcours = parcours[effectiveDefaultIndex];
+  const alternatives = parcours.filter((_, i) => i !== effectiveDefaultIndex);
+  const altCount = alternatives.length;
+
+  // Use enriched nodes (with admission_stat if available — Story 4.5).
+  const enrichedNodes = getEnrichedNodes(defaultParcours);
+
+  // Collect school nodes for the school grid (nodes with a schoolSlug).
+  const schoolNodes = enrichedNodes.filter((n) => n.schoolSlug);
+
   return (
-    <section
-      aria-label={`Parcours vers ${targetSchool}`}
-      className={cn("space-y-2", className)}
-      data-testid="parcours-list"
-    >
-      <ol aria-label="Étapes du parcours" className="space-y-2">
-        {nodes.map((node, i) => (
-          <NodeCard key={node.id} node={node} step={i + 1} total={nodes.length} />
-        ))}
-      </ol>
+    <section aria-label="Parcours disponibles">
+      <h2 className="mb-3 text-lg font-semibold">Parcours vers ce métier</h2>
+
+      {/* Default parcours */}
+      <div className="mb-4 rounded-lg border p-4">
+        <div className="mb-3">
+          <p className="font-medium">
+            {defaultParcours.target_school_name ?? defaultParcours.target_school}
+          </p>
+          {defaultParcours.target_school_city && (
+            <p className="text-xs text-muted-foreground">{defaultParcours.target_school_city}</p>
+          )}
+          {defaultParcours.niveau_scolaire && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Niveau: {defaultParcours.niveau_scolaire.replace(/_/g, " ")}
+            </p>
+          )}
+        </div>
+
+        {/* Graph placeholder — TODO(story-4-9): replace with GraphParcours */}
+        <GraphParcoursPlaceholder nodes={enrichedNodes} />
+
+        {/* School grid: cards for each node with a schoolSlug */}
+        {schoolNodes.length > 0 && (
+          <div className="mt-4">
+            <h3 className="mb-2 text-sm font-semibold">Établissements sur ce parcours</h3>
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {schoolNodes.map((node) => (
+                <li key={node.id}>
+                  <a
+                    href={`/schools/${node.schoolSlug}`}
+                    className="block rounded border p-3 text-sm transition-colors hover:bg-accent"
+                    aria-label={`Voir la fiche de ${node.label}`}
+                  >
+                    <span className="font-medium">{node.label}</span>
+                    {/* Story 4.5 AC2 — inline admission stat badge */}
+                    {node.admission_stat && <NodeAdmissionStatBadge stat={node.admission_stat} />}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Alternatives toggle button — hidden if no alternatives */}
+      {altCount > 0 && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowAlternatives((v) => !v)}
+            className="text-sm font-medium text-primary underline-offset-2 hover:underline"
+            aria-expanded={showAlternatives}
+          >
+            {showAlternatives
+              ? "Masquer les autres chemins"
+              : `Voir d'autres chemins (${altCount})`}
+          </button>
+        </div>
+      )}
+
+      {/* Alternative parcours list */}
+      {showAlternatives && altCount > 0 && (
+        <ul className="mt-3 space-y-3">
+          {alternatives.map((p) => {
+            const altEnrichedNodes = getEnrichedNodes(p);
+            return (
+              <li key={p.id} className="rounded-lg border p-4">
+                <p className="font-medium">{p.target_school_name ?? p.target_school}</p>
+                {p.target_school_city && (
+                  <p className="text-xs text-muted-foreground">{p.target_school_city}</p>
+                )}
+                <p className="mt-1 text-sm text-muted-foreground">{p.nodes.length} étapes</p>
+                <div className="mt-3">
+                  <GraphParcoursPlaceholder nodes={altEnrichedNodes} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </section>
   );
 }
