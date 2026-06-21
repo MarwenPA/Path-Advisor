@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-21  # Story 3.6 → in-progress
+last_updated: 2026-06-21  # Stories 4.5, 4.6, 4.7 → ready-for-dev
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -83,27 +83,27 @@ development_status:
   3-6-explicabilite-signaux-rgpd-art22: done
   3-7-revue-humaine-recommandation: done
   3-8-signaler-erreur-fiche-metier: done
-  3-9-adaptation-recos-par-niveau-scolaire: in-progress
+  3-9-adaptation-recos-par-niveau-scolaire: done
   3-10-niveau-confiance-profil-incomplet: done
   3-11-composant-score-vocationnel: done
   3-12-composant-fiche-metier: done
   epic-3-retrospective: optional
 
   # Epic 4 — Graphe de parcours & Stats admission (2e aha)
-  epic-4: backlog
-  4-1-referentiel-formations-ecoles: backlog
-  4-2-moteur-prediction-admission: backlog
-  4-3-graphe-parcours-par-metier: backlog
-  4-4-fiche-ecole-formation: backlog
-  4-5-stat-admission-personnalisee: backlog
-  4-6-filtres-graphes: backlog
-  4-7-adaptation-graphe-par-niveau: backlog
-  4-8-favoris-mes-paris: backlog
-  4-9-composant-graph-parcours: backlog
-  4-10-composant-fiche-ecole: backlog
-  4-11-composant-carte-admission: backlog
-  4-12-composant-parcours-card: backlog
-  4-13-composant-stat-personnelle: backlog
+  epic-4: in-progress
+  4-1-referentiel-formations-ecoles: ready-for-dev
+  4-2-moteur-prediction-admission: ready-for-dev
+  4-3-graphe-parcours-par-metier: ready-for-dev
+  4-4-fiche-ecole-formation: ready-for-dev
+  4-5-stat-admission-personnalisee: ready-for-dev
+  4-6-filtres-graphes: ready-for-dev
+  4-7-adaptation-graphe-par-niveau: ready-for-dev
+  4-8-favoris-mes-paris: ready-for-dev
+  4-9-composant-graph-parcours: ready-for-dev
+  4-10-composant-fiche-ecole: ready-for-dev
+  4-11-composant-carte-admission: ready-for-dev
+  4-12-composant-parcours-card: ready-for-dev
+  4-13-composant-stat-personnelle: ready-for-dev
   epic-4-retrospective: optional
 
   # Epic 5 — Premium B2C & Envoi anticipé biface
