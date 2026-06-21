@@ -1,9 +1,10 @@
-"""Statistical content-based scorer — Story 3.3.
+"""Statistical content-based scorer — Story 3.3, updated Story 3.9.
 
-Replaces the random stub with a deterministic 4-feature scoring model:
-  - passion_overlap      (35%) — Jaccard similarity on passion sets
-  - valeur_alignment     (25%) — Jaccard similarity on value sets
-  - niveau_compatibility (20%) — Binary: student level ∈ profession.level_compatibility
+5-feature scoring model (v0.3):
+  - passion_overlap      (30%) — Jaccard similarity on passion sets
+  - valeur_alignment     (20%) — Jaccard similarity on value sets
+  - niveau_compatibility (15%) — Binary: student level ∈ profession.level_compatibility
+  - specialite_overlap   (15%) — Jaccard similarity on specialite sets (Story 3.9)
   - bulletin_quality     (20%) — Grade percentile; 0 if no bulletins
 
 All helpers are module-level so they can be tested in isolation.
@@ -15,14 +16,21 @@ from typing import Literal
 
 from src.api.schemas import OccupationScore, SignalContributif
 
-MODEL_VERSION = "0.2.0-statistical"
+MODEL_VERSION = "0.3.0-statistical"
 MODEL_TYPE = "statistical_content_based"
-FEATURES = ["passion_overlap", "valeur_alignment", "niveau_compatibility", "bulletin_quality"]
+FEATURES = [
+    "passion_overlap",
+    "valeur_alignment",
+    "niveau_compatibility",
+    "specialite_overlap",
+    "bulletin_quality",
+]
 
 _WEIGHTS: dict[str, float] = {
-    "passion_overlap": 0.35,
-    "valeur_alignment": 0.25,
-    "niveau_compatibility": 0.20,
+    "passion_overlap": 0.30,
+    "valeur_alignment": 0.20,
+    "niveau_compatibility": 0.15,
+    "specialite_overlap": 0.15,
     "bulletin_quality": 0.20,
 }
 
@@ -60,6 +68,14 @@ def _niveau_compatibility(profile: dict, level_compatibility: list[str]) -> floa
         return 0.0
     normalized = {lc.lower().strip() for lc in level_compatibility}
     return 1.0 if niveau in normalized else 0.0
+
+
+def _specialite_overlap(profile: dict, signals: dict) -> float:
+    """Jaccard similarity between student specialites and profession required specialites."""
+    return _jaccard(
+        set(profile.get("specialites") or []),
+        set(signals.get("specialites") or []),
+    )
 
 
 def _bulletin_quality(profile: dict) -> float:
@@ -104,7 +120,7 @@ def score_occupations(
         occupation_ids: Opaque occupation identifiers to score.
         professions_data: Optional list of profession signal dicts
             (each with occupation_id, signals_json, level_compatibility).
-            When None, passion/valeur overlap defaults to 0 (no profession data).
+            When None, passion/valeur/specialite overlap defaults to 0.
 
     Returns:
         One OccupationScore per occupation_id.
@@ -132,11 +148,13 @@ def score_occupations(
         f_passion = _passion_overlap(profile, signals)
         f_valeur = _valeur_alignment(profile, signals)
         f_niveau = _niveau_compatibility(profile, level_compat)
+        f_specialite = _specialite_overlap(profile, signals)
 
         raw_contributions = [
             f_passion * _WEIGHTS["passion_overlap"] * 100,
             f_valeur * _WEIGHTS["valeur_alignment"] * 100,
             f_niveau * _WEIGHTS["niveau_compatibility"] * 100,
+            f_specialite * _WEIGHTS["specialite_overlap"] * 100,
             f_bulletin * _WEIGHTS["bulletin_quality"] * 100,
         ]
         # Single round on the summed raw to avoid per-contribution rounding divergence (C1)
@@ -163,9 +181,14 @@ def score_occupations(
                         contribution=round(raw_contributions[2]),
                     ),
                     SignalContributif(
+                        signal="specialite_overlap",
+                        weight=_WEIGHTS["specialite_overlap"],
+                        contribution=round(raw_contributions[3]),
+                    ),
+                    SignalContributif(
                         signal="bulletin_quality",
                         weight=_WEIGHTS["bulletin_quality"],
-                        contribution=round(raw_contributions[3]),
+                        contribution=round(raw_contributions[4]),
                     ),
                 ],
                 confidence_level=confidence,

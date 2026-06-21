@@ -60,7 +60,7 @@ def test_score_metiers_with_valid_jwt(auth_client: TestClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["student_id"] == "stu_01HXJ123"
-    assert body["model_version"] == "0.2.0-statistical"
+    assert body["model_version"] == "0.3.0-statistical"
     assert len(body["scored_occupations"]) == 3
     assert "computation_time_ms" in body
 

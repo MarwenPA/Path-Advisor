@@ -586,11 +586,5 @@ class TestReorderForLevelThreshold:
         top8, adapted = _reorder_for_level_threshold(
             results, profession_by_id, "terminale_generale"
         )
-        assert (
-            adapted is False
-        )  # 1 compatible >= ceil(8*0.6)=5? No, 1 < 5, but only 1 result total → falls back
-        # With only 1 result and 1 compatible, compatible count (1) < target (5) but there's nothing to promote
-        # The function promotes compatible before incompatible, so result is still [p0] with adapted=True
-        # Actually: compatible=[p0], incompatible=[], reordered=([p0]+[])[:8]=[p0], adapted=True
-        # len(compatible)=1 < target=5 so adapted=True
+        assert adapted is False  # reorder result == original order → no actual adaptation
         assert top8 == results[:8]

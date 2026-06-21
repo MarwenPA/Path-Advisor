@@ -56,18 +56,22 @@ def _reorder_for_level_threshold(
         return sorted_results[:8], False
 
     target = math.ceil(8 * threshold)  # = 5
-    compatible = [
-        r
-        for r in sorted_results
-        if niveau.lower()
-        in [lc.lower() for lc in (profession_by_id[r["id"]].level_compatibility or [])]
-    ]
+    # Single-pass partition: avoids O(n²) list-contains
+    compatible: list[dict] = []
+    incompatible: list[dict] = []
+    niveau_lower = niveau.lower()
+    for r in sorted_results:
+        levels = profession_by_id.get(r["id"])
+        compat_set = {lc.lower() for lc in (levels.level_compatibility if levels else [])}
+        (compatible if niveau_lower in compat_set else incompatible).append(r)
+
     if len(compatible) >= target:
         return sorted_results[:8], False
 
-    incompatible = [r for r in sorted_results if r not in compatible]
     reordered = (compatible + incompatible)[:8]
-    return reordered, True
+    # Only flag niveau_adapted when the order actually changed from the score-based order
+    niveau_adapted = reordered != sorted_results[:8]
+    return reordered, niveau_adapted
 
 
 def compute_recommendations(user: Any) -> dict[str, Any]:

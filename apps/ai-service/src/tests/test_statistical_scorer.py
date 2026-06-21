@@ -1,6 +1,6 @@
 """Unit tests for the real statistical content-based scorer.
 
-Tests are deterministic — no random values — and cover the 4 weighted features,
+Tests are deterministic — no random values — and cover the 5 weighted features,
 Jaccard similarity, graceful degradation, confidence levels, and edge cases.
 """
 
@@ -13,6 +13,7 @@ from src.domain.recommendation.statistical_scorer import (
     _jaccard,
     _niveau_compatibility,
     _passion_overlap,
+    _specialite_overlap,
     _valeur_alignment,
     score_occupations,
 )
@@ -224,6 +225,49 @@ def test_confidence_high_above_14() -> None:
     assert _confidence_level(profile) == "high"
 
 
+# ─── _specialite_overlap ──────────────────────────────────────────────────────
+
+
+def test_specialite_overlap_empty_profile() -> None:
+    assert _specialite_overlap({}, {"specialites": ["svt"]}) == 0.0
+
+
+def test_specialite_overlap_empty_profession() -> None:
+    assert _specialite_overlap({"specialites": ["svt"]}, {}) == 0.0
+
+
+def test_specialite_overlap_both_empty() -> None:
+    assert _specialite_overlap({}, {}) == 0.0
+
+
+def test_specialite_overlap_no_match() -> None:
+    result = _specialite_overlap({"specialites": ["maths"]}, {"specialites": ["svt", "chimie"]})
+    assert result == 0.0
+
+
+def test_specialite_overlap_full_match() -> None:
+    result = _specialite_overlap(
+        {"specialites": ["svt", "maths"]}, {"specialites": ["svt", "maths"]}
+    )
+    assert result == 1.0
+
+
+def test_specialite_overlap_partial_match() -> None:
+    # profile: {"svt","maths"}, signals: {"svt","chimie","physique"} → 1/4
+    result = _specialite_overlap(
+        {"specialites": ["svt", "maths"]}, {"specialites": ["svt", "chimie", "physique"]}
+    )
+    assert abs(result - 1 / 4) < 1e-9
+
+
+def test_specialite_overlap_case_insensitive() -> None:
+    assert _specialite_overlap({"specialites": ["SVT"]}, {"specialites": ["svt"]}) == 1.0
+
+
+def test_specialite_overlap_none_values() -> None:
+    assert _specialite_overlap({"specialites": None}, {"specialites": ["svt"]}) == 0.0
+
+
 # ─── score_occupations ────────────────────────────────────────────────────────
 
 
@@ -252,12 +296,12 @@ def test_score_occupations_deterministic() -> None:
 
 
 def test_score_occupations_known_score() -> None:
-    """Verify exact score for fully known profile + profession."""
+    """Verify exact score for fully known profile + profession (v0.3 weights, no specialites)."""
     profile = {
         "passions": ["biologie"],
         "valeurs": ["utilité sociale"],
         "niveau": "terminale_generale",
-        "specialites": [],
+        "specialites": [],  # no specialites → specialite_overlap=0
         "has_bulletins": True,
         "bulletin_summary": {"average": 20.0},
     }
@@ -268,7 +312,33 @@ def test_score_occupations_known_score() -> None:
     }
     result = score_occupations(profile, ["occ_test"], [profession])
     occ = result[0]
-    # passion_overlap=1.0, valeur=1.0, niveau=1.0, bulletin=1.0 → 100
+    # passion=1.0*0.30=30, valeur=1.0*0.20=20, niveau=1.0*0.15=15, specialite=0.0*0.15=0, bulletin=1.0*0.20=20 → 85
+    assert occ.score == 85
+    assert occ.confidence_level == "high"
+
+
+def test_score_occupations_known_score_with_specialites() -> None:
+    """Full match on all 5 features → score = 100."""
+    profile = {
+        "passions": ["biologie"],
+        "valeurs": ["utilité sociale"],
+        "niveau": "terminale_generale",
+        "specialites": ["svt"],
+        "has_bulletins": True,
+        "bulletin_summary": {"average": 20.0},
+    }
+    profession = {
+        "occupation_id": "occ_test",
+        "signals_json": {
+            "passions": ["biologie"],
+            "valeurs": ["utilité sociale"],
+            "specialites": ["svt"],
+        },
+        "level_compatibility": ["terminale_generale"],
+    }
+    result = score_occupations(profile, ["occ_test"], [profession])
+    occ = result[0]
+    # passion=30, valeur=20, niveau=15, specialite=1.0*15=15, bulletin=20 → 100
     assert occ.score == 100
     assert occ.confidence_level == "high"
 
@@ -290,15 +360,16 @@ def test_score_occupations_no_overlap_gives_low_score() -> None:
     assert result[0].confidence_level == "low"
 
 
-def test_score_occupations_four_signals() -> None:
+def test_score_occupations_five_signals() -> None:
     result = score_occupations(FULL_PROFILE, ["occ_infirmier"], [PROFESSION_SIGNALS])
     signals = result[0].signals_contributifs
-    assert len(signals) == 4
+    assert len(signals) == 5
     keys = {s.signal for s in signals}
     assert keys == {
         "passion_overlap",
         "valeur_alignment",
         "niveau_compatibility",
+        "specialite_overlap",
         "bulletin_quality",
     }
 
@@ -337,7 +408,7 @@ def test_score_occupations_high_confidence() -> None:
 
 
 def test_model_version_bumped() -> None:
-    assert MODEL_VERSION == "0.2.0-statistical"
+    assert MODEL_VERSION == "0.3.0-statistical"
 
 
 def test_score_occupations_missing_occupation_id_in_professions_data_is_skipped() -> None:
