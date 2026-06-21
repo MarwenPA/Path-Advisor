@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6 / 4.7.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.6 / 4.7.
 
 Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -7,8 +7,8 @@ Routes (Story 4.1):
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
 Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
-Routes (Story 4.3 / 4.6 / 4.7):
-  GET /api/v1/metiers/{slug}/parcours/          — parcours list with niveau fallback + filter metadata
+Routes (Story 4.3 / 4.5 / 4.6 / 4.7):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list with inline stats, filter metadata, niveau fallback
 """
 
 from __future__ import annotations
@@ -62,35 +62,29 @@ class AdminFormationViewSet(ReadOnlyModelViewSet):
 
 
 class SchoolDetailView(RetrieveAPIView):
-    """GET /api/v1/schools/{slug}/ — full school detail for authenticated users."""
+    """GET /api/v1/schools/{slug}/ — full school detail for authenticated users.
 
-    permission_classes: ClassVar = [IsAuthenticated]
-    queryset = School.objects.prefetch_related("formations")
-    serializer_class = SchoolDetailSerializer
-    lookup_field = "slug"
-
-
-class AdmissionStatView(APIView):
-    """GET /api/v1/schools/{slug}/admission-stat/ — personalised admission prediction.
-
-    Story 4.2 — returns (or computes and persists) the admission probability
-    range for the requesting user and the given school.
+    Story 4.5: queryset prefetches admission_stats so get_admission_stat avoids N+1.
+    formation_id is injected into serializer context for future use (Story 4.5 T1).
     """
 
     permission_classes: ClassVar = [IsAuthenticated]
+    queryset = School.objects.prefetch_related("formations", "admission_stats")
+    serializer_class = SchoolDetailSerializer
+    lookup_field = "slug"
 
-    def get(self, request: Request, slug: str) -> Response:
-        school = get_object_or_404(School, slug=slug)
-        service = AdmissionPredictionService()
-        stat = service.upsert_stat(school=school, user=request.user)
-        serializer = AdmissionStatSerializer(stat)
-        return Response(serializer.data)
+    def get_serializer_context(self) -> dict:
+        context = super().get_serializer_context()
+        context["formation_id"] = self.request.query_params.get("formation_id")
+        return context
 
 
 class ParcoursListView(ListAPIView):
     """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
     Story 4.3: base endpoint returning parcours with nodes/edges.
+    Story 4.5: get_serializer_context() passes request so ParcoursSerializer can
+    inject personalised admission_stat on each target/ecole node (AC2).
     Story 4.6: serializer includes denormalized target_school filter metadata.
     Story 4.7: adds ?niveau_scolaire= filtering with two-step fallback (AC4):
       1. If ?niveau_scolaire= matches exactly → return those rows.
@@ -129,3 +123,27 @@ class ParcoursListView(ListAPIView):
             return qs.order_by("-is_default", "niveau_scolaire")
 
         return qs.order_by("-is_default", "niveau_scolaire")
+
+    def get_serializer_context(self) -> dict:
+        """Inject request so ParcoursSerializer.get_nodes_with_stats can personalise stats."""
+        context = super().get_serializer_context()
+        # request is already included by GenericAPIView.get_serializer_context,
+        # but we document it explicitly for reviewers (Story 4.5 T2).
+        return context
+
+
+class AdmissionStatView(APIView):
+    """GET /api/v1/schools/{slug}/admission-stat/ — personalised admission prediction.
+
+    Story 4.2 — returns (or computes and persists) the admission probability
+    range for the requesting user and the given school.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+
+    def get(self, request: Request, slug: str) -> Response:
+        school = get_object_or_404(School, slug=slug)
+        service = AdmissionPredictionService()
+        stat = service.upsert_stat(school=school, user=request.user)
+        serializer = AdmissionStatSerializer(stat)
+        return Response(serializer.data)

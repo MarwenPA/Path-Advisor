@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FicheEcole } from "../FicheEcole";
-import type { School } from "@/lib/api/schools";
+import type { School, AdmissionStat } from "@/lib/api/schools";
 
 const SCHOOL: School = {
   id: "abc",
@@ -31,6 +31,15 @@ const SCHOOL: School = {
       affelnet_open: true,
     },
   ],
+};
+
+const ADMISSION_STAT: AdmissionStat = {
+  min_proba: 30,
+  expected_proba: 55,
+  max_proba: 75,
+  label: "realiste",
+  context_line: "Tu as de bonnes chances d'être admis·e.",
+  action_lever: "Continue à maintenir tes résultats actuels.",
 };
 
 describe("FicheEcole", () => {
@@ -81,5 +90,32 @@ describe("FicheEcole", () => {
     expect(screen.getByText("lycee_pro")).toBeInTheDocument();
     expect(screen.getByText("Accès")).toBeInTheDocument();
     expect(screen.getByText("public")).toBeInTheDocument();
+  });
+
+  // ── Story 4.5 — admission stat block ────────────────────────────────────────
+
+  it("expanded shows CarteAdmission when admission_stat present", () => {
+    const schoolWithStat: School = { ...SCHOOL, admission_stat: ADMISSION_STAT };
+    render(<FicheEcole school={schoolWithStat} variant="expanded" />);
+    // The admission section heading is always shown in expanded variant
+    expect(screen.getByRole("region", { name: /statistique d'admission/i })).toBeInTheDocument();
+    // CarteAdmission renders the proba and label
+    expect(screen.getByText(/55 %/)).toBeInTheDocument();
+    expect(screen.getByText(/pari réaliste/i)).toBeInTheDocument();
+  });
+
+  it("expanded shows fallback text when admission_stat is null", () => {
+    const schoolNoStat: School = { ...SCHOOL, admission_stat: undefined };
+    render(<FicheEcole school={schoolNoStat} variant="expanded" />);
+    expect(screen.getByRole("region", { name: /statistique d'admission/i })).toBeInTheDocument();
+    expect(screen.getByText(/données d'admission non disponibles/i)).toBeInTheDocument();
+  });
+
+  it("card variant does NOT show admission stat section", () => {
+    const schoolWithStat: School = { ...SCHOOL, admission_stat: ADMISSION_STAT };
+    render(<FicheEcole school={schoolWithStat} variant="card" />);
+    expect(
+      screen.queryByRole("region", { name: /statistique d'admission/i }),
+    ).not.toBeInTheDocument();
   });
 });

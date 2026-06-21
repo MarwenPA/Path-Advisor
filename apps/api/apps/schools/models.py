@@ -1,4 +1,4 @@
-"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3 / 4.7.
+"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.7.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school

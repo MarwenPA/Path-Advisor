@@ -1,4 +1,11 @@
-// Parcours types — Story 4.3 / 4.6 / 4.7
+// Parcours types — Story 4.3 / 4.5 / 4.6 / 4.7
+
+export interface AdmissionStatInline {
+  expected_proba: number;
+  label: "audacieux" | "realiste" | "sur" | "estimation_indicative";
+  context_line?: string;
+  action_lever?: string | null;
+}
 
 export interface ParcoursNode {
   id: string;
@@ -8,6 +15,8 @@ export interface ParcoursNode {
   schoolId?: string;
   schoolSlug?: string;
   duration_label?: string;
+  /** Inline admission stat injected by the backend (Story 4.5 AC2). */
+  admission_stat?: AdmissionStatInline | null;
 }
 
 export interface ParcoursEdge {
@@ -16,16 +25,11 @@ export interface ParcoursEdge {
   weight?: number;
 }
 
-export interface AdmissionStatInline {
-  expected_proba: number;
-  label: "audacieux" | "realiste" | "sur" | "estimation_indicative";
-}
-
 /**
  * Parcours item returned by GET /api/v1/metiers/{slug}/parcours/
  *
- * Story 4.3 base fields + Story 4.6 target school metadata for client-side filtering
- * + Story 4.7 label and admission date fields.
+ * Story 4.3 base fields + Story 4.5 nodes_with_stats + Story 4.6 target school metadata
+ * for client-side filtering + Story 4.7 label and admission date fields.
  */
 export interface Parcours {
   id: string;
@@ -36,6 +40,7 @@ export interface Parcours {
   target_school_city: string | null;
   nodes: ParcoursNode[];
   edges: ParcoursEdge[];
+  nodes_with_stats?: ParcoursNode[];
   niveau_scolaire: string;
   is_default: boolean;
   // Story 4.7
