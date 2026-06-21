@@ -6,8 +6,10 @@ import { CarteAdmission } from "./CarteAdmission";
 
 interface FicheEcoleProps {
   school: School;
-  variant?: "card" | "expanded";
+  variant?: "card" | "expanded" | "compare";
   className?: string;
+  isSelected?: boolean;
+  onSelect?: (schoolId: string) => void;
 }
 
 function SelectivityStars({ index }: { index: number }) {
@@ -33,7 +35,45 @@ function FormationItem({ formation }: { formation: Formation }) {
   );
 }
 
-export function FicheEcole({ school, variant = "card", className }: FicheEcoleProps) {
+export function FicheEcole({
+  school,
+  variant = "card",
+  className,
+  isSelected,
+  onSelect,
+}: FicheEcoleProps) {
+  // compare variant: compact horizontal layout with checkbox
+  if (variant === "compare") {
+    return (
+      <article
+        aria-label={`Fiche de ${school.name}`}
+        className={cn("rounded-xl border bg-card", className)}
+      >
+        <label className="flex cursor-pointer items-start gap-3 rounded-xl p-3">
+          <input
+            type="checkbox"
+            checked={isSelected ?? false}
+            onChange={() => onSelect?.(school.id)}
+            aria-label={"Selectionner " + school.name + " pour comparer"}
+            className="mt-1"
+          />
+          <div className="flex-1">
+            <p className="font-medium">{school.name}</p>
+            <p className="text-xs text-muted-foreground">{school.city}</p>
+            <SelectivityStars index={school.selectivity_index} />
+            {school.tuition_min_eur !== undefined && school.tuition_max_eur !== undefined && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {school.tuition_min_eur === 0 && school.tuition_max_eur === 0
+                  ? "Gratuit"
+                  : `${school.tuition_min_eur}–${school.tuition_max_eur} €/an`}
+              </p>
+            )}
+          </div>
+        </label>
+      </article>
+    );
+  }
+
   return (
     <article
       aria-label={`Fiche de ${school.name}`}

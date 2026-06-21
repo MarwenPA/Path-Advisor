@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { FicheEcole } from "../FicheEcole";
 import type { School, AdmissionStat } from "@/lib/api/schools";
@@ -117,5 +117,33 @@ describe("FicheEcole", () => {
     expect(
       screen.queryByRole("region", { name: /statistique d'admission/i }),
     ).not.toBeInTheDocument();
+  });
+
+  // ── Story 4.10 — compare variant ────────────────────────────────────────────
+
+  it("compare variant renders checkbox with aria-label", () => {
+    render(<FicheEcole school={SCHOOL} variant="compare" />);
+    expect(
+      screen.getByRole("checkbox", {
+        name: /Selectionner Lycée Aéronautique Toulouse pour comparer/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("compare variant checkbox is checked when isSelected=true", () => {
+    render(<FicheEcole school={SCHOOL} variant="compare" isSelected={true} />);
+    expect(screen.getByRole("checkbox", { name: /Selectionner/i })).toBeChecked();
+  });
+
+  it("compare variant checkbox is unchecked by default", () => {
+    render(<FicheEcole school={SCHOOL} variant="compare" />);
+    expect(screen.getByRole("checkbox", { name: /Selectionner/i })).not.toBeChecked();
+  });
+
+  it("compare variant calls onSelect with school id when checkbox clicked", () => {
+    const onSelect = vi.fn();
+    render(<FicheEcole school={SCHOOL} variant="compare" onSelect={onSelect} />);
+    screen.getByRole("checkbox", { name: /Selectionner/i }).click();
+    expect(onSelect).toHaveBeenCalledWith("abc");
   });
 });
