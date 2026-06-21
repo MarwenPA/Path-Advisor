@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6 / 4.7.
 
 Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -7,8 +7,8 @@ Routes (Story 4.1):
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
 Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
-Routes (Story 4.3 / 4.6):
-  GET /api/v1/metiers/{slug}/parcours/          — parcours list for a profession with filter metadata
+Routes (Story 4.3 / 4.6 / 4.7):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list with niveau fallback + filter metadata
 """
 
 from __future__ import annotations
@@ -91,17 +91,20 @@ class ParcoursListView(ListAPIView):
     """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
     Story 4.3: base endpoint returning parcours with nodes/edges.
-    Story 4.6: serializer now includes denormalized target_school filter metadata
-    (tuition_max, selectivity, apprenticeship, internship) so the front-end can apply
-    client-side filtering without extra round-trips.
+    Story 4.6: serializer includes denormalized target_school filter metadata.
+    Story 4.7: adds ?niveau_scolaire= filtering with two-step fallback (AC4):
+      1. If ?niveau_scolaire= matches exactly → return those rows.
+      2. Else if terminale_generale parcours exist → fall back to them.
+      3. Else return all parcours for the profession (graceful degradation).
 
-    The queryset uses select_related('target_school') to avoid N+1 queries.
-    Returns 200 + empty list if profession not found (graceful degradation).
-    Supports optional ?niveau_scolaire= filter.
+    Returns 200 + empty list if profession not found.
+    Parcours lists are short — pagination is disabled to avoid cursor ordering issues.
     """
 
     serializer_class = ParcoursSerializer
     permission_classes: ClassVar = [IsAuthenticated]
+    # Disable global CursorPagination (ordering='-created' conflicts with our ordering).
+    pagination_class = None
 
     def get_queryset(self):
         slug = self.kwargs["slug"]
@@ -109,18 +112,20 @@ class ParcoursListView(ListAPIView):
         try:
             profession = Profession.objects.get(slug=slug)
         except Profession.DoesNotExist:
-            # Return empty queryset — caller gets 200 [] instead of 404 so the
-            # frontend can gracefully display the empty state (AC6).
             return Parcours.objects.none()
 
-        qs = (
-            Parcours.objects.filter(profession=profession)
-            .select_related("target_school")
-            .order_by("-is_default", "niveau_scolaire")
-        )
+        qs = Parcours.objects.filter(profession=profession).select_related("target_school")
 
-        niveau_scolaire = self.request.query_params.get("niveau_scolaire")
-        if niveau_scolaire:
-            qs = qs.filter(niveau_scolaire=niveau_scolaire)
+        niveau = self.request.query_params.get("niveau_scolaire", "")
+        if niveau:
+            exact = qs.filter(niveau_scolaire=niveau)
+            if exact.exists():
+                return exact.order_by("-is_default", "niveau_scolaire")
+            # Fallback to terminale_generale if no exact match
+            fallback = qs.filter(niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE)
+            if fallback.exists():
+                return fallback.order_by("-is_default")
+            # Last resort: return all
+            return qs.order_by("-is_default", "niveau_scolaire")
 
-        return qs
+        return qs.order_by("-is_default", "niveau_scolaire")
