@@ -130,57 +130,12 @@ class Formation(models.Model):
         return f"{self.name} @ {self.school.name}"
 
 
-class AdmissionStat(models.Model):
-    """Predicted admission probability for a school, optionally personalised.
-
-    Story 4.2 — fourchette personnalisée anti-humiliation.
-    A row with user=None represents the population baseline (no personalisation).
-    """
-
-    class Label(models.TextChoices):
-        AUDACIEUX = "audacieux", "Pari audacieux"
-        REALISTE = "realiste", "Pari réaliste"
-        SUR = "sur", "Valeur sûre"
-        ESTIMATION_INDICATIVE = "estimation_indicative", "Estimation indicative"
-
-    id = models.UUIDField(primary_key=True, default=uuid4)
-    school = models.ForeignKey(
-        School,
-        on_delete=models.CASCADE,
-        related_name="admission_stats",
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="admission_stats",
-        help_text="None = population baseline",
-    )
-    min_proba = models.IntegerField()
-    expected_proba = models.IntegerField()
-    max_proba = models.IntegerField()
-    label = models.CharField(max_length=30, choices=Label.choices)
-    context_line = models.CharField(max_length=300)
-    action_lever = models.CharField(max_length=300, blank=True)
-    previous_proba = models.IntegerField(null=True, blank=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = [("school", "user")]
-        verbose_name = "Admission Stat"
-        verbose_name_plural = "Admission Stats"
-
-    def __str__(self) -> str:
-        user_repr = str(self.user) if self.user else "baseline"
-        return f"{self.school.name} — {user_repr} ({self.expected_proba}%)"
-
-
 class Parcours(models.Model):
     """One path from a starting point to a target school for a given profession.
 
     Story 4.3 — graphe parcours par métier.
+    Story 4.6 — adds filter metadata (tuition_max, selectivity, apprenticeship, internship)
+    exposed via ParcoursSerializer for client-side filtering.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid4)
@@ -226,3 +181,50 @@ class Parcours(models.Model):
 
     def __str__(self) -> str:
         return f"Parcours({self.profession_id} → {self.target_school_id}, {self.niveau_scolaire})"
+
+
+class AdmissionStat(models.Model):
+    """Predicted admission probability for a school, optionally personalised.
+
+    Story 4.2 — fourchette personnalisée anti-humiliation.
+    A row with user=None represents the population baseline (no personalisation).
+    """
+
+    class Label(models.TextChoices):
+        AUDACIEUX = "audacieux", "Pari audacieux"
+        REALISTE = "realiste", "Pari réaliste"
+        SUR = "sur", "Valeur sûre"
+        ESTIMATION_INDICATIVE = "estimation_indicative", "Estimation indicative"
+
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="admission_stats",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="admission_stats",
+        help_text="None = population baseline",
+    )
+    min_proba = models.IntegerField()
+    expected_proba = models.IntegerField()
+    max_proba = models.IntegerField()
+    label = models.CharField(max_length=30, choices=Label.choices)
+    context_line = models.CharField(max_length=300)
+    action_lever = models.CharField(max_length=300, blank=True)
+    previous_proba = models.IntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [("school", "user")]
+        verbose_name = "Admission Stat"
+        verbose_name_plural = "Admission Stats"
+
+    def __str__(self) -> str:
+        user_repr = str(self.user) if self.user else "baseline"
+        return f"{self.school.name} — {user_repr} ({self.expected_proba}%)"

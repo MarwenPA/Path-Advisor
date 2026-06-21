@@ -1,4 +1,4 @@
-"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3 / 4.5."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.6."""
 
 from __future__ import annotations
 
@@ -176,18 +176,33 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
 
 
 class ParcoursSerializer(serializers.ModelSerializer):
-    """Serializer for Parcours — Story 4.3 graphe parcours par métier.
+    """Serializer for Parcours — Story 4.3 graphe parcours + Story 4.5 inline stats + Story 4.6 filter metadata.
 
-    Story 4.5: adds nodes_with_stats SerializerMethodField that enriches each
-    target/ecole node with an inline admission_stat dict when a matching
-    AdmissionStat row exists. Schools are batch-fetched with prefetch_related
-    to avoid N+1 queries (AC2).
+    Story 4.3: base fields (profession, target_school, nodes, edges, niveau_scolaire, is_default).
+    Story 4.5: adds nodes_with_stats SerializerMethodField that enriches each target/ecole node
+    with an inline admission_stat dict when a matching AdmissionStat row exists.
+    Schools are batch-fetched with prefetch_related to avoid N+1 queries (AC2).
+    Story 4.6: denormalized filter metadata (tuition_max, selectivity, apprenticeship, internship)
+    so the front-end can apply client-side filtering without extra round-trips.
     """
 
     target_school_name = serializers.SerializerMethodField()
     target_school_slug = serializers.SerializerMethodField()
     target_school_city = serializers.SerializerMethodField()
     nodes_with_stats = serializers.SerializerMethodField()
+    # Story 4.6 filter fields
+    target_school_tuition_max = serializers.IntegerField(
+        source="target_school.tuition_max_eur", read_only=True, allow_null=True
+    )
+    target_school_selectivity = serializers.IntegerField(
+        source="target_school.selectivity_index", read_only=True
+    )
+    target_school_apprenticeship = serializers.BooleanField(
+        source="target_school.apprenticeship", read_only=True
+    )
+    target_school_internship = serializers.BooleanField(
+        source="target_school.internship", read_only=True
+    )
 
     class Meta:
         model = Parcours
@@ -204,6 +219,11 @@ class ParcoursSerializer(serializers.ModelSerializer):
             "niveau_scolaire",
             "is_default",
             "created_at",
+            # Story 4.6 filter fields
+            "target_school_tuition_max",
+            "target_school_selectivity",
+            "target_school_apprenticeship",
+            "target_school_internship",
         ]
 
     def get_target_school_name(self, obj: Parcours) -> str:

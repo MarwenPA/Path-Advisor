@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.5 / 4.6.
 
 Routes (Story 4.1):
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -7,8 +7,8 @@ Routes (Story 4.1):
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
 Routes (Story 4.2):
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
-Routes (Story 4.3 / 4.5):
-  GET /api/v1/metiers/{slug}/parcours/          — list parcours for a profession (IsAuthenticated)
+Routes (Story 4.3 / 4.5 / 4.6):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list with inline stats and filter metadata
 """
 
 from __future__ import annotations
@@ -80,18 +80,21 @@ class SchoolDetailView(RetrieveAPIView):
 
 
 class ParcoursListView(ListAPIView):
-    """GET /api/v1/metiers/{slug}/parcours/
+    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
     Story 4.3: returns all Parcours for the given profession slug, ordered by
     is_default DESC then niveau_scolaire. Supports optional ?niveau_scolaire= filter.
     Returns 200 + empty list if profession not found (graceful degradation).
 
-    Story 4.5: overrides get_serializer_context() so ParcoursSerializer can access
-    the authenticated user and inject personalised admission_stat on each node (AC2).
+    Story 4.5: get_serializer_context() passes request so ParcoursSerializer can
+    inject personalised admission_stat on each target/ecole node (AC2).
+
+    Story 4.6: serializer also includes denormalized target_school filter metadata
+    (tuition_max, selectivity, apprenticeship, internship) for client-side filtering.
     """
 
     serializer_class = ParcoursSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes: ClassVar = [IsAuthenticated]
 
     def get_queryset(self):
         slug = self.kwargs["slug"]

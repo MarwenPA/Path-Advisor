@@ -177,7 +177,7 @@ def test_parcours_nodes_have_stats(
     student_client, school, admission_stat, profession, parcours_with_target
 ):
     """GET /api/v1/metiers/{slug}/parcours/ nodes_with_stats populated for target node."""
-    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours-list", kwargs={"slug": profession.slug})
     response = student_client.get(url)
     assert response.status_code == 200, response.content
     data = response.json()
@@ -204,7 +204,7 @@ def test_parcours_nodes_stat_null_when_no_stat(
     student_client, school, profession, parcours_with_target
 ):
     """Target node admission_stat is absent (not injected) when no AdmissionStat row."""
-    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours-list", kwargs={"slug": profession.slug})
     response = student_client.get(url)
     assert response.status_code == 200, response.content
     data = response.json()
@@ -221,6 +221,6 @@ def test_parcours_nodes_stat_null_when_no_stat(
 def test_parcours_list_unauthenticated(school, profession, parcours_with_target):
     """Unauthenticated request to parcours endpoint returns 401."""
     client = APIClient()
-    url = reverse("schools:metier-parcours", kwargs={"slug": profession.slug})
+    url = reverse("schools:metier-parcours-list", kwargs={"slug": profession.slug})
     response = client.get(url)
     assert response.status_code in (401, 403)
