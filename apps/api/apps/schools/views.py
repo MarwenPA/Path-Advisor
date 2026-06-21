@@ -1,12 +1,14 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.7.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.3 / 4.6 / 4.7.
 
-Routes:
-  GET /api/v1/admin/schools/                       — admin list (paginated 100/page)
-  GET /api/v1/admin/schools/{id}/                  — admin detail
-  GET /api/v1/admin/formations/                    — admin formations list
-  GET /api/v1/schools/{slug}/                      — public school detail (authenticated)
-  GET /api/v1/schools/{slug}/admission-stat/       — admission prediction for authenticated user
-  GET /api/v1/metiers/{slug}/parcours/             — parcours list for a profession (Story 4.7)
+Routes (Story 4.1):
+  GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
+  GET /api/v1/admin/schools/{id}/               — admin detail
+  GET /api/v1/admin/formations/                 — admin formations list
+  GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
+Routes (Story 4.2):
+  GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
+Routes (Story 4.3 / 4.6 / 4.7):
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list with niveau fallback + filter metadata
 """
 
 from __future__ import annotations
@@ -86,39 +88,44 @@ class AdmissionStatView(APIView):
 
 
 class ParcoursListView(ListAPIView):
-    """GET /api/v1/metiers/{slug}/parcours/ — list parcours for a profession.
+    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a profession.
 
-    Story 4.7 — returns parcours ordered by niveau match then is_default.
-    Accepts optional ?niveau_scolaire= query param.
-
-    Fallback logic (AC4):
+    Story 4.3: base endpoint returning parcours with nodes/edges.
+    Story 4.6: serializer includes denormalized target_school filter metadata.
+    Story 4.7: adds ?niveau_scolaire= filtering with two-step fallback (AC4):
       1. If ?niveau_scolaire= matches exactly → return those rows.
       2. Else if terminale_generale parcours exist → fall back to them.
-      3. Else return all parcours for the profession.
+      3. Else return all parcours for the profession (graceful degradation).
+
+    Returns 200 + empty list if profession not found.
+    Parcours lists are short — pagination is disabled to avoid cursor ordering issues.
     """
 
-    permission_classes: ClassVar = [IsAuthenticated]
     serializer_class = ParcoursSerializer
-    # Parcours lists are short — disable pagination to avoid cursor ordering issues.
+    permission_classes: ClassVar = [IsAuthenticated]
+    # Disable global CursorPagination (ordering='-created' conflicts with our ordering).
     pagination_class = None
 
     def get_queryset(self):
-        slug = self.kwargs.get("slug")
+        slug = self.kwargs["slug"]
+
         try:
             profession = Profession.objects.get(slug=slug)
         except Profession.DoesNotExist:
             return Parcours.objects.none()
 
-        niveau = self.request.query_params.get("niveau_scolaire", "")
         qs = Parcours.objects.filter(profession=profession).select_related("target_school")
 
+        niveau = self.request.query_params.get("niveau_scolaire", "")
         if niveau:
             exact = qs.filter(niveau_scolaire=niveau)
             if exact.exists():
                 return exact.order_by("-is_default", "niveau_scolaire")
+            # Fallback to terminale_generale if no exact match
             fallback = qs.filter(niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE)
             if fallback.exists():
                 return fallback.order_by("-is_default")
+            # Last resort: return all
             return qs.order_by("-is_default", "niveau_scolaire")
 
         return qs.order_by("-is_default", "niveau_scolaire")

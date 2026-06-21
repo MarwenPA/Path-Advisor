@@ -1,4 +1,4 @@
-"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.7."""
+"""Serializers for the Schools & Formations referential — Story 4.1 / 4.2 / 4.3 / 4.6 / 4.7."""
 
 from __future__ import annotations
 
@@ -137,42 +137,76 @@ class AdmissionStatSerializer(serializers.ModelSerializer):
 
 
 class ParcoursSerializer(serializers.ModelSerializer):
-    """Serializer for Parcours — Story 4.7 parcours list per profession."""
+    """Serializer for Parcours — Story 4.3 graphe + Story 4.6 filter metadata + Story 4.7 dates.
 
-    target_school_slug = serializers.SlugRelatedField(
-        source="target_school",
-        slug_field="slug",
-        read_only=True,
-        allow_null=True,
-    )
+    Story 4.3: base fields (profession, target_school, nodes, edges, niveau_scolaire, is_default).
+    Story 4.6: denormalized filter metadata (tuition_max, selectivity, apprenticeship, internship)
+    so the front-end can apply client-side filtering without extra round-trips.
+    Story 4.7: label field, target_school_affelnet_dates, target_school_parcoursup_dates for
+    admission date display per niveau scolaire.
+    """
+
     target_school_name = serializers.SerializerMethodField()
+    target_school_slug = serializers.SerializerMethodField()
+    target_school_city = serializers.SerializerMethodField()
+    # Story 4.7 — admission date fields
     target_school_affelnet_dates = serializers.SerializerMethodField()
     target_school_parcoursup_dates = serializers.SerializerMethodField()
+    # Story 4.6 filter fields
+    target_school_tuition_max = serializers.SerializerMethodField()
+    target_school_selectivity = serializers.SerializerMethodField()
+    target_school_apprenticeship = serializers.SerializerMethodField()
+    target_school_internship = serializers.SerializerMethodField()
 
     class Meta:
         model = Parcours
-        fields = (
+        fields = [
             "id",
             "profession",
-            "target_school_slug",
+            "target_school",
             "target_school_name",
-            "niveau_scolaire",
-            "is_default",
+            "target_school_slug",
+            "target_school_city",
             "nodes",
             "edges",
+            "niveau_scolaire",
+            "is_default",
             "label",
-            "target_school_affelnet_dates",
-            "target_school_parcoursup_dates",
             "created_at",
             "updated_at",
-        )
-        read_only_fields = fields
+            # Story 4.7 admission dates
+            "target_school_affelnet_dates",
+            "target_school_parcoursup_dates",
+            # Story 4.6 filter fields
+            "target_school_tuition_max",
+            "target_school_selectivity",
+            "target_school_apprenticeship",
+            "target_school_internship",
+        ]
 
     def get_target_school_name(self, obj: Parcours) -> str | None:
         return obj.target_school.name if obj.target_school else None
+
+    def get_target_school_slug(self, obj: Parcours) -> str | None:
+        return obj.target_school.slug if obj.target_school else None
+
+    def get_target_school_city(self, obj: Parcours) -> str | None:
+        return obj.target_school.city if obj.target_school else None
 
     def get_target_school_affelnet_dates(self, obj: Parcours) -> dict | None:
         return obj.target_school.affelnet_dates if obj.target_school else None
 
     def get_target_school_parcoursup_dates(self, obj: Parcours) -> dict | None:
         return obj.target_school.parcoursup_dates if obj.target_school else None
+
+    def get_target_school_tuition_max(self, obj: Parcours) -> int | None:
+        return obj.target_school.tuition_max_eur if obj.target_school else None
+
+    def get_target_school_selectivity(self, obj: Parcours) -> int | None:
+        return obj.target_school.selectivity_index if obj.target_school else None
+
+    def get_target_school_apprenticeship(self, obj: Parcours) -> bool | None:
+        return obj.target_school.apprenticeship if obj.target_school else None
+
+    def get_target_school_internship(self, obj: Parcours) -> bool | None:
+        return obj.target_school.internship if obj.target_school else None

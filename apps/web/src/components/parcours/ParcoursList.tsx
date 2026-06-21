@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { Parcours } from "@/lib/api/parcours";
 
-// ─── Niveau badge mapping ──────────────────────────────────────────────────────
+import { GraphParcoursPlaceholder } from "./GraphParcoursPlaceholder";
+import type { Parcours } from "./types";
+
+// ─── Niveau badge mapping (Story 4.7) ─────────────────────────────────────────
 
 export const NIVEAU_BADGE: Record<string, string> = {
   troisieme_bac_pro: "Bac Pro",
@@ -16,7 +18,7 @@ export const NIVEAU_BADGE: Record<string, string> = {
   autre: "Autre",
 };
 
-// ─── Admission dates display ───────────────────────────────────────────────────
+// ─── Admission dates display (Story 4.7) ──────────────────────────────────────
 
 function AdmissionDates({
   affelnetDates,
@@ -46,141 +48,157 @@ function AdmissionDates({
   );
 }
 
-// ─── Single parcours card ──────────────────────────────────────────────────────
-
-function ParcoursCard({ parcours }: { parcours: Parcours }) {
-  const badgeLabel = NIVEAU_BADGE[parcours.niveau_scolaire] ?? parcours.niveau_scolaire;
-
-  return (
-    <div className="rounded-lg border bg-card p-4" data-testid={`parcours-card-${parcours.id}`}>
-      {/* Header row: label + badge */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium leading-tight">
-          {parcours.label || parcours.target_school_name || "Parcours"}
-        </span>
-        {parcours.niveau_scolaire && (
-          <span
-            className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
-            data-testid={`niveau-badge-${parcours.id}`}
-          >
-            {badgeLabel}
-          </span>
-        )}
-      </div>
-
-      {/* Target school */}
-      {parcours.target_school_name && (
-        <p className="mt-1 text-xs text-muted-foreground">
-          Objectif : {parcours.target_school_name}
-        </p>
-      )}
-
-      {/* Admission dates */}
-      <AdmissionDates
-        affelnetDates={parcours.target_school_affelnet_dates}
-        parcoursupDates={parcours.target_school_parcoursup_dates}
-        niveauScolaire={parcours.niveau_scolaire}
-      />
-
-      {/* Pathway steps summary */}
-      {parcours.nodes.length > 0 && (
-        <ol
-          className="mt-3 space-y-1"
-          aria-label={`Étapes du parcours ${parcours.label || "principal"}`}
-        >
-          {parcours.nodes.map((node, index) => (
-            <li
-              key={node.id}
-              className="flex items-center gap-2 text-xs text-muted-foreground"
-              data-testid={`parcours-node-${node.id}`}
-            >
-              <span
-                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold"
-                aria-hidden
-              >
-                {index + 1}
-              </span>
-              <span>{node.label}</span>
-            </li>
-          ))}
-        </ol>
-      )}
-    </div>
-  );
-}
-
 // ─── ParcoursList ──────────────────────────────────────────────────────────────
 
 export interface ParcoursListProps {
   parcours: Parcours[];
+  metiersSlug: string;
   /** Optional: profession name for the heading */
   professionName?: string;
 }
 
-export function ParcoursList({ parcours, professionName }: ParcoursListProps) {
+export function ParcoursList({
+  parcours,
+  metiersSlug: _metiersSlug,
+  professionName,
+}: ParcoursListProps) {
   const [showAlternatives, setShowAlternatives] = useState(false);
 
   if (parcours.length === 0) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="parcours-empty">
-        Aucun parcours disponible pour ce métier.
+        Aucun parcours disponible pour ce métier pour l&apos;instant.
       </p>
     );
   }
 
-  const [defaultParcours, ...alternatives] = parcours;
+  // Find default parcours (is_default=true) or fall back to first item.
+  const defaultIndex = parcours.findIndex((p) => p.is_default);
+  const effectiveDefaultIndex = defaultIndex >= 0 ? defaultIndex : 0;
+  const defaultParcours = parcours[effectiveDefaultIndex];
+  const alternatives = parcours.filter((_, i) => i !== effectiveDefaultIndex);
+  const altCount = alternatives.length;
+
+  // Collect school nodes for the school grid (nodes with a schoolSlug).
+  const schoolNodes = defaultParcours.nodes.filter((n) => n.schoolSlug);
+
+  const defaultBadgeLabel =
+    NIVEAU_BADGE[defaultParcours.niveau_scolaire] ?? defaultParcours.niveau_scolaire;
 
   return (
-    <div className="space-y-4" data-testid="parcours-list">
+    <section aria-label="Parcours disponibles" data-testid="parcours-list">
       {professionName && (
-        <h2 className="text-base font-semibold">Parcours pour {professionName}</h2>
+        <h2 className="mb-3 text-base font-semibold">Parcours pour {professionName}</h2>
       )}
+      {!professionName && <h2 className="mb-3 text-lg font-semibold">Parcours vers ce métier</h2>}
 
-      {/* Default / recommended parcours */}
-      <ParcoursCard parcours={defaultParcours} />
+      {/* Default parcours */}
+      <div
+        className="mb-4 rounded-lg border p-4"
+        data-testid={`parcours-card-${defaultParcours.id}`}
+      >
+        {/* Header: label/school + niveau badge */}
+        <div className="mb-1 flex items-start justify-between gap-2">
+          <p className="font-medium">
+            {defaultParcours.label ||
+              defaultParcours.target_school_name ||
+              defaultParcours.target_school}
+          </p>
+          {defaultParcours.niveau_scolaire && (
+            <span
+              className="shrink-0 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
+              data-testid={`niveau-badge-${defaultParcours.id}`}
+            >
+              {defaultBadgeLabel}
+            </span>
+          )}
+        </div>
 
-      {/* Alternatives — collapsed by default */}
-      {alternatives.length > 0 && (
-        <div>
+        {defaultParcours.target_school_city && (
+          <p className="text-xs text-muted-foreground">{defaultParcours.target_school_city}</p>
+        )}
+
+        {/* Admission dates */}
+        <AdmissionDates
+          affelnetDates={defaultParcours.target_school_affelnet_dates}
+          parcoursupDates={defaultParcours.target_school_parcoursup_dates}
+          niveauScolaire={defaultParcours.niveau_scolaire}
+        />
+
+        {/* Graph placeholder — TODO(story-4-9): replace with GraphParcours */}
+        <div className="mt-3">
+          <GraphParcoursPlaceholder nodes={defaultParcours.nodes} />
+        </div>
+
+        {/* School grid: cards for each node with a schoolSlug */}
+        {schoolNodes.length > 0 && (
+          <div className="mt-4">
+            <h3 className="mb-2 text-sm font-semibold">Établissements sur ce parcours</h3>
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {schoolNodes.map((node) => (
+                <li key={node.id}>
+                  <a
+                    href={`/schools/${node.schoolSlug}`}
+                    className="block rounded border p-3 text-sm transition-colors hover:bg-accent"
+                    aria-label={`Voir la fiche de ${node.label}`}
+                  >
+                    <span className="font-medium">{node.label}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Alternatives toggle button */}
+      {altCount > 0 && (
+        <div className="mt-2">
           <button
             type="button"
-            className="flex items-center gap-1 text-sm text-primary underline underline-offset-2"
             onClick={() => setShowAlternatives((v) => !v)}
+            className="flex items-center gap-1 text-sm font-medium text-primary underline-offset-2 hover:underline"
             aria-expanded={showAlternatives}
             data-testid="toggle-alternatives-btn"
           >
             {showAlternatives
               ? "Masquer les autres chemins"
-              : `Voir d'autres chemins (${alternatives.length})`}
+              : `Voir d'autres chemins (${altCount})`}
           </button>
-
-          {showAlternatives && (
-            <div className="mt-3 space-y-3" data-testid="alternatives-list">
-              {alternatives.map((p) => (
-                <div key={p.id} className="flex flex-col gap-1">
-                  {/* Badge visible even in alternatives list header */}
-                  <div className="flex items-center gap-2">
-                    {p.niveau_scolaire && (
-                      <span
-                        className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
-                        data-testid={`alt-badge-${p.id}`}
-                      >
-                        {NIVEAU_BADGE[p.niveau_scolaire] ?? p.niveau_scolaire}
-                      </span>
-                    )}
-                    {p.is_default && (
-                      <span className="text-xs text-muted-foreground">
-                        (recommandé pour ce niveau)
-                      </span>
-                    )}
-                  </div>
-                  <ParcoursCard parcours={p} />
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
-    </div>
+
+      {/* Alternative parcours list */}
+      {showAlternatives && altCount > 0 && (
+        <ul className="mt-3 space-y-3" data-testid="alternatives-list">
+          {alternatives.map((p) => (
+            <li key={p.id} className="rounded-lg border p-4" data-testid={`parcours-card-${p.id}`}>
+              {/* Badge + label */}
+              <div className="mb-1 flex items-center gap-2">
+                {p.niveau_scolaire && (
+                  <span
+                    className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700"
+                    data-testid={`alt-badge-${p.id}`}
+                  >
+                    {NIVEAU_BADGE[p.niveau_scolaire] ?? p.niveau_scolaire}
+                  </span>
+                )}
+                {p.is_default && (
+                  <span className="text-xs text-muted-foreground">(recommandé pour ce niveau)</span>
+                )}
+              </div>
+              <p className="font-medium">{p.label || p.target_school_name || p.target_school}</p>
+              {p.target_school_city && (
+                <p className="text-xs text-muted-foreground">{p.target_school_city}</p>
+              )}
+              <p className="mt-1 text-sm text-muted-foreground">{p.nodes.length} étapes</p>
+              <div className="mt-3">
+                <GraphParcoursPlaceholder nodes={p.nodes} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

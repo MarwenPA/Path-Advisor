@@ -1,10 +1,12 @@
-"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.7.
+"""Schools & Formations referential models — Story 4.1 / 4.2 / 4.3 / 4.7.
 
 `School` holds the curated catalogue of 100+ French schools used by the
 parcours engine (Epic 4). `Formation` links a training program to a school
 and optionally to target professions. `AdmissionStat` stores the predicted
-admission probability range for a (school, user) pair. `Parcours` holds
-the pathway graph for a given profession and niveau scolaire.
+admission probability range for a (school, user) pair (Story 4.2).
+`Parcours` holds the pathway graph for a given profession and niveau scolaire
+(Story 4.3 base, Story 4.7 adds NiveauScolaire enum, label, nullable school,
+partial unique constraint for is_default).
 
 Data classification: public reference data, no PHI.
 RLS: read-only for authenticated users; full CRUD for admins.
@@ -76,6 +78,13 @@ class School(models.Model):
         help_text='{"open": "2026-01-20", "close": "2026-03-10"}',
     )
     official_url = models.URLField(blank=True)
+    # Story 4.3 additions
+    school_type = models.CharField(
+        max_length=80,
+        blank=True,
+        help_text="e.g. IFSI, IUT, Lycée pro, Université",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -172,13 +181,12 @@ class AdmissionStat(models.Model):
 class Parcours(models.Model):
     """Pathway graph for a profession, tailored to a student's niveau scolaire.
 
-    Story 4.7 — Adaptation graphe par niveau scolaire.
-    Each Parcours holds a list of nodes and edges that describe the route
-    from a student's current level to a target school/profession.
-
-    `is_default=True` means this parcours is the recommended one for the
-    (profession, niveau_scolaire) pair. A partial unique index ensures at
-    most one default per pair (enforced in DB for PostgreSQL).
+    Story 4.3 — base model (profession, target_school, nodes, edges, niveau_scolaire, is_default).
+    Story 4.6 — serializer exposes denormalized filter metadata (tuition_max, selectivity,
+    apprenticeship, internship) for client-side filtering.
+    Story 4.7 — adds NiveauScolaire enum choices, label field, nullable target_school,
+    updated_at, and a partial unique constraint (at most one is_default=True per
+    profession+niveau_scolaire pair).
     """
 
     class NiveauScolaire(models.TextChoices):
@@ -201,22 +209,22 @@ class Parcours(models.Model):
         blank=True,
         related_name="parcours",
     )
-    niveau_scolaire = models.CharField(
-        max_length=30,
-        choices=NiveauScolaire.choices,
-        default=NiveauScolaire.TERMINALE_GENERALE,
-    )
-    is_default = models.BooleanField(
-        default=False,
-        help_text="True = recommended parcours for this (profession, niveau_scolaire) pair.",
-    )
     nodes = models.JSONField(
         default=list,
-        help_text='[{"id": "n1", "label": "Bac Pro", "type": "diplome", "schoolSlug": "..."}]',
+        help_text="List of {id, label, type, schoolId?, schoolSlug?}",
     )
     edges = models.JSONField(
         default=list,
-        help_text='[{"source": "n1", "target": "n2", "weight": 1}]',
+        help_text="List of {source, target, weight?}",
+    )
+    niveau_scolaire = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g. troisieme_bac_pro, terminale_generale — empty = all levels",
+    )
+    is_default = models.BooleanField(
+        default=False,
+        help_text="If True, this parcours is shown first for its (profession, niveau_scolaire) pair.",
     )
     label = models.CharField(
         max_length=200,

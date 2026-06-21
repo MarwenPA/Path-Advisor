@@ -1,0 +1,136 @@
+[
+  {
+    "school_slug": "ifsi-paris",
+    "school_name": "IFSI Paris — Institut de Formation en Soins Infirmiers",
+    "school_city": "Paris",
+    "school_type": "IFSI",
+    "profession_slug": "infirmier-ssr",
+    "niveau_scolaire": "lycee_1ere_tle_general",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale générale", "type": "start"},
+      {"id": "node1", "label": "PASS Médecine (Paris)", "type": "intermediate", "schoolSlug": "universite-paris-cite"},
+      {"id": "target", "label": "IFSI Paris", "type": "target", "schoolSlug": "ifsi-paris"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 2},
+      {"source": "node1", "target": "target", "weight": 3}
+    ]
+  },
+  {
+    "school_slug": "universite-paris-cite",
+    "school_name": "Université Paris Cité",
+    "school_city": "Paris",
+    "school_type": "Université",
+    "profession_slug": "infirmier-ssr",
+    "niveau_scolaire": "lycee_1ere_tle_techno",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale technologique", "type": "start"},
+      {"id": "node1", "label": "BTS SP3S", "type": "intermediate"},
+      {"id": "target", "label": "Université Paris Cité — L1 Médecine", "type": "target", "schoolSlug": "universite-paris-cite"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 1},
+      {"source": "node1", "target": "target", "weight": 2}
+    ]
+  },
+  {
+    "school_slug": "lycee-pro-aviation",
+    "school_name": "Lycée professionnel aéronautique Georges Guynemer",
+    "school_city": "Toulouse",
+    "school_type": "Lycée professionnel",
+    "profession_slug": "technicien-aeronautique",
+    "niveau_scolaire": "lycee_1ere_tle_general",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale générale", "type": "start"},
+      {"id": "node1", "label": "Bac pro Aéronautique", "type": "intermediate", "schoolSlug": "lycee-pro-aviation"},
+      {"id": "node2", "label": "BTS Aéronautique", "type": "intermediate"},
+      {"id": "target", "label": "Emploi technicien avionique", "type": "target"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 1},
+      {"source": "node1", "target": "node2", "weight": 2},
+      {"source": "node2", "target": "target", "weight": 3}
+    ]
+  },
+  {
+    "school_slug": "iut-bordeaux-info",
+    "school_name": "IUT Bordeaux — Département Informatique",
+    "school_city": "Bordeaux",
+    "school_type": "IUT",
+    "profession_slug": "developpeur-web",
+    "niveau_scolaire": "lycee_1ere_tle_general",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale générale (NSI)", "type": "start"},
+      {"id": "node1", "label": "BUT Informatique (IUT Bordeaux)", "type": "intermediate", "schoolSlug": "iut-bordeaux-info"},
+      {"id": "node2", "label": "Alternance développeur", "type": "intermediate"},
+      {"id": "target", "label": "Développeur web junior", "type": "target"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 1},
+      {"source": "node1", "target": "node2", "weight": 3},
+      {"source": "node2", "target": "target", "weight": 1}
+    ]
+  },
+  {
+    "school_slug": "cfa-cuisine-lyon",
+    "school_name": "CFA des métiers de la restauration — Lyon",
+    "school_city": "Lyon",
+    "school_type": "CFA",
+    "profession_slug": "cuisinier",
+    "niveau_scolaire": "college_3eme",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "3ème", "type": "start"},
+      {"id": "node1", "label": "CAP Cuisine (CFA Lyon)", "type": "intermediate", "schoolSlug": "cfa-cuisine-lyon"},
+      {"id": "node2", "label": "Bac pro Cuisine", "type": "intermediate"},
+      {"id": "target", "label": "Cuisinier·ère", "type": "target"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 2},
+      {"source": "node1", "target": "node2", "weight": 2},
+      {"source": "node2", "target": "target", "weight": 1}
+    ]
+  },
+  {
+    "school_slug": "bts-cuisine-marseille",
+    "school_name": "Lycée hôtelier de Marseille",
+    "school_city": "Marseille",
+    "school_type": "Lycée hôtelier",
+    "profession_slug": "cuisinier",
+    "niveau_scolaire": "lycee_1ere_tle_general",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale", "type": "start"},
+      {"id": "node1", "label": "BTS Management Hôtellerie-Restauration", "type": "intermediate", "schoolSlug": "bts-cuisine-marseille"},
+      {"id": "target", "label": "Chef de partie / Cuisinier", "type": "target"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 2},
+      {"source": "node1", "target": "target", "weight": 1}
+    ]
+  },
+  {
+    "school_slug": "esc-nantes",
+    "school_name": "Audencia Business School",
+    "school_city": "Nantes",
+    "school_type": "École de commerce",
+    "profession_slug": "commercial",
+    "niveau_scolaire": "lycee_1ere_tle_general",
+    "is_default": true,
+    "nodes": [
+      {"id": "start", "label": "Terminale", "type": "start"},
+      {"id": "node1", "label": "BTS NDRC (Négociation et Digitalisation de la Relation Client)", "type": "intermediate"},
+      {"id": "node2", "label": "Licence Pro Commerce", "type": "intermediate", "schoolSlug": "esc-nantes"},
+      {"id": "target", "label": "Commercial·e junior", "type": "target"}
+    ],
+    "edges": [
+      {"source": "start", "target": "node1", "weight": 2},
+      {"source": "node1", "target": "node2", "weight": 1},
+      {"source": "node2", "target": "target", "weight": 1}
+    ]
+  }
+]
