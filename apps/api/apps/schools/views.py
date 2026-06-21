@@ -1,4 +1,4 @@
-"""Schools & Formations referential API views — Story 4.1 / 4.2.
+"""Schools & Formations referential API views — Story 4.1 / 4.2 / 4.6.
 
 Routes:
   GET /api/v1/admin/schools/                    — admin list (paginated 100/page)
@@ -6,6 +6,7 @@ Routes:
   GET /api/v1/admin/formations/                 — admin formations list
   GET /api/v1/schools/{slug}/                   — public school detail (authenticated)
   GET /api/v1/schools/{slug}/admission-stat/    — admission prediction for authenticated user
+  GET /api/v1/metiers/{slug}/parcours/          — parcours list for a given metier (Story 4.6)
 """
 
 from __future__ import annotations
@@ -22,10 +23,12 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
-from apps.schools.models import Formation, School
+from apps.professions.models import Profession
+from apps.schools.models import Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
+    ParcoursSerializer,
     SchoolAdminSerializer,
     SchoolDetailSerializer,
 )
@@ -79,4 +82,27 @@ class AdmissionStatView(APIView):
         service = AdmissionPredictionService()
         stat = service.upsert_stat(school=school, user=request.user)
         serializer = AdmissionStatSerializer(stat)
+        return Response(serializer.data)
+
+
+class ParcoursListView(APIView):
+    """GET /api/v1/metiers/{slug}/parcours/ — parcours list for a metier.
+
+    Story 4.6 — returns all Parcours linked to the given profession, with
+    denormalized target_school metadata so the front-end can apply client-side
+    filters (cost, selectivity, mode) without extra round-trips.
+
+    The queryset uses select_related('target_school') to avoid N+1 queries.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+
+    def get(self, request: Request, slug: str) -> Response:
+        profession = get_object_or_404(Profession, slug=slug, is_active=True)
+        queryset = (
+            Parcours.objects.filter(profession=profession)
+            .select_related("target_school")
+            .order_by("created_at")
+        )
+        serializer = ParcoursSerializer(queryset, many=True)
         return Response(serializer.data)

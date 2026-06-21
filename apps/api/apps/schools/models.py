@@ -121,6 +121,46 @@ class Formation(models.Model):
         return f"{self.name} @ {self.school.name}"
 
 
+class Parcours(models.Model):
+    """One curated pathway (parcours) from a starting point to a target school.
+
+    Story 4.6 — parcours graph with school metadata used for filtering.
+    A Parcours aggregates an ordered sequence of nodes + edges leading to a
+    target school; it is linked to a profession via target_school's formations.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    profession = models.ForeignKey(
+        "professions.Profession",
+        on_delete=models.CASCADE,
+        related_name="parcours",
+        null=True,
+        blank=True,
+    )
+    target_school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="parcours",
+    )
+    # Serialised graph — nodes and edges stored as JSON for simplicity (MVP)
+    nodes = models.JSONField(default=list, help_text="List of ParcoursNode dicts")
+    edges = models.JSONField(default=list, help_text="List of ParcoursEdge dicts")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Parcours"
+        verbose_name_plural = "Parcours"
+        indexes = [
+            models.Index(fields=["profession"]),
+            models.Index(fields=["target_school"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"Parcours → {self.target_school.name}"
+
+
 class AdmissionStat(models.Model):
     """Predicted admission probability for a school, optionally personalised.
 
