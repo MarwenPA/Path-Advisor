@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { BookOpen, Heart, Star, Zap } from "lucide-react";
 
+import { BulletinsAddSheet } from "@/components/features/bulletins/bulletins-add-sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { SignalContributif } from "@/lib/api/recommendations";
@@ -51,6 +53,38 @@ export interface SignauxDrawerProps {
   onOpenChange: (open: boolean) => void;
   metiersName: string;
   signals: SignalContributif[];
+  /** Story 3.10: show factual context + bulletin CTA when score is indicative. */
+  confidenceLevel?: "low" | "medium" | "high";
+}
+
+// ─── Signal list content ──────────────────────────────────────────────────────
+
+// ─── Incomplete-profile context block (Story 3.10, AC2) ──────────────────────
+
+interface IncompleteProfileContextProps {
+  onAddBulletins: () => void;
+}
+
+function IncompleteProfileContext({ onAddBulletins }: IncompleteProfileContextProps) {
+  return (
+    <aside
+      aria-label="Précision du score"
+      className="rounded-lg border border-border bg-bg-2 px-4 py-3 text-body-sm text-text-muted"
+      data-testid="incomplete-profile-context"
+    >
+      <p>
+        Avec tes bulletins, on pourrait préciser ton score à ±5 pts près au lieu de ±15
+        actuellement.
+      </p>
+      <button
+        type="button"
+        onClick={onAddBulletins}
+        className="mt-2 text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        Ajouter mes bulletins
+      </button>
+    </aside>
+  );
 }
 
 // ─── Signal list content ──────────────────────────────────────────────────────
@@ -58,7 +92,11 @@ export interface SignauxDrawerProps {
 function SignauxContent({
   metiersName,
   signals,
-}: Pick<SignauxDrawerProps, "metiersName" | "signals">) {
+  confidenceLevel,
+  onAddBulletins,
+}: Pick<SignauxDrawerProps, "metiersName" | "signals" | "confidenceLevel"> & {
+  onAddBulletins: () => void;
+}) {
   const sorted = [...signals].sort((a, b) => b.contribution - a.contribution);
 
   return (
@@ -100,19 +138,21 @@ function SignauxContent({
         </ul>
       )}
 
+      {confidenceLevel === "low" && <IncompleteProfileContext onAddBulletins={onAddBulletins} />}
+
       <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
-        <a
+        <Link
           href="/revue-humaine"
           className="text-body-sm text-brand underline-offset-2 hover:underline"
         >
           Demander une revue humaine
-        </a>
-        <a
+        </Link>
+        <Link
           href="/methodologie"
           className="text-body-sm text-text-muted underline-offset-2 hover:underline"
         >
           Comment ça marche
-        </a>
+        </Link>
       </div>
     </div>
   );
@@ -120,37 +160,65 @@ function SignauxContent({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function SignauxDrawer({ open, onOpenChange, metiersName, signals }: SignauxDrawerProps) {
+export function SignauxDrawer({
+  open,
+  onOpenChange,
+  metiersName,
+  signals,
+  confidenceLevel,
+}: SignauxDrawerProps) {
   const isMobile = useIsMobile();
+  const [bulletinsSheetOpen, setBulletinsSheetOpen] = React.useState(false);
   const title = "Pourquoi ce métier ?";
 
-  const content = <SignauxContent metiersName={metiersName} signals={signals} />;
+  const content = (
+    <SignauxContent
+      metiersName={metiersName}
+      signals={signals}
+      confidenceLevel={confidenceLevel}
+      onAddBulletins={() => setBulletinsSheetOpen(true)}
+    />
+  );
+
+  const bulletinsSheet = (
+    <BulletinsAddSheet
+      open={bulletinsSheetOpen}
+      onClose={() => setBulletinsSheetOpen(false)}
+      onSuccess={() => setBulletinsSheetOpen(false)}
+    />
+  );
 
   if (isMobile) {
     return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent
-          side="bottom"
-          className="max-h-[90dvh] overflow-y-auto rounded-t-xl px-6 py-6"
-        >
-          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
-          <SheetHeader className="mb-4">
-            <SheetTitle>{title}</SheetTitle>
-          </SheetHeader>
-          {content}
-        </SheetContent>
-      </Sheet>
+      <>
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent
+            side="bottom"
+            className="max-h-[90dvh] overflow-y-auto rounded-t-xl px-6 py-6"
+          >
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
+            <SheetHeader className="mb-4">
+              <SheetTitle>{title}</SheetTitle>
+            </SheetHeader>
+            {content}
+          </SheetContent>
+        </Sheet>
+        {bulletinsSheet}
+      </>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          {content}
+        </DialogContent>
+      </Dialog>
+      {bulletinsSheet}
+    </>
   );
 }

@@ -34,14 +34,16 @@ vi.mock("@/components/professions/SignauxDrawer", () => ({
     open,
     metiersName,
     signals,
+    confidenceLevel,
   }: {
     open: boolean;
     onOpenChange: (v: boolean) => void;
     metiersName: string;
     signals: SignalContributif[];
+    confidenceLevel?: string;
   }) =>
     open ? (
-      <div data-testid="signaux-drawer">
+      <div data-testid="signaux-drawer" data-confidence={confidenceLevel}>
         {metiersName} — {signals.length} signaux
       </div>
     ) : null,
@@ -125,5 +127,37 @@ describe("FicheMetierClient", () => {
     );
     // FicheMetier is mocked — just verify no crash
     expect(screen.getByTestId("fiche-metier")).toBeInTheDocument();
+  });
+
+  // ── Story 3.10: drawerConfidenceLevel propagated to SignauxDrawer ─────────
+
+  it("passes drawerConfidenceLevel=low to SignauxDrawer when chip clicked", () => {
+    render(
+      <FicheMetierClient
+        profession={PROFESSION}
+        signalsContributifs={SIGNALS}
+        drawerConfidenceLevel="low"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("signal-click-btn"));
+    expect(screen.getByTestId("signaux-drawer")).toHaveAttribute("data-confidence", "low");
+  });
+
+  it("passes drawerConfidenceLevel=medium to SignauxDrawer when chip clicked", () => {
+    render(
+      <FicheMetierClient
+        profession={PROFESSION}
+        signalsContributifs={SIGNALS}
+        drawerConfidenceLevel="medium"
+      />,
+    );
+    fireEvent.click(screen.getByTestId("signal-click-btn"));
+    expect(screen.getByTestId("signaux-drawer")).toHaveAttribute("data-confidence", "medium");
+  });
+
+  it("does not pass confidenceLevel to SignauxDrawer when drawerConfidenceLevel is absent", () => {
+    render(<FicheMetierClient profession={PROFESSION} signalsContributifs={SIGNALS} />);
+    fireEvent.click(screen.getByTestId("signal-click-btn"));
+    expect(screen.getByTestId("signaux-drawer")).not.toHaveAttribute("data-confidence");
   });
 });
