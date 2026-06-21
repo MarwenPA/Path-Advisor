@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import type { AdmissionStat } from "@/lib/api/schools";
-import { apiFetch } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Constants
