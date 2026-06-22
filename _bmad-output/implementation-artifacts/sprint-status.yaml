@@ -90,20 +90,20 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4 — Graphe de parcours & Stats admission (2e aha)
-  epic-4: in-progress
-  4-1-referentiel-formations-ecoles: ready-for-dev
-  4-2-moteur-prediction-admission: ready-for-dev
-  4-3-graphe-parcours-par-metier: ready-for-dev
-  4-4-fiche-ecole-formation: ready-for-dev
-  4-5-stat-admission-personnalisee: ready-for-dev
-  4-6-filtres-graphes: ready-for-dev
-  4-7-adaptation-graphe-par-niveau: ready-for-dev
-  4-8-favoris-mes-paris: ready-for-dev
-  4-9-composant-graph-parcours: ready-for-dev
-  4-10-composant-fiche-ecole: ready-for-dev
-  4-11-composant-carte-admission: ready-for-dev
-  4-12-composant-parcours-card: ready-for-dev
-  4-13-composant-stat-personnelle: ready-for-dev
+  epic-4: done
+  4-1-referentiel-formations-ecoles: done
+  4-2-moteur-prediction-admission: done
+  4-3-graphe-parcours-par-metier: done
+  4-4-fiche-ecole-formation: done
+  4-5-stat-admission-personnalisee: done
+  4-6-filtres-graphes: done
+  4-7-adaptation-graphe-par-niveau: done
+  4-8-favoris-mes-paris: done
+  4-9-composant-graph-parcours: done
+  4-10-composant-fiche-ecole: done
+  4-11-composant-carte-admission: done
+  4-12-composant-parcours-card: done
+  4-13-composant-stat-personnelle: done
   epic-4-retrospective: optional
 
   # Epic 5 — Premium B2C & Envoi anticipé biface
