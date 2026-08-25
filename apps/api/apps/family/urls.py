@@ -29,4 +29,20 @@ urlpatterns = [
         views.parent_invitation_accept,
         name="parent-invitation-accept",
     ),
+    # Story 6.2 — parent read-only dashboard
+    path(
+        "children/",
+        views.parent_children_collection,
+        name="parent-children-collection",
+    ),
+    path(
+        "children/<str:student_id>/dashboard/",
+        views.parent_child_dashboard,
+        name="parent-child-dashboard",
+    ),
+    path(
+        "children/<str:student_id>/bulletins/",
+        views.parent_child_bulletins_denied,
+        name="parent-child-bulletins",
+    ),
 ]

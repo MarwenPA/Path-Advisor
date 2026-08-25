@@ -50,3 +50,63 @@ class ParentInvitationAcceptSerializer(serializers.Serializer):
     password = serializers.CharField(required=False, write_only=True)
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
+
+
+# ---------------------------------------------------------------------------
+# Story 6.2 — parent read-only dashboard DTOs (schema/documentation only; the
+# service returns plain dicts, so these serializers are used for drf-spectacular
+# and to make the response shape explicit).
+# ---------------------------------------------------------------------------
+
+
+class LinkedChildSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    first_name = serializers.CharField()
+    masked_email = serializers.CharField()
+
+
+class ParentProfessionSignalSerializer(serializers.Serializer):
+    id = serializers.CharField()
+    label = serializers.CharField()
+
+
+class ParentProfessionSerializer(serializers.Serializer):
+    metier_id = serializers.CharField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    sector = serializers.CharField(allow_null=True)
+    score = serializers.IntegerField()
+    confidence_level = serializers.CharField()
+    signals = ParentProfessionSignalSerializer(many=True)
+    phrase_recopiable = serializers.CharField(allow_blank=True)
+
+
+class ParentMesParisItemSerializer(serializers.Serializer):
+    school_id = serializers.CharField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    city = serializers.CharField()
+    type = serializers.CharField()
+    tuition_min_eur = serializers.IntegerField(allow_null=True)
+    tuition_max_eur = serializers.IntegerField(allow_null=True)
+
+
+class ParentCostBreakdownItemSerializer(serializers.Serializer):
+    school_id = serializers.CharField()
+    school_name = serializers.CharField()
+    tuition_min_eur = serializers.IntegerField(allow_null=True)
+    tuition_max_eur = serializers.IntegerField(allow_null=True)
+
+
+class ParentCostsSerializer(serializers.Serializer):
+    total_min_eur = serializers.IntegerField()
+    total_max_eur = serializers.IntegerField()
+    count = serializers.IntegerField()
+    breakdown = ParentCostBreakdownItemSerializer(many=True)
+
+
+class ParentChildDashboardSerializer(serializers.Serializer):
+    child = LinkedChildSerializer()
+    metiers_explores = ParentProfessionSerializer(many=True)
+    mes_paris = ParentMesParisItemSerializer(many=True)
+    couts_estimes = ParentCostsSerializer()

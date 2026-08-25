@@ -28,6 +28,8 @@ export const ROUTE_ALLOWED_ROLES: Record<string, ReadonlyArray<UserRole>> = {
   // Generic authenticated areas — any role
   "/parametres": ["student", "parent", "counselor", "school_admin", "path_admin", "support"],
   "/onboarding": ["student"],
+  // Story 6.2 — parent dashboard area (métiers explorés / mes paris / coûts)
+  "/parent": ["parent"],
   // Future staff areas (declared early so the matrix is exhaustive)
   "/admin": ["path_admin"],
   "/support": ["support", "path_admin"],

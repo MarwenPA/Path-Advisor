@@ -19,12 +19,14 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.models import UserRole
-from apps.core.permissions import IsStudent
+from apps.core.permissions import IsParent, IsStudent
 from apps.core.rls import bypass_rls
 from apps.core.text import mask_email
 from apps.family.exceptions import ParentInvitationNotFoundOrExpired
 from apps.family.models import ParentInvitation, ParentInvitationStatus
 from apps.family.serializers import (
+    LinkedChildSerializer,
+    ParentChildDashboardSerializer,
     ParentInvitationAcceptSerializer,
     ParentInvitationCreateSerializer,
     ParentInvitationListItemSerializer,
@@ -35,6 +37,11 @@ from apps.family.services.parent_invitation import (
     create_invitation,
     get_invitation_by_token,
     resend_invitation,
+)
+from apps.family.services.parent_view import (
+    deny_bulletins_access,
+    get_child_dashboard,
+    get_linked_children,
 )
 
 
@@ -164,3 +171,54 @@ def parent_invitation_resend(request: Request, invitation_id: str) -> Response:
         raise ParentInvitationNotFoundOrExpired()
     resend_invitation(invitation=invitation)
     return Response({"detail": "Invitation renvoyée."})
+
+
+# ---------------------------------------------------------------------------
+# Story 6.2 — parent read-only dashboard endpoints
+# ---------------------------------------------------------------------------
+
+
+@extend_schema(
+    summary="List the students the authenticated parent is actively linked to (AC4)",
+    responses={200: LinkedChildSerializer(many=True)},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_children_collection(request: Request) -> Response:
+    children = get_linked_children(request.user)
+    payload = [
+        {
+            "id": child.id,
+            "first_name": child.email.split("@")[0],
+            "masked_email": mask_email(child.email),
+        }
+        for child in children
+    ]
+    return Response(LinkedChildSerializer(payload, many=True).data)
+
+
+@extend_schema(
+    summary="Parent dashboard for a linked child: métiers explorés + mes paris + coûts (AC1)",
+    responses={200: ParentChildDashboardSerializer, 403: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_dashboard(request: Request, student_id: str) -> Response:
+    # `get_child_dashboard` raises `ParentNotLinkedToStudent` (403 + audit) when
+    # no active link exists — the RFC 7807 handler renders it. No bulletin field
+    # is ever serialized (AC2/AC3).
+    dashboard = get_child_dashboard(request.user, student_id)
+    return Response(dashboard)
+
+
+@extend_schema(
+    summary="AC3 — a parent may NEVER read a child's bulletins: always 403 + audit",
+    responses={403: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_bulletins_denied(request: Request, student_id: str) -> Response:
+    # Absolute confidentiality frontier (FR41 / NFR-S4): even a linked parent is
+    # refused. `deny_bulletins_access` records the audit row and raises 403.
+    deny_bulletins_access(request.user, student_id)
+    return Response(status=drf_status.HTTP_403_FORBIDDEN)  # pragma: no cover

@@ -44,3 +44,29 @@ class ParentInvitationResendRateLimited(DomainError):
     title = "Trop de renvois"
     status_code = status.HTTP_429_TOO_MANY_REQUESTS
     default_detail = "Tu as déjà renvoyé cette invitation récemment. Réessaie dans une heure."
+
+
+class ParentNotLinkedToStudent(DomainError):
+    """Story 6.2 §AC4 — the parent holds no active `ParentStudentLink` to the
+    requested student. The non-revoked link is the SOLE authorization source
+    (Story 6.1 §AC7): no fallback on email or tenant.
+    """
+
+    type = "https://path-advisor.fr/errors/parent-not-linked"
+    title = "Accès non autorisé"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Tu n'as pas accès au profil de cet élève."
+
+
+class ParentBulletinsForbidden(DomainError):
+    """Story 6.2 §AC3 — a parent (even a linked one) may never read a child's
+    bulletins / teacher appreciations (FR41 / NFR-S4). Always 403 + audit.
+    """
+
+    type = "https://path-advisor.fr/errors/parent-bulletins-forbidden"
+    title = "Bulletins non accessibles"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = (
+        "Les bulletins et appréciations de ton enfant restent privés — "
+        "ils ne sont jamais accessibles depuis un compte parent."
+    )

@@ -126,7 +126,7 @@ development_status:
   # Lancé en parallèle d'Epic 5 : 6-4 dépend de l'infra Stripe/subscriptions (5-1/5-2), reste indépendant.
   epic-6: in-progress
   6-1-invitation-parent-creation-compte: review
-  6-2-vue-parent-metiers-parcours-couts: ready-for-dev
+  6-2-vue-parent-metiers-parcours-couts: review
   6-3-frontieres-confidentialite-parent: ready-for-dev
   6-4-paiement-premium-par-parent: blocked-on-epic-5
   6-5-onboarding-b2b-cohorte: ready-for-dev
