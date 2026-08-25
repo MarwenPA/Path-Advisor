@@ -74,10 +74,11 @@ class BillingService:
         return event
 
     def _process_event(self, event: WebhookEvent) -> None:
-        """Dispatch by event type. Full subscription activation lands in Story 5.3."""
-        if event.event_type == "checkout.session.completed":
-            log.info("billing.checkout_completed", event_id=event.event_id)
-        # Other event types are recorded but not yet acted upon (5.2 / 5.3).
+        """Dispatch subscription lifecycle events to the SubscriptionService (5.2)."""
+        from apps.billing.services.subscription_service import SubscriptionService
+
+        data_object = (event.payload.get("data") or {}).get("object") or {}
+        SubscriptionService.apply_event(event_type=event.event_type, obj=data_object)
 
 
 __all__ = ["BillingService", "InvalidWebhookSignature"]

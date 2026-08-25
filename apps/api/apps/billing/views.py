@@ -38,6 +38,25 @@ class CheckoutSessionView(APIView):
         return Response({"checkout_url": session.checkout_url}, status=status.HTTP_201_CREATED)
 
 
+class SubscriptionStatusView(APIView):
+    """GET /api/v1/billing/subscription — current tier/status for the user (Story 5.2)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive]
+
+    def get(self, request: Request) -> Response:
+        from apps.billing.services.subscription_service import SubscriptionService
+
+        sub = SubscriptionService.get_for_user(request.user)
+        return Response(
+            {
+                "tier": sub.tier if sub else "free",
+                "status": sub.status if sub else "active",
+                "current_period_end": sub.current_period_end if sub else None,
+                "is_premium": bool(sub and sub.is_active_now),
+            }
+        )
+
+
 @csrf_exempt
 @api_view(["POST"])
 @permission_classes([AllowAny])

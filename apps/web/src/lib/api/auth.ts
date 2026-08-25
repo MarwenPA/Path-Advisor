@@ -95,6 +95,8 @@ export interface CurrentUser {
   role: UserRole;
   status: UserStatus;
   is_fully_active: boolean;
+  // Story 5.2 — premium tier flag for feature gating / contextual paywall.
+  is_premium: boolean;
   // Story 1.6 — MFA dashboard signals. `mfa_required_by_role` is the static
   // NFR-S2 flag (true for staff). `mfa_enrolled` is the actual state.
   // `mfa_recovery_codes_remaining` is the count of unused codes (the codes

@@ -341,6 +341,23 @@ class IsAuthenticatedAndActive(PathAdvisorPermission):
     requires_fully_active = True
 
 
+class IsPremium(BasePermission):
+    """Passes iff the user has an active (or in-grace) premium subscription.
+
+    Story 5.2 — for premium-gated READ endpoints. Business/write endpoints
+    should prefer the service-layer gate (`SubscriptionService.require_premium`)
+    so the failure is a typed `InsufficientPlan` (402) the front maps to the
+    contextual paywall. Compose with role/active checks:
+    `[IsAuthenticatedAndActive, IsPremium]`.
+    """
+
+    message = "Cette fonctionnalité est réservée aux abonnés premium."
+
+    def has_permission(self, request, view) -> bool:
+        user = getattr(request, "user", None)
+        return bool(user and user.is_authenticated and user.is_premium)
+
+
 # ---------------------------------------------------------------------------
 # Object-level permissions (Story 1.7 §AC3)
 # ---------------------------------------------------------------------------

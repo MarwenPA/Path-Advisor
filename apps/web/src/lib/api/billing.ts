@@ -19,3 +19,15 @@ export async function createCheckoutSession(): Promise<CheckoutSessionResponse> 
     csrfToken: readCsrfCookie() ?? undefined,
   });
 }
+
+// Story 5.2 — subscription status for the current user.
+export interface SubscriptionStatus {
+  tier: "free" | "premium";
+  status: "active" | "past_due" | "cancelled";
+  current_period_end: string | null;
+  is_premium: boolean;
+}
+
+export async function getSubscription(): Promise<SubscriptionStatus> {
+  return apiFetch<SubscriptionStatus>("/api/v1/billing/subscription");
+}
