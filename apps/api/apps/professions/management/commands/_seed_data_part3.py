@@ -769,7 +769,7 @@ PROFESSIONS_PART3 = [
     {
         "slug": "technicien-aeronautique",
         "name": "Technicien·ne de maintenance aéronautique",
-        "sector": "industrie",
+        "sector": "transport",
         "description": (
             "Le·la technicien·ne de maintenance aéronautique assure la navigabilité des "
             "avions en effectuant les révisions, les réparations et les contrôles "
