@@ -60,7 +60,7 @@ class ProfessionReportCreateView(APIView):
                 action="profession_report_created",
                 result=AuditResult.SUCCESS,
                 actor=request.user,
-                subject=report,
+                subject_id=report.id,
                 metadata={
                     "profession_slug": profession.slug,
                     "error_type": report.error_type,
@@ -136,7 +136,7 @@ class PublicProfessionDetailView(APIView):
             action="profession_viewed",
             result=AuditResult.SUCCESS,
             actor=request.user,
-            subject=profession,
+            subject_id=profession.id,
             metadata={"slug": profession.slug},
         )
 

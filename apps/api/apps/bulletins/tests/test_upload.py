@@ -67,22 +67,27 @@ class TestUploadFormats:
         assert response.status_code == 201
 
     def test_accepts_jpeg(self, auth_client):
+        # Django's test client multipart-encodes a plain (name, data,
+        # content_type) tuple with content_type forced to
+        # "application/octet-stream" regardless of the given value — it does
+        # NOT set the part's declared Content-Type as one might expect. Our
+        # serializer's `file.content_type or guess_type(...)` fallback never
+        # triggers because "application/octet-stream" is truthy. Use the
+        # same BytesIO + `.name` pattern as `test_accepts_pdf` instead, which
+        # leaves `content_type` unset server-side and lets `mimetypes.guess_type`
+        # correctly resolve it from the filename.
         with patch("apps.bulletins.views.boto3.client") as mock_boto:
             mock_boto.return_value = MagicMock()
             buf = io.BytesIO(b"\xff\xd8\xff fake jpeg")
             buf.name = "bulletin.jpg"
-            buf.content_type = "image/jpeg"
-            response = auth_client.post(
-                URL,
-                {"file": ("bulletin.jpg", io.BytesIO(b"\xff\xd8\xff"), "image/jpeg")},
-                format="multipart",
-            )
+            response = auth_client.post(URL, {"file": buf}, format="multipart")
         assert response.status_code == 201
 
     def test_rejects_unknown_format(self, auth_client):
         with patch("apps.bulletins.views.boto3.client") as mock_boto:
             mock_boto.return_value = MagicMock()
-            buf = ("bulletin.exe", io.BytesIO(b"bad"), "application/x-msdownload")
+            buf = io.BytesIO(b"bad")
+            buf.name = "bulletin.exe"
             response = auth_client.post(URL, {"file": buf}, format="multipart")
         assert response.status_code == 400
 
@@ -90,10 +95,11 @@ class TestUploadFormats:
         with patch("apps.bulletins.views.boto3.client") as mock_boto:
             mock_boto.return_value = MagicMock()
             big_content = b"x" * (11 * 1024 * 1024)  # 11 MB
-            buf = ("big.pdf", io.BytesIO(big_content), "application/pdf")
+            buf = io.BytesIO(big_content)
+            buf.name = "big.pdf"
             response = auth_client.post(URL, {"file": buf}, format="multipart")
         assert response.status_code == 400
-        assert "10 MB" in response.json()["file"][0]
+        assert "10 MB" in response.json()["errors"]["file"][0]
 
     def test_rejects_seventh_file(self, auth_client, student_user):
         # Create 6 existing bulletins
@@ -108,7 +114,8 @@ class TestUploadFormats:
             )
         with patch("apps.bulletins.views.boto3.client") as mock_boto:
             mock_boto.return_value = MagicMock()
-            buf = ("extra.pdf", io.BytesIO(b"%PDF"), "application/pdf")
+            buf = io.BytesIO(b"%PDF")
+            buf.name = "extra.pdf"
             response = auth_client.post(URL, {"file": buf}, format="multipart")
         assert response.status_code == 422
         assert "Maximum 6" in response.json()["detail"]

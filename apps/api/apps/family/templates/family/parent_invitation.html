@@ -1,0 +1,34 @@
+{% spaceless %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>{{ student_first_name }} t'invite à rejoindre Path-Advisor</title>
+</head>
+<body style="margin:0;padding:24px;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#FAFAF7;color:#1A1A1A;line-height:1.55;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#FFFFFF;border-radius:8px;padding:32px;">
+<tr><td>
+<h1 style="margin:0 0 16px;color:#1A1A1A;font-size:22px;line-height:1.3;">{{ student_first_name }} t'invite à rejoindre Path-Advisor</h1>
+<p style="margin:0 0 16px;">Bonjour,</p>
+<p style="margin:0 0 16px;">{{ student_first_name }} t'invite à créer un compte parent Path-Advisor pour suivre son orientation scolaire.</p>
+{% if custom_message %}<p style="margin:0 0 16px;font-style:italic;">« {{ custom_message }} »</p>{% endif %}
+<h2 style="margin:24px 0 8px;font-size:16px;color:#1A1A1A;">Ce que tu pourras voir</h2>
+<ul style="margin:0 0 16px 20px;padding:0;">
+<li>Les métiers explorés</li>
+<li>Les parcours de formation sauvegardés</li>
+<li>Les coûts estimés des formations</li>
+</ul>
+<h2 style="margin:24px 0 8px;font-size:16px;color:#1A1A1A;">Ce qui reste privé</h2>
+<ul style="margin:0 0 24px 20px;padding:0;">
+<li>Ses bulletins détaillés</li>
+<li>Les appréciations de ses enseignants</li>
+<li>Ses lettres de motivation</li>
+</ul>
+<p style="margin:32px 0;text-align:center;">
+<a href="{{ invitation_url }}" style="display:inline-block;padding:14px 28px;background:#C8312D;color:#FFFFFF;text-decoration:none;border-radius:6px;font-weight:600;">Créer mon compte parent</a>
+</p>
+<p style="margin:24px 0 0;font-size:14px;color:#666660;">Ce lien est valable 30 jours.</p>
+<p style="margin:16px 0 0;font-size:14px;color:#666660;">— L'équipe Path-Advisor</p>
+</td></tr>
+</table>
+</body>
+</html>{% endspaceless %}

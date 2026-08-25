@@ -145,6 +145,27 @@ class InsufficientPermissions(DomainError):
     default_detail = "Vous n'avez pas l'autorisation d'accéder à cette ressource."
 
 
+class InsufficientPlan(DomainError):
+    # Story 5.x — raised in the service layer when a free-tier user hits a
+    # premium-gated feature. The front maps this `type` to the contextual
+    # paywall (Story 5.11).
+    type = "https://path-advisor.fr/errors/insufficient-plan"
+    title = "Fonctionnalité premium"
+    status_code = status.HTTP_402_PAYMENT_REQUIRED
+    default_detail = "Cette fonctionnalité est réservée aux abonnés premium."
+
+
+class PaymentProviderError(DomainError):
+    # Story 5.1 — the payment provider (Stripe) is unreachable or returned an
+    # error while creating a checkout session. Surfaced as RFC 7807 (never a
+    # bare 500) so the front can show a retriable message. No local state is
+    # mutated when this is raised (degraded-mode fallback).
+    type = "https://path-advisor.fr/errors/payment-provider-unavailable"
+    title = "Service de paiement indisponible"
+    status_code = status.HTTP_502_BAD_GATEWAY
+    default_detail = "Le service de paiement est momentanément indisponible. Réessaie plus tard."
+
+
 def path_advisor_exception_handler(exc: Exception, context: dict) -> Response | None:
     """DRF exception handler — converts DomainError + DRF ValidationError to Problem JSON."""
 

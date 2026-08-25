@@ -10,7 +10,6 @@ RLS: read-only for authenticated students; full CRUD for admins.
 
 from __future__ import annotations
 
-from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from apps.core.ids import generate_id
@@ -56,8 +55,13 @@ class Profession(models.Model):
         default=dict,
         help_text='{"passions": [...], "valeurs": [...], "specialites": [...], "keywords": [...]}',
     )
-    level_compatibility = ArrayField(
-        models.CharField(max_length=40),
+    # Portable JSONField (list of str) rather than postgres.ArrayField — an
+    # ArrayField column can't be created on SQLite ("near '[]': syntax
+    # error"), which broke the SQLite fast test lane for the WHOLE repo
+    # (every django_db test builds the full schema across all apps). See
+    # migration 0005 for the data-preserving conversion. GIN indexing on
+    # this field was already dropped in migration 0004.
+    level_compatibility = models.JSONField(
         default=list,
         help_text=(
             "Levels this profession is compatible with: college_3eme, lycee_2nde, "

@@ -1,0 +1,13 @@
+Bonjour {{ student_first_name }},
+
+Bonne nouvelle : ton parent a accepté ton invitation et a créé son
+compte Path-Advisor. Il pourra désormais suivre ton orientation
+(métiers explorés, parcours sauvegardés, coûts estimés).
+
+Tes bulletins, les appréciations de tes enseignants et tes lettres de
+motivation restent privés.
+
+Tu peux gérer cet accès à tout moment depuis Paramètres > Confidentialité
+> Accès tiers.
+
+— L'équipe Path-Advisor

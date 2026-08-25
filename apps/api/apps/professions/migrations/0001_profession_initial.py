@@ -1,6 +1,14 @@
-"""Initial migration for Profession model — Story 3.2."""
+"""Initial migration for Profession model — Story 3.2.
 
-import django.contrib.postgres.fields
+`level_compatibility` ships as a portable `JSONField` from the start (edited
+post-hoc, 2026-08 — see migration 0005 for rationale: the original
+`django.contrib.postgres.fields.ArrayField` broke the SQLite fast test lane
+for the whole repo). Safe to edit here because this migration is already
+applied by name on any real Postgres environment; migration 0005 performs
+the actual column-type conversion there via `RunPython`. Fresh databases
+(SQLite tests, new dev envs) now get the JSONField column directly.
+"""
+
 from django.db import migrations, models
 
 import apps.professions.models
@@ -75,14 +83,12 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "level_compatibility",
-                    django.contrib.postgres.fields.ArrayField(
-                        base_field=models.CharField(max_length=40),
+                    models.JSONField(
                         default=list,
                         help_text=(
                             "Levels this profession is compatible with: college_3eme, lycee_2nde, "
                             "lycee_1ere_tle_general, lycee_1ere_tle_techno, lycee_1ere_tle_pro, postbac."
                         ),
-                        size=None,
                     ),
                 ),
                 (

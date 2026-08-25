@@ -283,11 +283,19 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         self.stdout.write("Seeding schools and parcours…")
 
+        # --- Story 4.7 runs FIRST: it `get_or_create`s some Professions (via
+        # `profession_defaults`) that Story 4.3's fixture seed looks up by
+        # slug. Running 4.3 first meant its first pass silently skipped every
+        # entry referencing a not-yet-created profession, then a second
+        # command invocation would "catch up" and create them — a real
+        # idempotency bug (`seed_schools` run twice produced different
+        # results). Order fixed 2026-08; both passes are individually
+        # idempotent (`update_or_create` throughout), so running 4.7 first
+        # is safe and makes the whole command idempotent end-to-end.
+        self._seed_parcours()
+
         # --- Story 4.3: JSON fixture seed ---
         self._seed_from_fixture()
-
-        # --- Story 4.7: Python-defined bac pro / terminale parcours ---
-        self._seed_parcours()
 
     def _seed_from_fixture(self) -> None:
         """Seed from parcours_seed.json fixture (Story 4.3 data)."""

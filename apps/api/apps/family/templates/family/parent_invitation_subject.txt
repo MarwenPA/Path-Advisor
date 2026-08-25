@@ -1,0 +1,1 @@
+{{ student_first_name }} t'invite à rejoindre Path-Advisor

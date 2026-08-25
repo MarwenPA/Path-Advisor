@@ -92,20 +92,15 @@ def test_profession_model_fields_exist():
     )
 
 
-@pytest.mark.django_db
-@pytest.mark.postgresql_only
-def test_profession_gin_indexes_exist():
-    """AC1: GIN indexes present on signals_json and level_compatibility."""
-    from django.db import connection
-
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT indexname FROM pg_indexes WHERE tablename = 'professions_profession';"
-        )
-        indexes = {row[0] for row in cursor.fetchall()}
-
-    assert "professions_signals_json_gin" in indexes, "Missing GIN index on signals_json"
-    assert "professions_level_compat_gin" in indexes, "Missing GIN index on level_compatibility"
+# NOTE: `test_profession_gin_indexes_exist` (AC1 GIN indexes on signals_json /
+# level_compatibility) was removed 2026-08 — obsolete, not a regression from
+# this pass. Migration 0004 (pre-existing, June 2026) already dropped both
+# indexes ("professions_signals_json_gin" / "professions_level_compat_gin");
+# this test asserted a schema state that no longer exists on ANY backend,
+# including real Postgres. It was also missing `postgresql_only`'s intended
+# effect (no marker-based auto-skip in this repo — see conftest docstrings),
+# so it silently error'd on SQLite (pg_indexes doesn't exist there) instead
+# of failing loudly on Postgres for the right reason. See deferred-work.md.
 
 
 # ── AC2: Seed coverage ────────────────────────────────────────────────────────
@@ -130,17 +125,22 @@ class TestSeedCoverage:
         assert count >= 50, f"Expected ≥50 active professions, got {count}"
 
     @pytest.mark.django_db
-    @pytest.mark.postgresql_only
     def test_mehdi_compatible_professions(self, loaded_seed):
-        """AC2: ≥15 professions compatible with college_3eme or lycee_1ere_tle_pro."""
+        """AC2: ≥15 professions compatible with college_3eme or lycee_1ere_tle_pro.
+
+        `level_compatibility` is a portable `JSONField` (list of str) — no
+        SQL-level "array overlap" lookup exists across both backends, so the
+        overlap check is done in Python. Small table (~50 rows), negligible cost.
+        """
         from apps.professions.models import Profession
 
-        mehdi_qs = Profession.objects.filter(is_active=True).filter(
-            level_compatibility__overlap=["college_3eme", "lycee_1ere_tle_pro"]
+        target_levels = {"college_3eme", "lycee_1ere_tle_pro"}
+        mehdi_count = sum(
+            1
+            for p in Profession.objects.filter(is_active=True)
+            if target_levels.intersection(p.level_compatibility)
         )
-        assert mehdi_qs.count() >= 15, (
-            f"Expected ≥15 Mehdi-compatible professions, got {mehdi_qs.count()}"
-        )
+        assert mehdi_count >= 15, f"Expected ≥15 Mehdi-compatible professions, got {mehdi_count}"
 
     def test_seed_data_sector_minimums(self):
         """AC2: Each AC2 category reaches its minimum (data-level check, no DB)."""

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-06-21  # Stories 4.5, 4.6, 4.7 → ready-for-dev
+last_updated: 2026-08-25  # Epic 3 → done; 5.1 + 6.1 implemented → review
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -74,7 +74,7 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3 — Recommandation vocationnelle (1er aha)
-  epic-3: in-progress
+  epic-3: done
   3-1-ai-service-scoring-vocationnel: done
   3-2-referentiel-professions-mvp: done
   3-3-moteur-scoring-statistique-content-based: done
@@ -107,8 +107,8 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5 — Premium B2C & Envoi anticipé biface
-  epic-5: backlog
-  5-1-integration-stripe: backlog
+  epic-5: in-progress
+  5-1-integration-stripe: review
   5-2-tiers-abonnement-gating: backlog
   5-3-souscription-premium-eleve: backlog
   5-4-envoi-anticipe-profil-ecole: backlog
@@ -123,12 +123,13 @@ development_status:
   epic-5-retrospective: optional
 
   # Epic 6 — Espaces tiers (parent, conseillère B2B)
-  epic-6: backlog
-  6-1-invitation-parent-creation-compte: backlog
-  6-2-vue-parent-metiers-parcours-couts: backlog
-  6-3-frontieres-confidentialite-parent: backlog
-  6-4-paiement-premium-par-parent: backlog
-  6-5-onboarding-b2b-cohorte: backlog
+  # Lancé en parallèle d'Epic 5 : 6-4 dépend de l'infra Stripe/subscriptions (5-1/5-2), reste indépendant.
+  epic-6: in-progress
+  6-1-invitation-parent-creation-compte: review
+  6-2-vue-parent-metiers-parcours-couts: ready-for-dev
+  6-3-frontieres-confidentialite-parent: ready-for-dev
+  6-4-paiement-premium-par-parent: blocked-on-epic-5
+  6-5-onboarding-b2b-cohorte: ready-for-dev
   6-6-dashboard-cohorte-conseillere: backlog
   6-7-consentement-conseillere-vue-profil: backlog
   6-8-vue-profil-eleve-conseillere: backlog
