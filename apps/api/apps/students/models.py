@@ -150,7 +150,9 @@ class StudentProfile(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"StudentProfile({self.id}, user={self.user_id}, step1={self.onboarding_step1_status})"
+        return (
+            f"StudentProfile({self.id}, user={self.user_id}, step1={self.onboarding_step1_status})"
+        )
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         # Story 1.8 pattern — keep tenant_id consistent with the user's tenant

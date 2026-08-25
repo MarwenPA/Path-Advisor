@@ -70,9 +70,7 @@ MAX_INTERET_CHARS: Final[int] = 200
 # Slug accepted after the `custom:` prefix. Same regex as the frontend
 # `customSlugRegex`: 1-30 chars, lowercase ASCII letters/digits/hyphens, no
 # leading/trailing hyphen.
-_CUSTOM_SLUG_RE: Final[re.Pattern[str]] = re.compile(
-    r"^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$"
-)
+_CUSTOM_SLUG_RE: Final[re.Pattern[str]] = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,28}[a-z0-9])?$")
 
 # --- Sets for O(1) lookup ---------------------------------------------------
 

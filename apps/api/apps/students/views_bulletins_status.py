@@ -44,9 +44,7 @@ class BulletinsPostponeView(APIView):
         if profile.bulletins_status != BulletinsStatus.POSTPONED:
             profile.bulletins_status = BulletinsStatus.POSTPONED
             profile.bulletins_postponed_at = timezone.now()
-            profile.save(
-                update_fields=["bulletins_status", "bulletins_postponed_at", "updated_at"]
-            )
+            profile.save(update_fields=["bulletins_status", "bulletins_postponed_at", "updated_at"])
 
         return Response(
             {

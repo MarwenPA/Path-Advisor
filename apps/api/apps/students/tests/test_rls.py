@@ -110,12 +110,15 @@ def test_student_cannot_insert_for_another_user(skip_if_sqlite):
                 " onboarding_step1_status, onboarding_step1_completed_at, "
                 " created_at, updated_at) "
                 "VALUES (%s, %s, NULL, '[]'::jsonb, '[]'::jsonb, "
-                " '{\"1\":null,\"2\":null,\"3\":null}'::jsonb, "
+                ' \'{"1":null,"2":null,"3":null}\'::jsonb, '
                 " 'pending', NULL, now(), now())",
                 ["sprf_test_bob_insert", bob.id],
             )
     # Postgres surfaces RLS WITH CHECK failures as "new row violates row-level security policy".
-    assert "row-level security" in str(exc_info.value).lower() or "policy" in str(exc_info.value).lower()
+    assert (
+        "row-level security" in str(exc_info.value).lower()
+        or "policy" in str(exc_info.value).lower()
+    )
 
 
 @pytest.mark.django_db(transaction=True)

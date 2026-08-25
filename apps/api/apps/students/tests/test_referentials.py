@@ -66,7 +66,13 @@ class TestIsValidPassionID:
 
     @pytest.mark.parametrize(
         "bad",
-        ["custom:Avec Espaces", "custom:-leading", "custom:trailing-", "custom:", "custom:" + "a" * 31],
+        [
+            "custom:Avec Espaces",
+            "custom:-leading",
+            "custom:trailing-",
+            "custom:",
+            "custom:" + "a" * 31,
+        ],
     )
     def test_rejects_bad_custom_slug(self, bad: str) -> None:
         assert not is_valid_passion_id(bad)
@@ -128,7 +134,9 @@ class TestValidateInteretsRecord:
         assert ok, err
 
     def test_accepts_mixed(self) -> None:
-        ok, err = validate_interets_record({"1": "Podcast Choses à savoir", "2": None, "3": "TP SVT"})
+        ok, err = validate_interets_record(
+            {"1": "Podcast Choses à savoir", "2": None, "3": "TP SVT"}
+        )
         assert ok, err
 
     def test_rejects_long_string(self) -> None:
@@ -184,4 +192,6 @@ class TestCrossLanguageSync:
             ("MAX_PASSIONS_TOTAL", "MAX_PASSIONS_TOTAL = 8", MAX_PASSIONS_TOTAL),
             ("MAX_CUSTOM_PASSIONS", "MAX_CUSTOM_PASSIONS = 5", MAX_CUSTOM_PASSIONS),
         ]:
-            assert ts_token in ts_content, f"{py_const}={py_value} not mirrored as `{ts_token}` in TS"
+            assert ts_token in ts_content, (
+                f"{py_const}={py_value} not mirrored as `{ts_token}` in TS"
+            )

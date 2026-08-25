@@ -148,10 +148,7 @@ class OnboardingLevelView(APIView):
         level_profile.save()
 
         # Only emit the domain event on a real PENDING/IN_PROGRESS → COMPLETED transition.
-        if (
-            not was_completed
-            and level_profile.onboarding_step2_status == S2.COMPLETED
-        ):
+        if not was_completed and level_profile.onboarding_step2_status == S2.COMPLETED:
             self._emit_level_declared(level_profile, request)
 
         return Response(
