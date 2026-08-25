@@ -1,7 +1,5 @@
 """Fuzzy subject mapper tests — Story 2.3 T5 (backend)."""
 
-import pytest
-
 from apps.bulletins.fuzzy_subject_mapper import map_subject
 
 

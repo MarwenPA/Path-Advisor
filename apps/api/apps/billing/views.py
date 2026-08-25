@@ -22,6 +22,8 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.audit.decorators import record_audit
+from apps.audit.models import AuditResult
 from apps.billing.services.billing_service import BillingService, InvalidWebhookSignature
 from apps.core.permissions import IsAuthenticatedAndActive
 
@@ -69,5 +71,14 @@ def stripe_webhook_view(request: Request) -> Response:
             signature_header=signature_header,
         )
     except InvalidWebhookSignature:
+        # Code-review fix (2026-08): the HMAC signature IS this endpoint's
+        # sole authentication proof — an invalid one is an auth failure and
+        # must be audited like `auth.login_failed`, else a forged/replayed
+        # webhook attempt leaves no trace for the DPO/security team.
+        record_audit(
+            action="billing.webhook_signature_invalid",
+            result=AuditResult.FAILURE,
+            metadata={"signature_header_present": bool(signature_header)},
+        )
         return Response({"detail": "Invalid signature"}, status=status.HTTP_400_BAD_REQUEST)
     return Response(status=status.HTTP_200_OK)

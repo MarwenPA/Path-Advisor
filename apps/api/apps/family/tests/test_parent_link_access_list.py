@@ -13,7 +13,7 @@ from apps.profiles.access_list import AccessListAggregator, registry
 from apps.profiles.access_list.exceptions import EntryNotFound
 from apps.profiles.access_list.results import RevocationResult
 
-pytestmark = [pytest.mark.django_db, pytest.mark.postgresql_only]
+pytestmark = pytest.mark.django_db
 
 
 def _uf(**kwargs):

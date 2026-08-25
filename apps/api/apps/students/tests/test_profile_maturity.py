@@ -197,17 +197,17 @@ GOLDEN_CASES: list[tuple[str, ProfileSnapshot, MaturityLevelStr]] = [
 
 
 @pytest.mark.parametrize("label,snapshot,expected", GOLDEN_CASES, ids=[c[0] for c in GOLDEN_CASES])
-def test_compute_maturity_golden(label: str, snapshot: ProfileSnapshot, expected: MaturityLevelStr) -> None:
+def test_compute_maturity_golden(
+    label: str, snapshot: ProfileSnapshot, expected: MaturityLevelStr
+) -> None:
     result = compute_maturity(snapshot)
     assert result == MaturityLevel(expected), (
-        f"Case: {label!r}\n"
-        f"  snapshot={snapshot}\n"
-        f"  expected={expected!r}, got={result.value!r}"
+        f"Case: {label!r}\n  snapshot={snapshot}\n  expected={expected!r}, got={result.value!r}"
     )
 
 
 # ---------------------------------------------------------------------------
-# Client–server alignment test -----------------------------------------------
+# Client-server alignment test -----------------------------------------------
 # ---------------------------------------------------------------------------
 
 GOLDEN_JSON_PATH = (

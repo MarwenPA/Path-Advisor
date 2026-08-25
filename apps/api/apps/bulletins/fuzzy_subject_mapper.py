@@ -15,6 +15,7 @@ import unicodedata
 
 try:
     from Levenshtein import distance as levenshtein_distance
+
     _LEVENSHTEIN_AVAILABLE = True
 except ImportError:
     _LEVENSHTEIN_AVAILABLE = False

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.accounts.models import UserStatus
@@ -152,16 +151,28 @@ class TestPatchPassions:
 
     def test_accepts_8_passions_max(self, client, user):
         eight = [
-            "sciences-nature", "tech-code", "arts-creation", "sport-corps",
-            "musique", "cinema-series", "lecture-ecriture", "voyage-cultures",
+            "sciences-nature",
+            "tech-code",
+            "arts-creation",
+            "sport-corps",
+            "musique",
+            "cinema-series",
+            "lecture-ecriture",
+            "voyage-cultures",
         ]
         resp = client.patch(URL, data={"step": "passions", "passions": eight}, format="json")
         assert resp.status_code == 200, resp.content
 
     def test_rejects_9_passions(self, client, user):
         nine = [
-            "sciences-nature", "tech-code", "arts-creation", "sport-corps",
-            "musique", "cinema-series", "lecture-ecriture", "voyage-cultures",
+            "sciences-nature",
+            "tech-code",
+            "arts-creation",
+            "sport-corps",
+            "musique",
+            "cinema-series",
+            "lecture-ecriture",
+            "voyage-cultures",
             "cuisine",
         ]
         resp = client.patch(URL, data={"step": "passions", "passions": nine}, format="json")
@@ -227,7 +238,12 @@ class TestPatchValeurs:
 
     def test_rejects_6_valeurs(self, client, user):
         six = [
-            "justice-sociale", "creativite", "sens-utilite", "aventure", "defi", "apprendre",
+            "justice-sociale",
+            "creativite",
+            "sens-utilite",
+            "aventure",
+            "defi",
+            "apprendre",
         ]
         resp = client.patch(URL, data={"step": "valeurs", "valeurs": six}, format="json")
         assert resp.status_code == 400

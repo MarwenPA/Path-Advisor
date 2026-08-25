@@ -15,7 +15,7 @@ from apps.students.models import StudentProfile
 def user(db):
     return User.objects.create_user(
         email="sarah@test.local",
-        password="Strong1!pass",  # noqa: S106
+        password="Strong1!pass",
         status=UserStatus.ACTIVE,
         email_verified_at=timezone.now(),
     )
@@ -123,16 +123,17 @@ class TestProfileHistorySnapshot:
     def test_cross_tenant_history_not_visible(self, profile):
         other_user = User.objects.create_user(
             email="other@test.local",
-            password="Strong1!pass",  # noqa: S106
+            password="Strong1!pass",
             status=UserStatus.ACTIVE,
             email_verified_at=timezone.now(),
         )
-        other_profile = StudentProfile.objects.create(user=other_user)
+        StudentProfile.objects.create(user=other_user)
         other_client = APIClient()
         other_client.force_authenticate(user=other_user)
 
         # Sarah creates a snapshot
         from apps.students.models import StudentProfileHistory
+
         StudentProfileHistory.objects.create(
             student=profile,
             archived_reason="major_change_filiere",

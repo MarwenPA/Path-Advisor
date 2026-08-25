@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 class OCRField:
     key: str  # "matiere" | "note" | "appreciation" | "trimestre" | "annee"
     value: str
-    confidence: float  # 0.0–1.0
+    confidence: float  # 0.0-1.0
     bbox: list[int] | None = None  # [x, y, w, h] px — None when unavailable
 
 

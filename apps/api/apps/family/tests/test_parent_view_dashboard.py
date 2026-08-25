@@ -13,7 +13,7 @@ from apps.core.rls import bypass_rls
 from apps.family.models import ParentStudentLink
 from apps.schools.models import FavoriteSchool, School
 
-pytestmark = [pytest.mark.django_db, pytest.mark.postgresql_only]
+pytestmark = pytest.mark.django_db
 
 _FAKE_RECOS = {
     "results": [

@@ -1,4 +1,4 @@
-"""Tesseract OCR provider — PoC MVP (Story 2.3 §T1 spike decision).
+r"""Tesseract OCR provider — PoC MVP (Story 2.3 §T1 spike decision).
 
 Uses pytesseract with `--psm 6 --oem 3 -l fra` for structured French bulletin
 pages. HEIC files must be converted to JPEG before calling `extract()`.
@@ -37,7 +37,10 @@ _NOTE_RE = re.compile(
     re.IGNORECASE,
 )
 _TRIMESTRE_RE = re.compile(r"trimestre\s*[n°]?\s*(\d)", re.IGNORECASE)
-_ANNEE_RE = re.compile(r"(?:année|an)\s*(\d{4}[-–]\d{2,4})", re.IGNORECASE)
+# The en dash in the character class is intentional, not a typo: French
+# school years are commonly OCR'd/typed with either a hyphen or an en dash
+# as the year-range separator, and both must match real scanned bulletins.
+_ANNEE_RE = re.compile(r"(?:année|an)\s*(\d{4}[-–]\d{2,4})", re.IGNORECASE)  # noqa: RUF001
 
 
 def _tesseract_version() -> str:
@@ -83,7 +86,7 @@ class TesseractProvider(OCRProvider):
             provider_version=_tesseract_version(),
         )
 
-    def _load_image(self, file_bytes: bytes, mime_type: str) -> "Image.Image":
+    def _load_image(self, file_bytes: bytes, mime_type: str) -> Image.Image:
         if mime_type == "application/pdf":
             # pdf2image not installed in PoC — convert first page via Pillow PDF
             # reader or fallback to raw bytes. For MVP, store PDF as-is and let
@@ -91,9 +94,7 @@ class TesseractProvider(OCRProvider):
             return Image.open(io.BytesIO(file_bytes))
         return Image.open(io.BytesIO(file_bytes))
 
-    def _parse_fields(
-        self, raw_text: str, word_data: dict
-    ) -> list[OCRField]:
+    def _parse_fields(self, raw_text: str, word_data: dict) -> list[OCRField]:
         fields: list[OCRField] = []
         lines = raw_text.splitlines()
         current_appreciation_lines: list[str] = []
@@ -109,7 +110,9 @@ class TesseractProvider(OCRProvider):
                     appr_text = " ".join(current_appreciation_lines).strip()
                     if appr_text:
                         conf = self._text_confidence(appr_text, word_conf_map)
-                        fields.append(OCRField(key="appreciation", value=appr_text, confidence=conf))
+                        fields.append(
+                            OCRField(key="appreciation", value=appr_text, confidence=conf)
+                        )
                     current_appreciation_lines = []
                     last_matiere = None
                 continue
@@ -156,7 +159,12 @@ class TesseractProvider(OCRProvider):
         conf_map: dict[str, float] = {}
         words = word_data.get("text", [])
         confs = word_data.get("conf", [])
-        for word, conf in zip(words, confs):
+        # strict=False: pytesseract's `text`/`conf` arrays are not always
+        # exactly the same length in practice (word/conf pairs may drop out
+        # independently on parse edge cases) — truncating to the shorter is
+        # the safe, existing behavior; strict=True would crash on real OCR
+        # output instead.
+        for word, conf in zip(words, confs, strict=False):
             if word and str(conf).lstrip("-").isdigit():
                 conf_val = max(0.0, min(1.0, int(conf) / 100))
                 conf_map[word.lower()] = max(conf_map.get(word.lower(), 0.0), conf_val)

@@ -15,7 +15,7 @@ from apps.students.models import StudentProfile
 def user(db):
     return User.objects.create_user(
         email="sarah@test.local",
-        password="Strong1!pass",  # noqa: S106
+        password="Strong1!pass",
         status=UserStatus.ACTIVE,
         email_verified_at=timezone.now(),
     )
@@ -97,7 +97,12 @@ class TestPostManualBulletin:
         payload = {
             **_PAYLOAD,
             "matieres": [
-                {"subject_id": "custom:latin", "note": 14.0, "appreciation": None, "is_custom": True}
+                {
+                    "subject_id": "custom:latin",
+                    "note": 14.0,
+                    "appreciation": None,
+                    "is_custom": True,
+                }
             ],
         }
         response = auth_client.post(
@@ -107,9 +112,7 @@ class TestPostManualBulletin:
 
     def test_unauthenticated_returns_401(self, profile):
         client = APIClient()
-        response = client.post(
-            reverse("bulletins:me-bulletins-manual"), _PAYLOAD, format="json"
-        )
+        response = client.post(reverse("bulletins:me-bulletins-manual"), _PAYLOAD, format="json")
         assert response.status_code == 401
 
     def test_appreciation_over_500_chars_returns_400(self, auth_client, profile):
@@ -140,9 +143,7 @@ class TestPatchManualBulletin:
 
     def test_patch_updates_note(self, auth_client, profile, bulletin_id):
         patch_payload = {
-            "matieres": [
-                {"subject_id": "mathematiques", "note": 15.0, "appreciation": None}
-            ]
+            "matieres": [{"subject_id": "mathematiques", "note": 15.0, "appreciation": None}]
         }
         response = auth_client.patch(
             reverse("bulletins:me-bulletins-manual-detail", kwargs={"pk": bulletin_id}),
@@ -162,7 +163,7 @@ class TestPatchManualBulletin:
     def test_patch_other_users_bulletin_returns_404(self, profile, bulletin_id):
         other_user = User.objects.create_user(
             email="other@test.local",
-            password="Strong1!pass",  # noqa: S106
+            password="Strong1!pass",
             status=UserStatus.ACTIVE,
             email_verified_at=timezone.now(),
         )

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.status import HTTP_201_CREATED, HTTP_202_ACCEPTED
 from rest_framework.views import APIView
 
-from .models import StudentProfile, StudentProfileHistory
+from .models import StudentProfileHistory
 from .views_bulletins_status import _get_or_create_profile
 
 

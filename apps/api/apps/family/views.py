@@ -21,7 +21,7 @@ from rest_framework.response import Response
 from apps.accounts.models import UserRole
 from apps.core.permissions import IsParent, IsStudent
 from apps.core.rls import bypass_rls
-from apps.core.text import mask_email
+from apps.core.text import mask_email, mask_local_part
 from apps.family.exceptions import ParentInvitationNotFoundOrExpired
 from apps.family.models import ParentInvitation, ParentInvitationStatus
 from apps.family.serializers import (
@@ -95,7 +95,10 @@ def parent_invitation_status(request: Request, token: str) -> Response:
     ):
         invitation = get_invitation_by_token(token)
         payload = {
-            "student_first_name": invitation.student.email.split("@")[0],
+            # Code-review fix (2026-08): this is a PUBLIC, token-only
+            # endpoint — the raw local-part used to defeat the masking
+            # applied to `student_masked_email` right below it.
+            "student_first_name": mask_local_part(invitation.student.email),
             "student_masked_email": mask_email(invitation.student.email),
             "parent_email": invitation.parent_email,
             "relationship": invitation.relationship,
@@ -114,7 +117,7 @@ def parent_invitation_status(request: Request, token: str) -> Response:
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def parent_invitation_accept(request: Request, token: str) -> Response:
-    serializer = ParentInvitationAcceptSerializer(data=request.data)
+    serializer = ParentInvitationAcceptSerializer(data=request.data, context={"request": request})
     serializer.is_valid(raise_exception=True)
 
     with bypass_rls(

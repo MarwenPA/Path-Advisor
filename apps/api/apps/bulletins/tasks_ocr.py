@@ -72,17 +72,14 @@ def _convert_heic_if_needed(file_bytes: bytes, mime_type: str) -> tuple[bytes, s
     soft_time_limit=55,
     name="bulletins.ocr_extract",
 )
-def ocr_extract(self, bulletin_id: str) -> dict:  # noqa: ARG001
+def ocr_extract(self, bulletin_id: str) -> dict:
     """Run OCR on a single bulletin file and persist the result.
 
     Returns a summary dict for logging/monitoring.
     """
-    from apps.bulletins.models import Bulletin
 
     try:
-        job = BulletinOCRJob.objects.select_related("bulletin").get(
-            bulletin_id=bulletin_id
-        )
+        job = BulletinOCRJob.objects.select_related("bulletin").get(bulletin_id=bulletin_id)
     except BulletinOCRJob.DoesNotExist:
         log.error("OCR job not found for bulletin_id=%s", bulletin_id)
         return {"status": "missing_job", "bulletin_id": bulletin_id}

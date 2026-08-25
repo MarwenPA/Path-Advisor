@@ -54,7 +54,7 @@ class Bulletin(models.Model):
     """One uploaded bulletin file per student.
 
     A student may upload up to 6 bulletins per onboarding session (3 trimestres
-    × 2 years). Each file is stored on S3-compatible storage (MinIO local /
+    x 2 years). Each file is stored on S3-compatible storage (MinIO local /
     S3 EU prod) with SSE-S3 encryption.
 
     `expires_at` is set to `uploaded_at + 30 days` at creation. A Celery beat

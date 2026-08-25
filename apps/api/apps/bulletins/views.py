@@ -15,7 +15,6 @@ import uuid
 import boto3
 from botocore.config import Config
 from django.conf import settings
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
 from rest_framework.request import Request
@@ -72,9 +71,7 @@ class BulletinUploadView(APIView):
             )
 
         # Build S3 key: bulletins/{student_id}/{uuid}/{filename}
-        s3_key = (
-            f"bulletins/{request.user.pk}/{uuid.uuid4().hex}/{file_obj.name}"
-        )
+        s3_key = f"bulletins/{request.user.pk}/{uuid.uuid4().hex}/{file_obj.name}"
         bucket = settings.BULLETINS_BUCKET
 
         try:
@@ -135,7 +132,8 @@ class OCRStartView(APIView):
         # Deduplicate preserving order (#19)
         seen: set = set()
         bulletin_ids = [
-            bid for bid in ser.validated_data["bulletin_ids"]
+            bid
+            for bid in ser.validated_data["bulletin_ids"]
             if not (bid in seen or seen.add(bid))  # type: ignore[func-returns-value]
         ]
 
@@ -147,7 +145,9 @@ class OCRStartView(APIView):
         )
         if bulletins.count() != len(bulletin_ids):
             return Response(
-                {"detail": "Un ou plusieurs bulletins sont invalides ou n'appartiennent pas à ce compte."},
+                {
+                    "detail": "Un ou plusieurs bulletins sont invalides ou n'appartiennent pas à ce compte."
+                },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -327,17 +327,21 @@ class OnboardingStatusView(APIView):
             for b in bulletins:
                 job = jobs.get(str(b.id))
                 if job and job.normalized_fields:
-                    recaps.append({
-                        "bulletinId": str(b.id),
-                        "normalizedFields": job.normalized_fields,
-                        "confidenceAvg": job.confidence_avg,
-                        "isLowQuality": job.is_low_quality,
-                    })
+                    recaps.append(
+                        {
+                            "bulletinId": str(b.id),
+                            "normalizedFields": job.normalized_fields,
+                            "confidenceAvg": job.confidence_avg,
+                            "isLowQuality": job.is_low_quality,
+                        }
+                    )
             if recaps:
-                return Response({
-                    "state": "recap_editing",
-                    "bulletin_ids": bulletin_ids,
-                    "recaps": recaps,
-                })
+                return Response(
+                    {
+                        "state": "recap_editing",
+                        "bulletin_ids": bulletin_ids,
+                        "recaps": recaps,
+                    }
+                )
 
         return Response({"state": "idle"})

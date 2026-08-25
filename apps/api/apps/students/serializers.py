@@ -40,7 +40,6 @@ from apps.students.onboarding.referentials import (
     validate_valeurs_array,
 )
 
-
 # --- Read ------------------------------------------------------------------
 
 
@@ -87,7 +86,9 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
     )
 
     step = serializers.ChoiceField(choices=STEP_CHOICES)
-    passions = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
+    passions = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
     valeurs = serializers.ListField(child=serializers.CharField(), required=False, allow_empty=True)
     interets = serializers.DictField(
         child=serializers.CharField(allow_null=True, allow_blank=True, required=False),
@@ -106,11 +107,15 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
             "interets": "interets",
             "skip": None,
         }[step]
-        other_fields = {"passions", "valeurs", "interets"} - {allowed_field} if allowed_field else {
-            "passions",
-            "valeurs",
-            "interets",
-        }
+        other_fields = (
+            {"passions", "valeurs", "interets"} - {allowed_field}
+            if allowed_field
+            else {
+                "passions",
+                "valeurs",
+                "interets",
+            }
+        )
         offenders = other_fields & attrs.keys()
         if offenders:
             raise serializers.ValidationError(
@@ -247,8 +252,8 @@ class OnboardingStep1PatchSerializer(serializers.Serializer):
             # corrupting the maturité-de-profil signal Story 2.7 reads.
             if profile.onboarding_step1_status == Status.COMPLETED:
                 return profile
-            has_partial = bool(profile.passions) or bool(profile.valeurs) or any(
-                profile.interets.values()
+            has_partial = (
+                bool(profile.passions) or bool(profile.valeurs) or any(profile.interets.values())
             )
             profile.mark_skipped(partial=has_partial)
 
@@ -277,6 +282,7 @@ class OnboardingStep2ReadSerializer(serializers.ModelSerializer):
 
     def get_specialites(self, obj: StudentLevelProfile) -> list[str]:
         from apps.students.onboarding.levels import SPECIALITE_IDS, SPECIALITE_PRO_IDS
+
         valid = SPECIALITE_IDS | SPECIALITE_PRO_IDS
         return [s for s in (obj.specialites or []) if s in valid]
 
@@ -310,23 +316,15 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
 
     level = serializers.CharField(max_length=20, required=False, allow_null=True)
     filiere = serializers.CharField(max_length=10, required=False, allow_null=True)
-    sous_filiere_techno = serializers.CharField(
-        max_length=10, required=False, allow_null=True
-    )
+    sous_filiere_techno = serializers.CharField(max_length=10, required=False, allow_null=True)
     specialites = serializers.ListField(
         child=serializers.CharField(), required=False, allow_empty=True
     )
-    intended_track = serializers.CharField(
-        max_length=15, required=False, allow_null=True
-    )
+    intended_track = serializers.CharField(max_length=15, required=False, allow_null=True)
     postbac_year = serializers.CharField(max_length=15, required=False, allow_null=True)
-    postbac_formation_type = serializers.CharField(
-        max_length=25, required=False, allow_null=True
-    )
+    postbac_formation_type = serializers.CharField(max_length=25, required=False, allow_null=True)
     skip = serializers.BooleanField(default=False)
-    level_ref_version = serializers.CharField(
-        max_length=20, required=False, allow_null=True
-    )
+    level_ref_version = serializers.CharField(max_length=20, required=False, allow_null=True)
 
     def validate_level(self, value: str | None) -> str | None:
         from apps.students.onboarding.levels import NIVEAU_IDS
@@ -350,18 +348,14 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
         from apps.students.onboarding.levels import SOUS_FILIERE_IDS
 
         if value is not None and value not in SOUS_FILIERE_IDS:
-            raise serializers.ValidationError(
-                f"Unknown sous_filiere_techno '{value}'."
-            )
+            raise serializers.ValidationError(f"Unknown sous_filiere_techno '{value}'.")
         return value
 
     def validate_intended_track(self, value: str | None) -> str | None:
         from apps.students.onboarding.levels import TRACK_3EME_IDS
 
         if value is not None and value not in TRACK_3EME_IDS:
-            raise serializers.ValidationError(
-                f"Unknown intended_track '{value}'."
-            )
+            raise serializers.ValidationError(f"Unknown intended_track '{value}'.")
         return value
 
     def validate_postbac_year(self, value: str | None) -> str | None:
@@ -375,9 +369,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
         from apps.students.onboarding.levels import POSTBAC_FORMATION_IDS
 
         if value is not None and value not in POSTBAC_FORMATION_IDS:
-            raise serializers.ValidationError(
-                f"Unknown postbac_formation_type '{value}'."
-            )
+            raise serializers.ValidationError(f"Unknown postbac_formation_type '{value}'.")
         return value
 
     def validate_specialites(self, value: list[str]) -> list[str]:
@@ -386,9 +378,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
         all_valid = SPECIALITE_IDS | SPECIALITE_PRO_IDS
         unknown = [s for s in value if s not in all_valid]
         if unknown:
-            raise serializers.ValidationError(
-                f"Unknown specialite IDs: {unknown}"
-            )
+            raise serializers.ValidationError(f"Unknown specialite IDs: {unknown}")
         if len(value) != len(set(value)):
             raise serializers.ValidationError("Duplicate specialite IDs are not allowed.")
         return value
@@ -455,9 +445,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
                 else:
                     # expected is None: techno or 2nde général/techno — no specialites allowed
                     if specialites:
-                        errors["specialites"] = (
-                            f"specialites must be empty for {level}/{filiere}."
-                        )
+                        errors["specialites"] = f"specialites must be empty for {level}/{filiere}."
 
                 if requires_sous_filiere(level, filiere) and not sous_filiere:
                     errors["sous_filiere_techno"] = (
@@ -472,9 +460,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
             if not postbac_year:
                 errors["postbac_year"] = "postbac_year is required for postbac."
             if not postbac_formation_type:
-                errors["postbac_formation_type"] = (
-                    "postbac_formation_type is required for postbac."
-                )
+                errors["postbac_formation_type"] = "postbac_formation_type is required for postbac."
             if filiere is not None:
                 errors["filiere"] = "filiere must be null for postbac."
             if specialites:
@@ -503,7 +489,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
             ):
                 if field in data and data[field] is not None:
                     setattr(level_profile, field, data[field])
-            if "specialites" in data and data["specialites"]:
+            if data.get("specialites"):
                 level_profile.specialites = data["specialites"]
             level_profile.mark_skipped()
             return level_profile
@@ -526,6 +512,7 @@ class OnboardingStep2PatchSerializer(serializers.Serializer):
         if data.get("commit"):
             # #27 — stamp ref_version server-side (canonical source of truth).
             from apps.students.onboarding.levels import REF_VERSION as CURRENT_REF
+
             level_profile.level_ref_version = CURRENT_REF
 
             # Normalize stale branch fields that are incompatible with the committed level.

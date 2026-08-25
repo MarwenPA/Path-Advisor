@@ -117,6 +117,7 @@ POSTBAC_FORMATION_IDS: frozenset[str] = frozenset(
 # Validation matrix — expected specialties count per (level, filiere)
 # ---------------------------------------------------------------------------
 
+
 def expected_spec_count(level: str, filiere: str | None) -> int | None:
     """Return expected number of lycée-général specialties, or None if N/A."""
     if filiere == "general":
@@ -124,9 +125,8 @@ def expected_spec_count(level: str, filiere: str | None) -> int | None:
             return 3
         if level == "lycee_terminale":
             return 2
-    if filiere == "pro":
-        if level in ("lycee_2nde", "lycee_1ere", "lycee_terminale"):
-            return 1  # 1 bac pro spécialité
+    if filiere == "pro" and level in ("lycee_2nde", "lycee_1ere", "lycee_terminale"):
+        return 1  # 1 bac pro spécialité
     return None
 
 

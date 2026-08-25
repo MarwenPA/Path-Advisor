@@ -17,7 +17,7 @@ from apps.core.rls import bypass_rls
 from apps.family.models import ParentStudentLink
 from apps.family.permissions import IsLinkedParent
 
-pytestmark = [pytest.mark.django_db, pytest.mark.postgresql_only]
+pytestmark = pytest.mark.django_db
 
 
 def _uf(**kwargs):

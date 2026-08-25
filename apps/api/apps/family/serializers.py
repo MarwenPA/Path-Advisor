@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
+from apps.accounts.models import UserRole
 from apps.family.models import ParentInvitation, ParentRelationship
 
 
@@ -50,6 +52,33 @@ class ParentInvitationAcceptSerializer(serializers.Serializer):
     password = serializers.CharField(required=False, write_only=True)
     first_name = serializers.CharField(required=False, allow_blank=True)
     last_name = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        # Code-review fix (2026-08): `password` was `required=False`
+        # unconditionally, so a direct API call omitting it created a
+        # `User` with an unusable password (`create_user(password=None)`)
+        # — the parent gets auto-logged-in once by `parent_invitation_accept`
+        # and then can NEVER log back in; the `ParentStudentLink` becomes
+        # orphaned. `password` is only actually optional on the AC4 path
+        # (an already-authenticated `role="parent"` user just adds a link —
+        # no account is created), so gate the requirement on that context
+        # instead of relaxing it for everyone. The view must pass
+        # `context={"request": request}` for this check to run.
+        request = self.context.get("request")
+        is_existing_parent_linking = bool(
+            request
+            and getattr(request, "user", None)
+            and request.user.is_authenticated
+            and request.user.role == UserRole.PARENT
+        )
+        if not is_existing_parent_linking:
+            password = attrs.get("password")
+            if not password:
+                raise serializers.ValidationError(
+                    {"password": ["Ce champ est requis pour créer un compte."]}
+                )
+            validate_password(password)
+        return attrs
 
 
 # ---------------------------------------------------------------------------

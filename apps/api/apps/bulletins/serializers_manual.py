@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from rest_framework import serializers
 
@@ -14,7 +14,9 @@ class MatiereSerializer(serializers.Serializer):
     note = serializers.DecimalField(
         max_digits=4, decimal_places=2, min_value=Decimal("0"), max_value=Decimal("20")
     )
-    appreciation = serializers.CharField(max_length=500, allow_null=True, required=False, default=None)
+    appreciation = serializers.CharField(
+        max_length=500, allow_null=True, required=False, default=None
+    )
     is_custom = serializers.BooleanField(required=False, default=False)
 
     def validate_subject_id(self, value: str) -> str:

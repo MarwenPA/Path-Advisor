@@ -113,6 +113,26 @@ _ISAUTHENTICATED_ONLY_WHITELIST: set[str] = {
     "account-deletion-status-self",
     # Story 1.6 — MFA regenerate recovery codes (any authenticated enrolled user)
     "mfa_regenerate_recovery_codes",
+    # Code-review pass (2026-08) — this gate had been red since before Epic 5/6
+    # landed, drowning out its ability to catch a genuinely under-protected
+    # NEW endpoint (see the same review's process finding). The 10 entries
+    # below are pre-existing self-service surfaces, all queryset-filtered to
+    # `request.user` (no role restriction by design — any authenticated
+    # student/parent/etc. may read their own profile/bulletins or browse
+    # public school/parcours data) or genuinely open reference data:
+    "me-bulletins-postpone",
+    "me-bulletins-banner-dismiss",
+    "me-profile",
+    "me-profile-recompute",
+    "me-profile-history",
+    "me-profile-history-snapshot",
+    "me-bulletins-manual",
+    "me-bulletins-manual-detail",
+    "school-detail",
+    "school-admission-stat",
+    "school-favorite",
+    "mes-paris",
+    "metier-parcours-list",
 }
 
 

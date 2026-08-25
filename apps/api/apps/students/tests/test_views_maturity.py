@@ -9,7 +9,13 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import UserStatus
-from apps.students.models import BulletinsStatus, OnboardingStep1Status, OnboardingStep2Status, StudentLevelProfile, StudentProfile
+from apps.students.models import (
+    BulletinsStatus,
+    OnboardingStep1Status,
+    OnboardingStep2Status,
+    StudentLevelProfile,
+    StudentProfile,
+)
 
 User = get_user_model()
 
