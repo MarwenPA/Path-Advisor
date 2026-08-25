@@ -150,6 +150,8 @@ class UserDetailsSerializer(serializers.Serializer):
     role = serializers.CharField(read_only=True)
     status = serializers.CharField(read_only=True)
     is_fully_active = serializers.BooleanField(read_only=True)
+    # Story 5.2 — premium tier flag for frontend feature gating / paywall.
+    is_premium = serializers.BooleanField(read_only=True)
 
     # Story 1.6 — MFA state for the frontend dashboard banner / settings page.
     # `mfa_required_by_role` is the NFR-S2 forced-MFA flag (staff roles); the

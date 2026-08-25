@@ -142,6 +142,18 @@ class User(AbstractBaseUser, PermissionsMixin):
         return self.email_verified_at is not None and self.status == UserStatus.ACTIVE
 
     @property
+    def is_premium(self) -> bool:
+        """True iff the user has an active (or in-grace) premium subscription.
+
+        Story 5.2 — delegates to the billing SubscriptionService so the tier
+        rule (active OR past_due-within-grace) lives in one place. Local import
+        keeps `accounts` free of a module-level dependency on `billing`.
+        """
+        from apps.billing.services.subscription_service import SubscriptionService
+
+        return SubscriptionService.is_premium(self)
+
+    @property
     def requires_mfa(self) -> bool:
         """True iff this user MUST go through the MFA challenge on every login.
 

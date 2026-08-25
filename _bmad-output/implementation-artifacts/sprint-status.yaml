@@ -109,7 +109,7 @@ development_status:
   # Epic 5 — Premium B2C & Envoi anticipé biface
   epic-5: in-progress
   5-1-integration-stripe: done
-  5-2-tiers-abonnement-gating: ready-for-dev
+  5-2-tiers-abonnement-gating: review
   5-3-souscription-premium-eleve: backlog
   5-4-envoi-anticipe-profil-ecole: backlog
   5-5-motivation-libre-moderee: backlog

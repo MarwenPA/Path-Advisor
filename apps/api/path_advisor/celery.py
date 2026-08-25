@@ -62,6 +62,13 @@ app.conf.beat_schedule = {
         "task": "family.expire_parent_invitations",
         "schedule": crontab(hour=4, minute=35),
     },
+    # Story 5.2 — dunning: J+0/J+3/J+7 emails on past_due subs + downgrade
+    # grace-expired subs to free. Daily at 04:40 (staggered after the other
+    # daily jobs above).
+    "billing-process-dunning": {
+        "task": "billing.process_dunning",
+        "schedule": crontab(hour=4, minute=40),
+    },
 }
 
 
