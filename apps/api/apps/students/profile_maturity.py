@@ -9,11 +9,11 @@ Principle: 3 qualitative states only — never a percentage.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol
 
 
-class MaturityLevel(str, Enum):
+class MaturityLevel(StrEnum):
     BASE = "base"
     ENRICHED = "enriched"
     COMPLETE = "complete"
@@ -23,6 +23,7 @@ class MaturityLevel(str, Enum):
 # Snapshot protocol — duck-typed so callers can pass Django model instances
 # or plain dataclasses without coupling to either.
 # ---------------------------------------------------------------------------
+
 
 class ProfileSnapshot(Protocol):
     onboarding_step1_status: str

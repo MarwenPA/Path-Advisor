@@ -39,6 +39,26 @@ class ParentInvitationEmailTaken(DomainError):
     )
 
 
+class ParentInvitationEmailMismatch(DomainError):
+    """Code-review finding (2026-08) — the token is the sole proof of
+    authorization for this endpoint, but nothing previously constrained the
+    resulting account to the invited email. Raised when:
+    - the anonymous accept body supplies an `email` different from
+      `invitation.parent_email` (AC3 says the email is "pre-filled,
+      non-editable" — the backend must enforce that, not just the frontend), or
+    - an already-authenticated `role="parent"` user (AC4) tries to accept an
+      invitation addressed to a different email than their own account.
+    """
+
+    type = "https://path-advisor.fr/errors/parent-invitation-email-mismatch"
+    title = "Email non conforme à l'invitation"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = (
+        "Cette invitation a été envoyée à une autre adresse — "
+        "connecte-toi avec le compte correspondant pour l'accepter."
+    )
+
+
 class ParentInvitationResendRateLimited(DomainError):
     type = "https://path-advisor.fr/errors/parent-invitation-rate-limited"
     title = "Trop de renvois"

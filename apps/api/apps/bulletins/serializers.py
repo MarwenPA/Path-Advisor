@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import mimetypes
 
-from django.conf import settings
 from rest_framework import serializers
 
-from apps.bulletins.models import Bulletin, BulletinOCRJob, OCRJobStatus
+from apps.bulletins.models import Bulletin, OCRJobStatus
 
 ALLOWED_MIME_TYPES = {
     "application/pdf",
@@ -96,10 +95,10 @@ class BulletinFinalizeSerializer(serializers.Serializer):
             if field["key"] == "note":
                 try:
                     val = float(field["value"].replace(",", "."))
-                except (ValueError, AttributeError):
+                except (ValueError, AttributeError) as exc:
                     raise serializers.ValidationError(
                         f"Note invalide : '{field['value']}'. Doit être un nombre entre 0 et 20."
-                    )
+                    ) from exc
                 if not 0 <= val <= 20:
                     raise serializers.ValidationError(
                         f"Note hors limites : {val}. Doit être entre 0 et 20."

@@ -45,11 +45,16 @@ class SubscriptionService:
 
     @classmethod
     @audit_action("billing.subscription_event_applied")
-    def apply_event(cls, *, event_type: str, obj: dict) -> None:
+    def apply_event(cls, *, event_type: str, obj: dict) -> bool:
         """Apply a Stripe subscription lifecycle event to local state.
 
         `obj` is the Stripe event's `data.object`. Runs as system actor
         (webhook has no session identity) → bypass_rls for the write.
+
+        Returns True iff a handler existed for `event_type` (code-review fix,
+        2026-08) — `BillingService.record_webhook_event` uses this to decide
+        whether the event may be marked `processed_at` permanently, so an
+        event type with no handler YET stays reprocessable once one lands.
         """
         handler = {
             "checkout.session.completed": cls._on_checkout_completed,
@@ -58,9 +63,10 @@ class SubscriptionService:
             "invoice.payment_failed": cls._on_payment_failed,
         }.get(event_type)
         if handler is None:
-            return
+            return False
         with bypass_rls(reason=f"billing.webhook:{event_type}"):
             handler(obj)
+        return True
 
     @staticmethod
     def _resolve_user(obj: dict):

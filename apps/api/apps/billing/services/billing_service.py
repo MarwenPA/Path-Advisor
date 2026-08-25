@@ -68,17 +68,32 @@ class BillingService:
                 # Re-delivery of an already-processed event → no-op (idempotent).
                 return event
 
-            self._process_event(event)
-            row.processed_at = timezone.now()
-            row.save(update_fields=["processed_at"])
+            handled = self._process_event(event)
+            # Code-review fix (2026-08): only stamp `processed_at` when a
+            # handler actually existed for this event type. Previously EVERY
+            # event was marked processed regardless, including types with no
+            # handler yet — Stripe never redelivers a 200'd event, so an
+            # event type added to `SubscriptionService.apply_event` in a
+            # later story would find all of its historical occurrences
+            # already (falsely) marked "processed" and permanently lose
+            # them. Leaving `processed_at=NULL` for unhandled types keeps
+            # them dedup'd (the ledger row still exists) but reprocessable
+            # by a future backfill once a handler lands.
+            if handled:
+                row.processed_at = timezone.now()
+                row.save(update_fields=["processed_at"])
         return event
 
-    def _process_event(self, event: WebhookEvent) -> None:
-        """Dispatch subscription lifecycle events to the SubscriptionService (5.2)."""
+    def _process_event(self, event: WebhookEvent) -> bool:
+        """Dispatch subscription lifecycle events to the SubscriptionService (5.2).
+
+        Returns True iff a handler existed for `event.event_type` — see the
+        `processed_at` comment in `record_webhook_event` for why this matters.
+        """
         from apps.billing.services.subscription_service import SubscriptionService
 
         data_object = (event.payload.get("data") or {}).get("object") or {}
-        SubscriptionService.apply_event(event_type=event.event_type, obj=data_object)
+        return SubscriptionService.apply_event(event_type=event.event_type, obj=data_object)
 
 
 __all__ = ["BillingService", "InvalidWebhookSignature"]

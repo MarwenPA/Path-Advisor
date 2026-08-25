@@ -23,6 +23,7 @@ from apps.accounts.models import User, UserRole
 from apps.audit.decorators import audit_action
 from apps.family.exceptions import (
     ParentInvitationAlreadyPending,
+    ParentInvitationEmailMismatch,
     ParentInvitationEmailTaken,
     ParentInvitationNotFoundOrExpired,
     ParentInvitationResendRateLimited,
@@ -177,16 +178,31 @@ def accept_invitation(
     Raises `ParentInvitationNotFoundOrExpired` if the invitation is not
     `pending` or has expired. Raises `ParentInvitationEmailTaken` (409) if the
     anonymous path targets an email already owned by another `User`.
+
+    Security (code-review finding, 2026-08): the token is the SOLE proof of
+    authorization for this flow. Before this fix, `email` from the request
+    body silently overrode `invitation.parent_email` on the anonymous path,
+    and the authenticated (AC4) path never checked that `existing_user.email`
+    matched the invited email at all — either let an attacker in possession
+    of a leaked/forwarded token link an arbitrary account to the student.
+    Both paths now hard-fail with `ParentInvitationEmailMismatch` (403) on any
+    mismatch; the `email` param is IGNORED for account creation — the invited
+    email is the only one ever used.
     """
     now = timezone.now()
     if invitation.status != ParentInvitationStatus.PENDING or invitation.is_expired:
         raise ParentInvitationNotFoundOrExpired()
 
+    if email is not None and email.strip().lower() != invitation.parent_email.strip().lower():
+        raise ParentInvitationEmailMismatch()
+
     with transaction.atomic():
         if existing_user is not None:
+            if existing_user.email.strip().lower() != invitation.parent_email.strip().lower():
+                raise ParentInvitationEmailMismatch()
             parent_user = existing_user
         else:
-            target_email = email or invitation.parent_email
+            target_email = invitation.parent_email
             if User.objects.filter(email__iexact=target_email).exists():
                 raise ParentInvitationEmailTaken()
             from apps.accounts.models import UserStatus

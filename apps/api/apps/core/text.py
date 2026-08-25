@@ -38,3 +38,35 @@ def mask_email(email: str) -> str:
             return f"{local_mask}@***.{tld}"
         return f"{local_mask}@{host[0]}**.{tld}"
     return f"{local_mask}@{domain[0]}**"
+
+
+def mask_local_part(email: str) -> str:
+    """Return a privacy-preserving stand-in for a "first name" derived from
+    an email's local-part, for display on UNAUTHENTICATED / public surfaces.
+
+    Code-review finding (Story 6.1, 2026-08): `parent_invitation_status` (a
+    public, token-only endpoint) used to return the RAW local-part
+    (`email.split("@")[0]`, e.g. "lea.martin") as `student_first_name`,
+    completely defeating the `mask_email` masking applied to
+    `student_masked_email` in the very same response. A leaked/forwarded
+    token would reveal the student's real identity. This helper applies the
+    same `<first-char>***` masking style as `mask_email` so a partial visual
+    cue survives without leaking the identifiable string.
+
+    Internal-only surfaces (email templates sent directly to the invited
+    parent's or student's own inbox — the legitimate, already-known
+    recipient) intentionally keep using the raw local-part; only the public
+    API response needs masking.
+
+    Examples:
+        >>> mask_local_part("lea.martin@example.com")
+        'l***'
+        >>> mask_local_part("a@b.fr")
+        'a***'
+    """
+    if not email or "@" not in email:
+        return "***"
+    local = email.split("@", 1)[0]
+    if not local:
+        return "***"
+    return f"{local[0]}***"

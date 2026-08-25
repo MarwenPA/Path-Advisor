@@ -63,6 +63,29 @@ def _audit_request_context_isolation():
     _safe_reset_pg_session()
 
 
+def pytest_collection_modifyitems(config, items):
+    """Make the `postgresql_only` / `rls` markers actually skip on SQLite.
+
+    Code-review finding (2026-08): both markers are declared in
+    `pyproject.toml` ("Skipped on SQLite") but nothing previously enforced
+    that — only the separate `skip_if_sqlite` *fixture* did, and only for
+    tests that explicitly requested it. Every test marked
+    `@pytest.mark.postgresql_only` WITHOUT also requesting `skip_if_sqlite`
+    silently ran on SQLite instead (e.g. `test_profession_gin_indexes_exist`,
+    removed elsewhere in this same review pass, is the exact failure mode
+    this produced: a marker that looked like a guard but wasn't one). This
+    hook closes that gap globally so the marker's documented contract holds
+    for every current and future use, without requiring each test file to
+    remember the fixture.
+    """
+    if connection.vendor == "postgresql":
+        return
+    skip_marker = pytest.mark.skip(reason="Requires PostgreSQL (postgresql_only/rls marker).")
+    for item in items:
+        if "postgresql_only" in item.keywords or "rls" in item.keywords:
+            item.add_marker(skip_marker)
+
+
 @pytest.fixture
 def skip_if_sqlite(db):
     """Mark dependent tests as PostgreSQL-only and skip on SQLite.

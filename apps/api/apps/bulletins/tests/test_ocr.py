@@ -153,8 +153,8 @@ class TestOCRTaskClean:
         assert "Tesseract crash" in (job.error_message or "")
 
     @patch("apps.bulletins.tasks_ocr.boto3.client")
-    @patch("apps.bulletins.tasks_ocr.TesseractProvider")
-    def test_idempotent_on_terminal_state(self, MockProvider, mock_boto, bulletin):
+    @patch("apps.bulletins.tasks_ocr._provider")
+    def test_idempotent_on_terminal_state(self, mock_provider, mock_boto, bulletin):
         """Job already in SUCCEEDED → task must be a no-op."""
         # The `bulletin` fixture already creates the (OneToOne) job row —
         # move it straight to the terminal state instead of creating a
@@ -163,23 +163,31 @@ class TestOCRTaskClean:
         job.status = OCRJobStatus.SUCCEEDED
         job.confidence_avg = 0.9
         job.save(update_fields=["status", "confidence_avg"])
-        provider_instance = MagicMock()
-        MockProvider.return_value = provider_instance
 
         from apps.bulletins.tasks_ocr import ocr_extract
 
         ocr_extract(bulletin.id)
 
         # Provider must NOT have been called
-        provider_instance.extract.assert_not_called()
+        mock_provider.extract.assert_not_called()
 
 
 @pytest.mark.django_db
 class TestHEICConversion:
     @patch("apps.bulletins.tasks_ocr.boto3.client")
-    @patch("apps.bulletins.tasks_ocr.TesseractProvider")
+    @patch("apps.bulletins.tasks_ocr._provider")
     @patch("pillow_heif.register_heif_opener")
-    def test_heic_triggers_conversion(self, mock_heif, MockProvider, mock_boto, student):
+    def test_heic_triggers_conversion(self, mock_heif, mock_provider, mock_boto, student):
+        # Code-review fix (2026-08): this test previously patched the
+        # `TesseractProvider` CLASS, which has no effect on `tasks_ocr._provider`
+        # (a singleton instantiated once at module-import time — same
+        # class-vs-instance pitfall already fixed on the other tests in this
+        # file). The mocked `extract` return value was silently never used;
+        # the REAL Tesseract provider ran against fake `b"HEIC_DATA"` bytes
+        # instead, and the test only asserted `register_heif_opener` was
+        # called — it passed for the wrong reason and never actually
+        # exercised the HEIC-success path it claims to test.
+        #
         # `register_heif_opener` is imported locally inside the conversion
         # helper (`from pillow_heif import register_heif_opener`), so it is
         # never a `apps.bulletins.tasks_ocr` module attribute — patching it
@@ -198,9 +206,7 @@ class TestHEICConversion:
         mock_s3.get_object.return_value = {"Body": MagicMock(read=lambda: b"HEIC_DATA")}
         mock_boto.return_value = mock_s3
 
-        provider_instance = MagicMock()
-        provider_instance.extract.return_value = _make_clean_result()
-        MockProvider.return_value = provider_instance
+        mock_provider.extract.return_value = _make_clean_result()
 
         from apps.bulletins.tasks_ocr import ocr_extract
 
@@ -208,3 +214,8 @@ class TestHEICConversion:
 
         # register_heif_opener should have been called for HEIC mime type
         mock_heif.assert_called_once()
+        # The mocked provider's success result must have actually been used —
+        # this is what the previous version of this test never verified.
+        mock_provider.extract.assert_called_once()
+        job = BulletinOCRJob.objects.get(bulletin=bulletin)
+        assert job.status == OCRJobStatus.SUCCEEDED

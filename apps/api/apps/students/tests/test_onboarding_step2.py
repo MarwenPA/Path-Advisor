@@ -9,12 +9,11 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import UserStatus
-from apps.students.models import OnboardingStep2Status, StudentLevelProfile, StudentProfile
+from apps.students.models import StudentLevelProfile, StudentProfile
 
 User = get_user_model()
 
@@ -74,7 +73,7 @@ def test_get_returns_empty_defaults_when_no_profile(db, client_for):
 
 def test_get_returns_existing_profile(db, student, client_for):
     profile, _ = StudentProfile.objects.get_or_create(user=student)
-    lvl = StudentLevelProfile.objects.create(
+    StudentLevelProfile.objects.create(
         profile=profile,
         level="lycee_terminale",
         filiere="general",
@@ -138,9 +137,7 @@ def test_patch_unknown_filiere_returns_400(db, student, client_for):
 
 
 def test_patch_unknown_specialite_returns_400(db, student, client_for):
-    resp = client_for.patch(
-        LEVEL_URL, {"specialites": ["does-not-exist"]}, format="json"
-    )
+    resp = client_for.patch(LEVEL_URL, {"specialites": ["does-not-exist"]}, format="json")
     assert resp.status_code == 400
 
 
@@ -307,9 +304,10 @@ def test_patch_creates_only_for_calling_user(db, student, other_student, client_
     client_for.patch(LEVEL_URL, {"level": "lycee_terminale"}, format="json")
     # Other student should have no level profile
     other_profile = StudentProfile.objects.filter(user=other_student).first()
-    assert other_profile is None or not StudentLevelProfile.objects.filter(
-        profile=other_profile
-    ).exists()
+    assert (
+        other_profile is None
+        or not StudentLevelProfile.objects.filter(profile=other_profile).exists()
+    )
 
 
 # ---------------------------------------------------------------------------

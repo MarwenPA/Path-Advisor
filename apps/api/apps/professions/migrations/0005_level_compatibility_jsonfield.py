@@ -25,6 +25,20 @@ The GIN index on `level_compatibility` was already removed in migration
 0004; no index needs to be re-added here (see Story 3.2 dev notes — a
 jsonb GIN index can be reintroduced as a Postgres-only follow-up if the
 scoring engine's query patterns need it).
+
+Code-review note on reversibility (2026-08): running `migrate professions
+0004` does NOT restore the original `varchar(...)[]` column on an
+environment where 0001 was applied before this fix. `RemoveField`'s reverse
+is `AddField`, which recreates the field from Django's *migration-file*
+state — and since migration 0001 was itself edited (post-hoc) to already
+declare `level_compatibility` as a `JSONField`, the state "before 0005"
+that Django reconstructs is JSONField, not ArrayField. The reverse of this
+migration therefore leaves a `jsonb` column, never the original
+`varchar[]` — `_copy_json_to_array` below is misleadingly named: it copies
+list values between two JSONField-shaped states, it does NOT convert
+anything back to a Postgres array type. There is no migration anywhere in
+this history that can recreate a real `ArrayField` column anymore; treat
+this as a ONE-WAY migration in practice.
 """
 
 from __future__ import annotations
@@ -39,7 +53,14 @@ def _copy_array_to_json(apps, schema_editor):
         profession.save(update_fields=["level_compatibility_new"])
 
 
-def _copy_json_to_array(apps, schema_editor):
+def _copy_json_to_json_reverse(apps, schema_editor):
+    """NOT a true reverse — see the module docstring's "reversibility" note.
+
+    Both `level_compatibility` and `level_compatibility_new` are JSONField
+    at this point in the reconstructed migration state (0001 already ships
+    JSONField), so this only copies list values back across the temp
+    column; it does NOT recreate a Postgres `varchar(...)[]` column.
+    """
     Profession = apps.get_model("professions", "Profession")
     for profession in Profession.objects.all().iterator():
         profession.level_compatibility = list(profession.level_compatibility_new or [])
@@ -57,7 +78,7 @@ class Migration(migrations.Migration):
             name="level_compatibility_new",
             field=models.JSONField(default=list),
         ),
-        migrations.RunPython(_copy_array_to_json, _copy_json_to_array),
+        migrations.RunPython(_copy_array_to_json, _copy_json_to_json_reverse),
         migrations.RemoveField(
             model_name="profession",
             name="level_compatibility",

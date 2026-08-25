@@ -88,7 +88,9 @@ class TestStatusTransitions:
         first_ts = profile.onboarding_step1_completed_at
         profile.mark_completed()
         profile.save()
-        assert profile.onboarding_step1_completed_at == first_ts, "timestamp must not move on re-call"
+        assert profile.onboarding_step1_completed_at == first_ts, (
+            "timestamp must not move on re-call"
+        )
 
     def test_mark_skipped_partial(self, user):
         profile = StudentProfile.objects.create(user=user)
@@ -110,8 +112,10 @@ class TestStatusTransitions:
 @pytest.mark.django_db
 class TestOneToOneConstraint:
     def test_creating_second_profile_for_same_user_fails(self, user):
+        from django.db import IntegrityError
+
         StudentProfile.objects.create(user=user)
-        with pytest.raises(Exception):  # noqa: PT011 — IntegrityError on PG, DataError-ish on SQLite
+        with pytest.raises(IntegrityError):
             StudentProfile.objects.create(user=user)
 
     def test_user_hard_delete_cascades_to_profile(self, user):

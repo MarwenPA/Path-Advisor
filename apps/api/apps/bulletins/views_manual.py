@@ -52,8 +52,8 @@ class BulletinManualDetailView(APIView):
         profile = _get_profile(user)
         try:
             return BulletinManual.objects.get(pk=pk, student=profile)
-        except BulletinManual.DoesNotExist:
-            raise NotFound()
+        except BulletinManual.DoesNotExist as exc:
+            raise NotFound() from exc
 
     def patch(self, request: Request, pk: str) -> Response:
         bulletin = self._get_bulletin(pk, request.user)

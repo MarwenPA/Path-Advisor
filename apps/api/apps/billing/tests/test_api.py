@@ -19,7 +19,7 @@ from apps.billing.services.provider import (
 )
 from apps.core.rls import bypass_rls
 
-pytestmark = [pytest.mark.django_db, pytest.mark.postgresql_only]
+pytestmark = pytest.mark.django_db
 
 
 def _make_user(*, active: bool = True) -> User:
@@ -99,6 +99,25 @@ def test_webhook_rejects_bad_signature():
     assert StripeEvent.objects.count() == 0
 
 
+def test_webhook_bad_signature_writes_audit_row():
+    """Code-review fix (2026-08): the HMAC signature is this endpoint's sole
+    auth proof — an invalid one is an auth failure and must be audited like
+    `auth.login_failed`, so a forged/replayed attempt leaves a trace."""
+    from apps.audit.models import AuditLog, AuditResult
+
+    url = reverse("stripe-webhook")
+    with patch(
+        "apps.billing.services.stripe_provider.StripeProvider.handle_webhook",
+        side_effect=InvalidWebhookSignature("bad"),
+    ):
+        APIClient().post(
+            url, data=b"{}", content_type="application/json", HTTP_STRIPE_SIGNATURE="t=1,v1=bad"
+        )
+    assert AuditLog.objects.filter(
+        action="billing.webhook_signature_invalid", result=AuditResult.FAILURE
+    ).exists()
+
+
 def test_webhook_accepts_valid_event_and_records_it():
     url = reverse("stripe-webhook")
     event = WebhookEvent(
@@ -150,6 +169,28 @@ def test_webhook_does_not_persist_pii_payload():
         APIClient().post(url, data=b"{}", content_type="application/json")
     row = StripeEvent.objects.get(stripe_event_id="evt_pii")
     assert row.payload == {}
+
+
+def test_webhook_unhandled_event_type_stays_reprocessable():
+    """Code-review fix (2026-08): an event type with no handler YET must NOT
+    be permanently marked `processed_at` — Stripe never redelivers a 200'd
+    event, so a future handler added for this type would otherwise never see
+    the historical occurrences that already landed before it existed."""
+    url = reverse("stripe-webhook")
+    event = WebhookEvent(
+        event_id="evt_unhandled",
+        event_type="some.future.event.type",
+        payload={"id": "evt_unhandled"},
+    )
+    with patch(
+        "apps.billing.services.stripe_provider.StripeProvider.handle_webhook",
+        return_value=event,
+    ):
+        resp = APIClient().post(url, data=b"{}", content_type="application/json")
+    assert resp.status_code == 200
+    row = StripeEvent.objects.get(stripe_event_id="evt_unhandled")
+    assert row.processed_at is None
+    assert row.event_type == "some.future.event.type"
 
 
 def test_webhook_is_idempotent_on_redelivery():

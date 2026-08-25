@@ -7,9 +7,8 @@ from __future__ import annotations
 
 import pytest
 from django.urls import reverse
-from rest_framework.test import APIClient
-
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserStatus
 from apps.students.models import BulletinsStatus, StudentProfile
@@ -19,7 +18,7 @@ from apps.students.models import BulletinsStatus, StudentProfile
 def user(db):
     return User.objects.create_user(
         email="lea@test.com",
-        password="Strong1!pass",  # noqa: S106
+        password="Strong1!pass",
         status=UserStatus.ACTIVE,
         email_verified_at=timezone.now(),
     )
@@ -44,9 +43,7 @@ def auth_client(user):
 
 class TestPostponeEndpoint:
     def test_postpone_pending_sets_status_and_timestamp(self, auth_client, profile):
-        response = auth_client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 200
         profile.refresh_from_db()
         assert profile.bulletins_status == BulletinsStatus.POSTPONED
@@ -57,9 +54,7 @@ class TestPostponeEndpoint:
         profile.refresh_from_db()
         first_ts = profile.bulletins_postponed_at
 
-        response = auth_client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 200
         profile.refresh_from_db()
         # Timestamp must NOT change on second call (idempotent)
@@ -69,31 +64,23 @@ class TestPostponeEndpoint:
         profile.bulletins_status = BulletinsStatus.COMPLETED
         profile.save()
 
-        response = auth_client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 409
 
     def test_postpone_when_partial_returns_409(self, auth_client, profile):
         profile.bulletins_status = BulletinsStatus.PARTIAL
         profile.save()
 
-        response = auth_client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 409
 
     def test_postpone_unauthenticated_returns_401(self, profile):
         client = APIClient()
-        response = client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 401
 
     def test_postpone_response_shape(self, auth_client, profile):
-        response = auth_client.post(
-            reverse("students:me-bulletins-postpone"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-postpone"), format="json")
         assert response.status_code == 200
         data = response.json()
         assert data["bulletins_status"] == "postponed"
@@ -110,9 +97,7 @@ class TestBannerDismissEndpoint:
         from django.utils import timezone
 
         before = timezone.now()
-        response = auth_client.post(
-            reverse("students:me-bulletins-banner-dismiss"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-banner-dismiss"), format="json")
         after = timezone.now()
 
         assert response.status_code == 200
@@ -125,34 +110,25 @@ class TestBannerDismissEndpoint:
         assert before + timedelta(days=7) <= dismissed_until <= after + timedelta(days=7)
 
     def test_dismiss_response_contains_dismissed_until(self, auth_client, profile):
-        response = auth_client.post(
-            reverse("students:me-bulletins-banner-dismiss"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-banner-dismiss"), format="json")
         assert response.status_code == 200
         data = response.json()
         assert "bulletins_postponed_banner_dismissed_until" in data
 
     def test_dismiss_unauthenticated_returns_401(self, profile):
         client = APIClient()
-        response = client.post(
-            reverse("students:me-bulletins-banner-dismiss"), format="json"
-        )
+        response = client.post(reverse("students:me-bulletins-banner-dismiss"), format="json")
         assert response.status_code == 401
 
     def test_dismiss_idempotent_updates_ttl(self, auth_client, profile):
         """Second dismiss must refresh the 7-day window."""
-        from django.utils import timezone
 
-        auth_client.post(
-            reverse("students:me-bulletins-banner-dismiss"), format="json"
-        )
+        auth_client.post(reverse("students:me-bulletins-banner-dismiss"), format="json")
         profile.refresh_from_db()
         first_ts = profile.bulletins_postponed_banner_dismissed_until
 
         # Small sleep not needed — just call again; DRF timestamps are ≥ first
-        response = auth_client.post(
-            reverse("students:me-bulletins-banner-dismiss"), format="json"
-        )
+        response = auth_client.post(reverse("students:me-bulletins-banner-dismiss"), format="json")
         assert response.status_code == 200
         profile.refresh_from_db()
         second_ts = profile.bulletins_postponed_banner_dismissed_until

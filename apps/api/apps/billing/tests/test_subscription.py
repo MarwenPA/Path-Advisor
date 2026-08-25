@@ -16,7 +16,7 @@ from apps.billing.services.subscription_service import SubscriptionService
 from apps.core.exceptions import InsufficientPlan
 from apps.core.rls import bypass_rls
 
-pytestmark = [pytest.mark.django_db, pytest.mark.postgresql_only]
+pytestmark = pytest.mark.django_db
 
 
 def _make_user(email: str = "sub@test.local") -> User:
