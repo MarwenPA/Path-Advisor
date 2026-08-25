@@ -22,6 +22,7 @@ from apps.accounts.views import (
     mfa_enroll_start_view,
     mfa_regenerate_recovery_codes_view,
 )
+from apps.billing.views import stripe_webhook_view
 
 # Rate-limit wrappers applied at URL-wire time so the per-IP / per-user caps
 # documented in Story 1.6 §T5 land on the right endpoints. Using `block=False`
@@ -119,6 +120,12 @@ urlpatterns = [
     path("api/v1/", include("apps.recommendations.urls")),
     # Story 4.1 — schools & formations referential (admin + public endpoints).
     path("api/v1/", include("apps.schools.urls")),
+    # Story 6.1 — parent invitation flow (POST/GET parent-invitations, accept, resend).
+    path("api/v1/family/", include("apps.family.urls")),
+    # Story 5.1 — billing: checkout session (api/v1) + Stripe webhook (distinct
+    # surface, CSRF-exempt, HMAC-verified — NOT under api/v1).
+    path("api/v1/billing/", include("apps.billing.urls")),
+    path("webhooks/stripe/", stripe_webhook_view, name="stripe-webhook"),
     # OpenAPI / docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(

@@ -64,6 +64,11 @@ INSTALLED_APPS = [
     "apps.professions",
     # Story 4.1 — schools & formations referential
     "apps.schools",
+    # Story 5.1 — billing (Stripe + subscriptions)
+    "apps.billing",
+    # Story 6.1 — parent invitation + account creation (ParentInvitation,
+    # ParentStudentLink, ParentLinkSource for the AccessListAggregator).
+    "apps.family",
 ]
 
 MIDDLEWARE = [
@@ -355,6 +360,23 @@ BULLETINS_BUCKET = os.environ.get("BULLETINS_BUCKET", "bulletins-encrypted")
 AI_SERVICE_URL = os.environ.get("AI_SERVICE_URL", "http://localhost:8001")
 AI_SERVICE_JWT_SECRET = os.environ.get("AI_SERVICE_JWT_SECRET", "")
 AI_SERVICE_JWT_TTL_SECONDS = int(os.environ.get("AI_SERVICE_JWT_TTL_SECONDS", "300"))
+
+# --- Stripe (Epic 5 — billing) ---
+# Story 5.1: payment provider abstraction. Test-mode keys locally (sandbox),
+# live keys in prod — swapped via env only, never in code (NFR-I1). Real values
+# are injected via Doppler/Scaleway Secrets in staging/prod; local dev reads the
+# `whsec_...` printed by `stripe listen` for STRIPE_WEBHOOK_SECRET.
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_PUBLISHABLE_KEY = os.environ.get("STRIPE_PUBLISHABLE_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+STRIPE_PRICE_ID_PREMIUM = os.environ.get("STRIPE_PRICE_ID_PREMIUM", "")
+# Where Stripe Checkout redirects the browser after success/cancel.
+STRIPE_CHECKOUT_SUCCESS_URL = os.environ.get(
+    "STRIPE_CHECKOUT_SUCCESS_URL", "http://localhost:3000/premium/success"
+)
+STRIPE_CHECKOUT_CANCEL_URL = os.environ.get(
+    "STRIPE_CHECKOUT_CANCEL_URL", "http://localhost:3000/premium"
+)
 
 # --- Email (overridden per environment) ---
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@path-advisor.local")

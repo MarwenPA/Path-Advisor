@@ -9,7 +9,7 @@ from typing import Any
 from apps.professions.models import Profession
 from apps.students.models import StudentProfile
 
-from . import ai_client
+from .ai_client import ai_client
 
 _BULLETINS_ENRICHED = {"partial", "completed"}
 LEVEL_COMPAT_THRESHOLD = 0.6

@@ -99,7 +99,16 @@ class RecommendationReviewCreateView(APIView):
                     },
                 )
         except IntegrityError as exc:
-            if "unique_student_profession_review" in str(exc):
+            # Message text differs by backend: PostgreSQL names the violated
+            # constraint ("unique_student_profession_review"); SQLite (used
+            # by the fast test lane) reports the column pair instead
+            # ("UNIQUE constraint failed: ...student_id, ...profession_id").
+            # Match either so the 409 branch is portable across both.
+            msg = str(exc)
+            is_duplicate_review = "unique_student_profession_review" in msg or (
+                "UNIQUE constraint failed" in msg and "student_id" in msg and "profession_id" in msg
+            )
+            if is_duplicate_review:
                 return Response(
                     {"detail": "Une demande de revue existe déjà pour ce métier."},
                     status=status.HTTP_409_CONFLICT,

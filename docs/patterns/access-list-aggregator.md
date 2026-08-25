@@ -77,3 +77,49 @@ For revocation (Story 1.10), each source writes a tier-specific audit event (`pa
 §AC8 budget : p95 ≤ 100 ms for 100 entries. Each source's `list_for_user` should run in O(1) DB queries (use `select_related` / `prefetch_related` / `only` aggressively). N+1 across sources is acceptable because `N ≤ 3` for the foreseeable future and the aggregator is invoked once per page load.
 
 The list is capped at 100 entries via `MAX_ENTRIES` in `aggregator.py`. Pagination is deliberately out of scope — a real student has 1–3 entries ; the cap is a 30× safety margin.
+
+## Second concrete example — `ParentLinkSource` (Story 6.1)
+
+Story 6.1 ships the parent-account flow (`ParentInvitation` → `ParentStudentLink`, distinct from the anonymous `ParentalConsent` of Story 1.4) and, alongside it, a second `AccessListSource` in its own app:
+
+```python
+# apps/family/access_list/parent_link.py
+class ParentLinkSource:
+    name = "parent_link"
+
+    def list_for_user(self, user: User) -> list[AccessListEntry]:
+        rows = ParentStudentLink.objects.filter(
+            student=user, revoked_at__isnull=True
+        ).select_related("parent")
+        matrix = VISIBILITY_MATRIX["parent"]  # reused, never inlined
+        return [
+            AccessListEntry(
+                id=f"{self.name}:{row.id}",
+                tier_type="parent",
+                display_name=row.parent.email,
+                granted_at=row.linked_at,
+                visible_data=matrix["visible"],
+                masked_data=matrix["masked"],
+                revocable=True,
+                source_name=self.name,
+                source_pk=str(row.id),
+            )
+            for row in rows
+        ]
+
+    def revoke(self, user: User, source_pk: str) -> RevocationResult:
+        ...  # ownership assert + idempotent ALREADY_REVOKED, same shape as ParentalConsentSource
+```
+
+Registered in the **`family` app's own** `apps.py::FamilyConfig.ready()` — not in `ProfilesConfig` — proving the extension point works across app boundaries with zero changes to `apps.profiles`:
+
+```python
+# apps/family/apps.py
+def ready(self) -> None:
+    from apps.profiles.access_list import registry
+    from .access_list.parent_link import ParentLinkSource
+
+    registry.register(ParentLinkSource())
+```
+
+Two `tier_type="parent"` sources (`parental_consent` from Story 1.4 and `parent_link` from Story 6.1) can legitimately coexist in the unified list for the same student during the Epic 6 rollout window — they represent two different eras of the same relationship (anonymous decision vs. real account) and both remain revocable independently.

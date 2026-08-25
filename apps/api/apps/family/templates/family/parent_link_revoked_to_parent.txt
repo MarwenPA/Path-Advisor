@@ -1,0 +1,9 @@
+Bonjour,
+
+{{ student_first_name }} a révoqué ton accès à son profil Path-Advisor.
+Tu ne peux plus voir ses métiers explorés ni ses parcours sauvegardés.
+
+Si tu suis d'autres enfants sur Path-Advisor, ton accès à leur profil
+n'est pas affecté.
+
+— L'équipe Path-Advisor

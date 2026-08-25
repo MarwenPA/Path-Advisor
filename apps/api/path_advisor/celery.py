@@ -55,6 +55,13 @@ app.conf.beat_schedule = {
         "task": "accounts.sweep_account_deletions",
         "schedule": crontab(hour=2, minute=45),
     },
+    # Story 6.1 §AC6 — expire pending ParentInvitation rows past their 30-day
+    # TTL. Slotted 04:35 (5 min after `gdpr-expire-old-exports` at 04:30, same
+    # "stagger the daily jobs" convention as the other beat entries above).
+    "family-expire-parent-invitations": {
+        "task": "family.expire_parent_invitations",
+        "schedule": crontab(hour=4, minute=35),
+    },
 }
 
 

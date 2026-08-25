@@ -1,0 +1,1 @@
+Ton accès au profil de {{ student_first_name }} a été révoqué

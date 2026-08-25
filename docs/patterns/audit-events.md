@@ -221,6 +221,29 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Metadata :** `{"reason": "malformed_id|unknown_source|not_found_or_wrong_owner"}`.
 - **DPO action :** patterns of `wrong_owner` from the same actor_id over time = active probing for other students' grants. Combined with `rbac.access_denied` from the same actor = escalation campaign.
 
+## Story 6.1 — Parent invitation + account creation (FR3)
+
+### `parent_invitation.created`
+- **Posé par :** `apps.family.services.parent_invitation.create_invitation` on every successful invitation creation.
+- **Result :** `success` (or `failure` with `error_type` metadata if `ParentInvitationAlreadyPending` is raised — AC2).
+- **Actor :** the inviting student.
+- **Subject :** the student's own id (`kwargs["student"].id`).
+- **Metadata :** `{"parent_email_hash": "<sha256-hex>", "invitation_id": "<id>", "relationship": "mere|pere|tuteur|autre|null"}` — the parent's plain email is NEVER stored in the audit row (Story 1.4 §AC4 pattern).
+
+### `parent_invitation.accepted`
+- **Posé par :** `apps.family.services.parent_invitation.accept_invitation` on every successful acceptance (both the anonymous account-creation path AC3 and the already-authenticated second-child path AC4).
+- **Result :** `success`.
+- **Actor :** `None` for the anonymous path (the parent has no account at click time — same convention as `parental_consent.decided`); the existing parent `User` for the AC4 path.
+- **Subject :** the invited student's id.
+- **Metadata :** `{"parent_email_hash": "<sha256-hex>", "relationship": "...", "invitation_id": "<id>"}`.
+
+### `parent_link.revoked`
+- **Posé par :** the generic Story 1.10 revoker (`apps.profiles.access_list.revoker.revoke_entry`) — same `profile.access_revoked` event as every other tier, dispatched to `ParentLinkSource.revoke`. No new revoker code was written for Story 6.1; the composite id prefix `parent_link:<uuid>` is what routes the call.
+- **Result :** `success`.
+- **Actor :** the revoking student.
+- **Subject :** the composite entry id `parent_link:<uuid>`.
+- **Metadata :** `{"source_name": "parent_link", "source_pk": "<uuid>", "tier_type": "parent", "display_name": "<parent email>"}` — same shape as the `parental_consent` revocation row.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.

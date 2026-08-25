@@ -54,6 +54,12 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     #     is the auth proof — Story 1.4)
     "parental-consent-status": "Public landing for parental consent token — Story 1.4",
     "parental-consent-decide": "Public decision endpoint for parental consent token — Story 1.4",
+    # --- Parent-invitation public landing + accept (the token is the auth
+    #     proof for a not-yet-existing parent account — Story 6.1)
+    "parent-invitation-status": "Public landing for parent-invitation token — Story 6.1",
+    "parent-invitation-accept": (
+        "Public account-creation endpoint for parent-invitation token — Story 6.1"
+    ),
     # --- Account-deletion cancel landing (token-based, no auth — Story 1.12)
     "account-deletion-cancel": "Public cancel landing for account-deletion token — Story 1.12",
     "account-deletion-status-public": "Public status for account-deletion token — Story 1.12",
@@ -79,6 +85,8 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     "redoc": "Redoc UI — public by SPA design",
     # --- Health endpoint (must be public for load balancer probes)
     "health": "Liveness probe for load balancer — must work without auth",
+    # --- Stripe webhook (auth IS the HMAC signature, not a session — Story 5.1)
+    "stripe-webhook": "Stripe webhook — HMAC signature is the auth proof, no session (Story 5.1)",
 }
 
 

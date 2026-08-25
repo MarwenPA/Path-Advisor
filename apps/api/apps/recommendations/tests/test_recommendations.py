@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 
@@ -393,6 +394,9 @@ class TestRecommendationsView:
         student = User.objects.create_user(
             email="student2@test.com", password="pass", role="student"
         )
+        student.status = "active"
+        student.email_verified_at = timezone.now()
+        student.save(update_fields=["status", "email_verified_at"])
         for i in range(1, 10):
             Profession.objects.create(
                 id=f"prof_0{i}" if i < 10 else f"prof_{i}",
@@ -426,6 +430,9 @@ class TestRecommendationsView:
         from apps.professions.models import Profession
 
         student = User.objects.create_user(email="schema@test.com", password="pass", role="student")
+        student.status = "active"
+        student.email_verified_at = timezone.now()
+        student.save(update_fields=["status", "email_verified_at"])
         for i in range(1, 10):
             Profession.objects.create(
                 id=f"prof_0{i}" if i < 10 else f"prof_{i}",
@@ -468,6 +475,9 @@ class TestRecommendationsView:
         from apps.recommendations.services.ai_client import AIServiceUnavailableError
 
         student = User.objects.create_user(email="error@test.com", password="pass", role="student")
+        student.status = "active"
+        student.email_verified_at = timezone.now()
+        student.save(update_fields=["status", "email_verified_at"])
         client = APIClient()
         client.force_authenticate(user=student)
 

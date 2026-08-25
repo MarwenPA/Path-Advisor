@@ -36,6 +36,9 @@ _SOURCE_TO_TIER_TYPE: dict[str, str] = {
     "parental_consent": "parent",
     "school_partnership": "school",
     "counselor_consent": "counselor",
+    # Story 6.1 — real parent-account link (distinct source from the
+    # anonymous Story 1.4 `parental_consent`, same `tier_type`).
+    "parent_link": "parent",
 }
 
 

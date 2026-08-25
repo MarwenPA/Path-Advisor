@@ -1,0 +1,24 @@
+Bonjour,
+
+{{ student_first_name }} t'invite à créer un compte parent Path-Advisor
+pour suivre son orientation scolaire.
+
+{% if custom_message %}Message de {{ student_first_name }} :
+« {{ custom_message }} »
+
+{% endif %}Avec ton compte, tu pourras voir :
+- Les métiers explorés
+- Les parcours de formation sauvegardés
+- Les coûts estimés des formations
+
+Ce qui reste privé pour {{ student_first_name }} :
+- Ses bulletins détaillés
+- Les appréciations de ses enseignants
+- Ses lettres de motivation
+
+Pour créer ton compte, clique ici :
+{{ invitation_url }}
+
+Ce lien est valable 30 jours.
+
+— L'équipe Path-Advisor
