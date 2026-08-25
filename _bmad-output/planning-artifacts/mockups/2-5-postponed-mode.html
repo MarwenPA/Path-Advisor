@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.5 — Mode "Plus tard" (Léa) + parité visuelle</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.5 — Mode dégradé invisible · 3 surfaces Léa-postponed
+  ----------------------------------------------------------------------------
+  Story PILIER du principe expérience #4 (mode normal = mode dégradé).
+  Léa choisit "Plus tard" — elle voit STRICTEMENT les mêmes écrans que Sarah,
+  seul le copy des labels change ("estimation indicative" au lieu de stats
+  personnalisées). Aucun écran "Mode dégradé".
+
+  3 scènes empilées :
+    Scène A — Dashboard Léa · bandeau footer fixed (BulletinsPostponedBanner)
+    Scène B — Graphe parcours · mini-CTA contextuel (BulletinsMiniCTA)
+              + stat range au lieu de chiffre précis
+    Scène C — BulletinsAddSheet (mini-flow 1-minute) — point d'entrée AC6
+    Scène D — Test parité visuelle Léa vs Sarah · screenshots côte à côte
+              (LE test critique du mode dégradé invisible)
+
+  Tokens cohérents avec mockups Epic 2 précédents.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+
+    /* Couleurs sémantiques de scoring (pour le graphe) */
+    --color-audacieux:       #A85428;
+    --color-realiste:        #2F6B4F;
+    --color-sur:             #3A7CA5;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-display-1:    48px;  --lh-display-1:    56px;
+    --text-display-2:    32px;  --lh-display-2:    40px;
+    --text-h1:           24px;  --lh-h1:           32px;
+    --text-h2:           20px;  --lh-h2:           28px;
+    --text-h3:           18px;  --lh-h3:           26px;
+    --text-body:         16px;  --lh-body:         24px;
+    --text-sm:           14px;  --lh-sm:           20px;
+    --text-caption:      12px;  --lh-caption:      16px;
+
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 999px;
+
+    --motion-instant: 100ms; --motion-quick: 200ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .scene-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .scene-label strong { color: var(--color-text); font-weight: 600; }
+
+  /* Device frame */
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+    width: 375px;
+    min-height: 820px;
+    position: relative;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 820px;
+    background: var(--color-bg);
+  }
+
+  /* Header app */
+  .app__header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .icon-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .app__header-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  .app__main {
+    flex: 1;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    overflow-y: auto;
+  }
+
+  /* ============================================================
+     SCÈNE A — Dashboard Léa avec bandeau footer
+     ============================================================ */
+  .dashboard-title {
+    font-size: var(--text-h1);
+    line-height: var(--lh-h1);
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .dashboard-subtitle {
+    font-size: var(--text-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-6) 0;
+  }
+
+  /* Maturity dashboard variant (Story 2.7) */
+  .maturity-dashboard {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-6);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .maturity-dashboard__text {
+    font-size: var(--text-sm);
+    margin: 0;
+    flex: 1;
+  }
+  .maturity-dashboard__text strong { font-weight: 600; }
+
+  /* Reco list mini cards */
+  .reco-section-title {
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    margin: 0 0 var(--space-4) 0;
+  }
+  .reco-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    list-style: none;
+    padding: 0;
+    margin: 0 0 var(--space-12) 0;
+  }
+  .reco-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    cursor: pointer;
+    transition: border-color var(--motion-instant);
+  }
+  .reco-card:hover { border-color: var(--color-border-strong); }
+  .reco-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .reco-card__title {
+    font-size: var(--text-body);
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+  }
+  .reco-card__score {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .reco-card__phrase {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+  }
+
+  /* Bandeau footer fixed (BulletinsPostponedBanner) */
+  .postponed-banner {
+    background: var(--color-bg-2);
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    /* Position sticky in body for the mockup */
+  }
+  .postponed-banner__text {
+    flex: 1;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+  .postponed-banner__cta {
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .postponed-banner__cta:hover {
+    background: var(--color-bg);
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+  .postponed-banner__cta:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .postponed-banner__cta svg { width: 14px; height: 14px; }
+  .postponed-banner__dismiss {
+    flex-shrink: 0;
+    width: 28px; height: 28px;
+    background: transparent; border: 0;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .postponed-banner__dismiss:hover { color: var(--color-text); }
+  .postponed-banner__dismiss svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     SCÈNE B — Graphe parcours · stat range Léa + mini-CTA
+     ============================================================ */
+  .graph-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    margin: 0 0 var(--space-1) 0;
+  }
+  .graph-subtitle {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-6) 0;
+  }
+
+  .graph-canvas {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+    position: relative;
+    min-height: 280px;
+  }
+
+  /* SVG graphe stylisé */
+  .graph-svg {
+    width: 100%;
+    height: 200px;
+    margin-bottom: var(--space-4);
+  }
+
+  .graph-stat-main {
+    text-align: right;
+  }
+  .graph-stat-main__value {
+    font-size: var(--text-display-2);
+    line-height: var(--lh-display-2);
+    font-weight: 600;
+    color: var(--color-audacieux);
+    margin: 0;
+    font-feature-settings: "tnum" 1;
+  }
+  .graph-stat-main__label {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+  .graph-stat-main__label strong { color: var(--color-audacieux); font-weight: 600; }
+
+  /* Mini-CTA contextuel (Story 2.5 AC5) */
+  .mini-cta-card {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+  }
+  .mini-cta-card__head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .mini-cta-card__icon {
+    width: 36px; height: 36px;
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .mini-cta-card__icon svg { width: 18px; height: 18px; }
+  .mini-cta-card__title {
+    font-size: var(--text-body);
+    font-weight: 600;
+    margin: 0;
+  }
+  .mini-cta-card__desc {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+  .mini-cta-card__btn {
+    background: transparent;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    align-self: flex-start;
+  }
+  .mini-cta-card__btn:hover {
+    background: var(--color-bg);
+    border-color: var(--color-brand);
+    color: var(--color-brand);
+  }
+  .mini-cta-card__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .mini-cta-card__btn svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     SCÈNE C — BulletinsAddSheet (mini-flow 1-min)
+     ============================================================ */
+  .sheet-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.40);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .sheet {
+    background: var(--color-bg);
+    border-radius: 16px 16px 0 0;
+    padding: var(--space-2) var(--space-4) var(--space-6) var(--space-4);
+    max-height: 75%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
+  }
+  .sheet__handle {
+    width: 36px; height: 4px;
+    background: var(--color-border-strong);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-4) auto;
+  }
+  .sheet__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .sheet__title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+  }
+  .sheet__close-btn {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+  .sheet__close-btn svg { width: 18px; height: 18px; }
+  .sheet__close-btn:hover { background: var(--color-bg-2); }
+  .sheet__desc {
+    font-size: var(--text-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-6) 0;
+  }
+  .sheet__choice-btns {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+  .choice-btn {
+    height: 56px;
+    padding: 0 var(--space-4);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    transition: border-color var(--motion-instant);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+  .choice-btn:hover { border-color: var(--color-brand); }
+  .choice-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .choice-btn__icon {
+    width: 32px; height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+  }
+  .choice-btn__icon svg { width: 16px; height: 16px; }
+  .choice-btn__arrow {
+    margin-left: auto;
+    color: var(--color-text-subtle);
+  }
+
+  .sheet__cancel {
+    align-self: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    min-height: 44px;
+  }
+  .sheet__cancel:hover { color: var(--color-text); }
+
+  /* ============================================================
+     SCÈNE D — Parité Léa vs Sarah · screenshots côte à côte
+     ============================================================ */
+  .parity-test {
+    width: 100%;
+    max-width: 1000px;
+    background: var(--color-bg);
+    border: 2px solid var(--color-brand);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+  }
+  .parity-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  @media (min-width: 900px) {
+    .parity-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .parity-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .parity-cell__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px 10px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+    align-self: flex-start;
+  }
+  .parity-cell__label strong { color: var(--color-text); font-weight: 600; }
+
+  .reco-card-parity {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+  }
+  .reco-card-parity h3 {
+    font-size: var(--text-body);
+    font-weight: 600;
+    margin: 0 0 var(--space-1) 0;
+  }
+  .reco-card-parity__phrase {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+    margin: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  }
+
+  .legend {
+    max-width: 960px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-h3); color: var(--color-text); }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.5 — Mode dégradé invisible "Plus tard" (Léa)</p>
+    <p class="mockup-subtitle">Path-Advisor · PILIER principe expérience #4 (mode normal = mode dégradé)</p>
+  </header>
+
+  <!-- ============================================================
+       SCÈNE A — Dashboard Léa avec bandeau footer postponed
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">📱 Scène A · <strong>Léa</strong> dashboard · bandeau footer postponed dismissable</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+          <h1 class="app__header-title">Accueil</h1>
+          <button class="icon-btn" aria-label="Notifications"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+        </div>
+
+        <main class="app__main">
+          <h2 class="dashboard-title">Voici tes métiers compatibles</h2>
+          <p class="dashboard-subtitle">Basé sur tes passions et valeurs déclarées.</p>
+
+          <!-- Maturity dashboard variant (Story 2.7) — Léa = base -->
+          <div class="maturity-dashboard" role="region" aria-label="Maturité de profil">
+            <p class="maturity-dashboard__text">
+              <strong>Profil de base</strong> · Tu as l'essentiel pour des recos indicatives.
+            </p>
+          </div>
+
+          <h3 class="reco-section-title">Top 5 métiers pour toi</h3>
+          <ul class="reco-list">
+            <li class="reco-card">
+              <div class="reco-card__head">
+                <h4 class="reco-card__title">Avocate</h4>
+                <span class="reco-card__score">82 % compatible</span>
+              </div>
+              <p class="reco-card__phrase">« Avec ton goût pour la justice sociale, le droit est une voie cohérente — précision affinée quand tu ajouteras tes bulletins. »</p>
+            </li>
+            <li class="reco-card">
+              <div class="reco-card__head">
+                <h4 class="reco-card__title">Journaliste</h4>
+                <span class="reco-card__score">78 % compatible</span>
+              </div>
+              <p class="reco-card__phrase">« Tes intérêts en lecture et politique se croisent vers le journalisme. »</p>
+            </li>
+            <li class="reco-card">
+              <div class="reco-card__head">
+                <h4 class="reco-card__title">Médecin</h4>
+                <span class="reco-card__score">74 % compatible</span>
+              </div>
+              <p class="reco-card__phrase">« Ton envie d'aider les autres rejoint les métiers du soin. »</p>
+            </li>
+          </ul>
+        </main>
+
+        <!-- Bandeau footer fixed (BulletinsPostponedBanner Story 2.5 AC3) -->
+        <div class="postponed-banner" role="complementary" aria-label="Suggestion d'ajout bulletins">
+          <p class="postponed-banner__text">Tu peux ajouter tes bulletins à tout moment pour des stats personnalisées.</p>
+          <button class="postponed-banner__cta" type="button">
+            Ajouter
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+          <button class="postponed-banner__dismiss" aria-label="Masquer pour 7 jours">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE B — Graphe parcours · stat range + mini-CTA
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">🎯 Scène B · <strong>Léa</strong> graphe parcours · stat 30-45 % (range) + mini-CTA</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <h1 class="app__header-title">Avocate</h1>
+          <button class="icon-btn" aria-label="Partager"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+        </div>
+
+        <main class="app__main">
+          <h2 class="graph-title">Vers Sciences Po Paris</h2>
+          <p class="graph-subtitle">Parcours le plus accessible · 3 étapes</p>
+
+          <!-- Graphe SVG simplifié -->
+          <div class="graph-canvas">
+            <svg class="graph-svg" viewBox="0 0 400 200" aria-label="Graphe de parcours vers Sciences Po Paris">
+              <!-- Liens -->
+              <line x1="50" y1="160" x2="160" y2="100" stroke="#666660" stroke-width="2" />
+              <line x1="160" y1="100" x2="270" y2="80" stroke="#666660" stroke-width="2" />
+              <line x1="270" y1="80" x2="360" y2="40" stroke="#666660" stroke-width="3" />
+
+              <!-- Nœud 1 : Terminale -->
+              <circle cx="50" cy="160" r="20" fill="#FAFAF7" stroke="#666660" stroke-width="2"/>
+              <text x="50" y="195" font-size="11" fill="#666660" text-anchor="middle" font-family="Inter">Terminale</text>
+
+              <!-- Nœud 2 : Bac -->
+              <circle cx="160" cy="100" r="20" fill="#FAFAF7" stroke="#666660" stroke-width="2"/>
+              <text x="160" y="135" font-size="11" fill="#666660" text-anchor="middle" font-family="Inter">Bac</text>
+
+              <!-- Nœud 3 : Prépa -->
+              <circle cx="270" cy="80" r="20" fill="#FAFAF7" stroke="#666660" stroke-width="2"/>
+              <text x="270" y="115" font-size="11" fill="#666660" text-anchor="middle" font-family="Inter">Prépa</text>
+
+              <!-- Nœud cible : Sciences Po -->
+              <circle cx="360" cy="40" r="28" fill="#FAFAF7" stroke="#A85428" stroke-width="3"/>
+              <text x="360" y="80" font-size="11" fill="#1A1A1A" text-anchor="middle" font-family="Inter" font-weight="600">Sciences Po</text>
+            </svg>
+
+            <div class="graph-stat-main">
+              <p class="graph-stat-main__value">30-45&thinsp;%</p>
+              <p class="graph-stat-main__label"><strong>Pari audacieux</strong> — estimation indicative</p>
+            </div>
+          </div>
+
+          <!-- Mini-CTA contextuel (BulletinsMiniCTA Story 2.5 AC5) -->
+          <div class="mini-cta-card" role="complementary" aria-label="Compléter ton profil">
+            <div class="mini-cta-card__head">
+              <span class="mini-cta-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
+              </span>
+              <div>
+                <h3 class="mini-cta-card__title">Ajoute tes bulletins</h3>
+              </div>
+            </div>
+            <p class="mini-cta-card__desc">Tes stats deviendront personnalisées en moins d'1 minute.</p>
+            <button class="mini-cta-card__btn" type="button">
+              J'ajoute mes notes
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE C — BulletinsAddSheet (1-min mini-flow)
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">📋 Scène C · <strong>Léa</strong> BulletinsAddSheet · choix 2 voies équivalentes weight</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+        <!-- Page en fond -->
+        <div class="app__header">
+          <button class="icon-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <h1 class="app__header-title">Avocate</h1>
+          <span class="icon-btn" aria-hidden="true"></span>
+        </div>
+        <main class="app__main" style="opacity: 0.4;">
+          <h2 class="graph-title">Vers Sciences Po Paris</h2>
+          <p class="graph-subtitle">Parcours le plus accessible · 3 étapes</p>
+          <div class="graph-canvas"></div>
+        </main>
+
+        <!-- Sheet overlay -->
+        <div class="sheet-overlay" role="dialog" aria-modal="true" aria-labelledby="add-sheet-title">
+          <div class="sheet">
+            <div class="sheet__handle" aria-hidden="true"></div>
+            <div class="sheet__header">
+              <h2 class="sheet__title" id="add-sheet-title">Ajoute tes bulletins</h2>
+              <button class="sheet__close-btn" aria-label="Fermer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <p class="sheet__desc">En moins d'une minute, tes stats deviennent personnalisées.</p>
+
+            <div class="sheet__choice-btns">
+              <button class="choice-btn" type="button">
+                <span class="choice-btn__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                </span>
+                Scanner / importer
+                <svg class="choice-btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+              <button class="choice-btn" type="button">
+                <span class="choice-btn__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                </span>
+                Saisir à la main
+                <svg class="choice-btn__arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <button class="sheet__cancel" type="button">Annuler</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE D — Test parité Léa vs Sarah · LE test critique
+       ============================================================ -->
+  <div class="parity-test">
+    <h2 class="section-title" style="text-align: center; margin-bottom: var(--space-2);">🧪 Test critique de parité visuelle Léa vs Sarah</h2>
+    <p class="section-desc" style="text-align: center; margin: 0 auto var(--space-8) auto; max-width: 600px;">
+      Si tu peux distinguer la carte Léa de la carte Sarah au premier coup d'œil, <em>le mode dégradé invisible est cassé</em>.
+      Seul le copy de la phrase défendable change.
+    </p>
+
+    <div class="parity-grid">
+      <div class="parity-cell">
+        <span class="parity-cell__label">👤 <strong>Léa</strong> postponed · même UI</span>
+        <div class="reco-card-parity">
+          <div class="reco-card__head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+            <h3>Avocate</h3>
+            <span class="reco-card__score">82 % compatible</span>
+          </div>
+          <p class="reco-card-parity__phrase">« Avec ton goût pour la justice sociale, le droit est une voie cohérente — <strong>précision affinée quand tu ajouteras tes bulletins.</strong> »</p>
+        </div>
+        <div class="reco-card-parity">
+          <h4 style="margin: 0 0 var(--space-2) 0; font-size: var(--text-sm); color: var(--color-text-muted);">Stat d'admission Sciences Po</h4>
+          <div style="font-size: 32px; font-weight: 600; color: var(--color-audacieux); font-family: 'Inter'; font-feature-settings: 'tnum';">30-45&thinsp;%</div>
+          <div style="font-size: var(--text-sm); color: var(--color-text-muted);"><strong style="color: var(--color-audacieux);">Pari audacieux</strong> — estimation indicative</div>
+        </div>
+      </div>
+
+      <div class="parity-cell">
+        <span class="parity-cell__label">👩‍🎓 <strong>Sarah</strong> avec bulletins · même UI</span>
+        <div class="reco-card-parity">
+          <div class="reco-card__head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-2);">
+            <h3>Avocate</h3>
+            <span class="reco-card__score">82 % compatible</span>
+          </div>
+          <p class="reco-card-parity__phrase">« Avec ton goût pour la justice sociale et ton 14 en HGGSP, le droit est un objectif réaliste. »</p>
+        </div>
+        <div class="reco-card-parity">
+          <h4 style="margin: 0 0 var(--space-2) 0; font-size: var(--text-sm); color: var(--color-text-muted);">Stat d'admission Sciences Po</h4>
+          <div style="font-size: 32px; font-weight: 600; color: var(--color-audacieux); font-family: 'Inter'; font-feature-settings: 'tnum';">38&thinsp;%</div>
+          <div style="font-size: var(--text-sm); color: var(--color-text-muted);"><strong style="color: var(--color-audacieux);">Pari audacieux</strong> — moyenne admise dernière promo : 14.2</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <aside class="legend">
+    <h3>Tests de validation visuelle</h3>
+    <ul>
+      <li><strong>Test parité visuelle (Scène D, LE test critique) :</strong> les 2 cards Léa et Sarah doivent avoir <em>strictement la même structure, même typographie, même couleur, même hiérarchie</em>. Seul le contenu textuel de la phrase défendable et de la stat diffère. Si on couvre la métadonnée "Léa postponed" vs "Sarah avec bulletins" en haut, on ne peut PAS distinguer les deux.</li>
+      <li><strong>Test bandeau footer dismissable (Scène A) :</strong> bouton "Ajouter" en outline secondary (pas brand primary), bouton dismiss ✕ discret. Au clic ✕, masqué pour 7 jours (TTL via API). Ne suit pas le scroll (sticky à la fenêtre, pas au contenu).</li>
+      <li><strong>Test mini-CTA contextuel (Scène B) :</strong> apparaît dans la PAGE sous le graphe, pas en overlay. Bouton secondary (pas primary). Disparaît dès <code>bulletins_status === "completed"</code>. Pas dismissable (contextuel, pas harcèlement).</li>
+      <li><strong>Test stat range Léa (Scène B) :</strong> "30-45 %" en fourchette même typo display-2 que la stat chiffre précise Sarah. Label qualitatif "Pari audacieux" identique, suffixe "estimation indicative" calme et factuel.</li>
+      <li><strong>Test BulletinsAddSheet (Scène C) :</strong> 2 boutons "Scanner / importer" + "Saisir à la main" strict <em>même hauteur (56 px), même typographie, même padding</em>. Aucun n'est en primary brand — c'est un choix libre, pas une recommandation directive. Bouton "Annuler" tertiary discret centré.</li>
+      <li><strong>Test mots interdits :</strong> aucun "incomplet", "manque", "X %", "tu rates", "termine", "débloque tes VRAIES stats" dans les 4 scènes. Validation runtime dev sur les copy.</li>
+      <li><strong>Test "même reco list" :</strong> Léa voit les 3 mêmes métiers (Avocate, Journaliste, Médecin) avec les mêmes scores (82 / 78 / 74 %) que Sarah verrait. Le score vocationnel est basé sur passions/valeurs (Story 2.1), pas sur les bulletins.</li>
+      <li><strong>Test capture WhatsApp / screenshot :</strong> Léa screenshote son graphe parcours et l'envoie à Sarah. Sarah ne doit PAS deviner que Léa est en mode postponed — le mini-CTA pourrait trahir, mais il sort du re-rendu d'export <code>StoryExport</code> (Story 6 le gère).</li>
+      <li><strong>Test focus a11y :</strong> Tab sur bandeau : "Ajouter" → ✕. Tab sur mini-CTA : "J'ajoute mes notes". Tab sur sheet : "Scanner" → "Manuel" → "Annuler". Focus ring 2 px brand + offset.</li>
+      <li><strong>Test reduced motion :</strong> aucune animation propre sur cet écran (transitions hover collapse à 0 ms).</li>
+      <li><strong>Test conversion KPI :</strong> chaque clic "Ajouter" / "J'ajoute mes notes" émet un event analytics distinct (<code>bulletins_banner_clicked</code>, <code>bulletins_minicta_clicked</code> avec <code>entry_point</code>). Le funnel postponed → completed est mesurable au tracking. Cible MVP ≥ 35 % en 4 semaines.</li>
+      <li><strong>Test "rien ne suit Léa partout" :</strong> si Léa dismiss le bandeau, il reste masqué 7 jours sur toutes les pages. Le mini-CTA n'est pas dismissable mais n'apparaît que contextuellement (graphes, stats), jamais sur fiches métier ou liste.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

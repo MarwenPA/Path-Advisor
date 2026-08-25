@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.3 AC5 — Récap éditable bulletins · Desktop 1024+</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.3 AC5 & AC6 — Récap éditable bulletins · DESKTOP
+  ----------------------------------------------------------------------------
+  Complément du mockup mobile (2-3-recap-editor.html). L'écran le plus dense
+  de l'onboarding, en desktop : on profite de l'espace horizontal mais on
+  reste single-column principal (les recettes ergo Doctolib-like).
+
+  Décisions structurelles desktop :
+    1. Container max-width 960 px (entre form 600 et tabular 1200) — équilibre
+       lisibilité/densité.
+    2. Bulletin meta + warning summary INLINE horizontal (gain vertical).
+    3. Appréciation matière NON tronquée (on a la place).
+    4. Footer primary RIGHT-ALIGNED (convention desktop UX spec).
+    5. Tabs largeur naturelle (pas de scroll-x desktop).
+    6. Aucun side nav onboarding (focus exclusif sur le flow step-3).
+
+  2 scènes empilées :
+    Scène A — Sarah Terminale général · idle · 1 low-conf
+    Scène B — Edit mode actif sur la note "Mathématiques"
+
+  Tokens cohérents avec mockups mobile.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     TOKENS — identiques aux autres mockups
+     ============================================================ */
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+    --color-warning-bg:      #FBF0DD;
+    --color-danger:          #9E2A24;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-h2-d:         24px;  --lh-h2-d:         32px;
+    --text-h3:           18px;  --lh-h3:           26px;
+    --text-body:         16px;  --lh-body:         24px;
+    --text-sm:           14px;  --lh-sm:           20px;
+    --text-caption:      12px;  --lh-caption:      16px;
+    --text-display-3:    28px;  --lh-display-3:    36px;  /* pour la note display desktop */
+
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12:48px;
+    --space-16:64px;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+
+    --motion-instant:  100ms;
+    --motion-quick:    200ms;
+    --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: #F0EDE8;     /* fond plus sombre pour faire ressortir le device frame desktop */
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .scene-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .scene-label strong { color: var(--color-text); font-weight: 600; }
+
+  /* ============================================================
+     DEVICE FRAME — desktop 1024 px viewport simulé
+     ============================================================ */
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 20px 48px rgba(0,0,0,0.08);
+    width: 100%;
+    max-width: 1200px;
+    min-height: 720px;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 720px;
+    background: var(--color-bg);
+  }
+
+  /* ============================================================
+     HEADER — desktop : logo gauche, progress center, profil right
+     Pour onboarding step-3 on garde minimal : back + progress + skip-spacer
+     (pas de side nav onboarding — focus exclusif sur le flow)
+     ============================================================ */
+  .app__header {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-8);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .icon-btn {
+    width: 40px; height: 40px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background var(--motion-instant);
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .progress-dots {
+    display: inline-flex; gap: var(--space-1);
+    align-items: center;
+  }
+  .progress-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-brand);
+  }
+  .header-spacer { width: 40px; height: 40px; }
+
+  /* ============================================================
+     MAIN — container desktop largeur 1080 px max
+     (bumpé depuis 960 — donne plus de place aux appréciations,
+     reste sous le plafond 1200 du design system UX spec)
+     ============================================================ */
+  .app__main {
+    flex: 1;
+    padding: var(--space-12) var(--space-8) var(--space-12);
+    max-width: 1080px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .screen-title {
+    font-size: var(--text-h2-d);
+    line-height: var(--lh-h2-d);
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
+    letter-spacing: -0.01em;
+  }
+  .screen-subtitle {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-8) 0;
+  }
+
+  /* ============================================================
+     TABS — desktop : pas de scroll-x, largeur naturelle
+     ============================================================ */
+  .tabs {
+    display: flex;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-8);
+  }
+  .tab {
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    cursor: pointer;
+    transition: color var(--motion-instant), border-color var(--motion-instant), background var(--motion-instant);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 500;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--color-text); background: var(--color-bg-2); }
+  .tab:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .tab[aria-selected="true"] {
+    color: var(--color-text);
+    border-bottom-color: var(--color-brand);
+    font-weight: 600;
+  }
+  .tab__check {
+    width: 14px; height: 14px;
+    color: var(--color-success);
+  }
+  .tab--add {
+    color: var(--color-text-subtle);
+  }
+  .tab--add:hover { color: var(--color-brand); }
+
+  /* ============================================================
+     BULLETIN META — desktop : meta gauche + warning summary droite INLINE
+     ============================================================ */
+  .bulletin-meta {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
+  }
+  .bulletin-meta__left {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .bulletin-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    padding: 4px 8px;
+    background: transparent;
+    border: 0;
+    cursor: text;
+    border-radius: var(--radius-sm);
+    transition: background var(--motion-instant);
+    align-self: flex-start;
+  }
+  .bulletin-label:hover { background: var(--color-bg-2); }
+  .bulletin-label:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .bulletin-label__icon {
+    width: 14px; height: 14px;
+    color: var(--color-text-subtle);
+    transition: color var(--motion-instant);
+  }
+  .bulletin-label:hover .bulletin-label__icon { color: var(--color-text-muted); }
+  .bulletin-year {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+    padding-left: 8px;
+  }
+
+  /* Warning summary INLINE à droite — desktop only layout */
+  .warning-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    flex-shrink: 0;
+  }
+  .warning-summary__left {
+    display: flex; align-items: center; gap: var(--space-2);
+    color: var(--color-text);
+  }
+  .warning-summary__left svg {
+    width: 18px; height: 18px;
+    color: var(--color-warning);
+    flex-shrink: 0;
+  }
+  .warning-summary__link {
+    background: transparent; border: 0;
+    color: var(--color-brand);
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+  }
+  .warning-summary__link:hover { color: var(--color-brand-hover); }
+  .warning-summary__link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     MATIÈRES LIST — desktop : layout horizontal 3 colonnes par ligne
+     Plus de truncation sur l'appréciation (place suffisante)
+     ============================================================ */
+  .matieres-section { margin-bottom: var(--space-8); }
+  .matieres-section__title {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-2) 0;
+  }
+  .matieres-table {
+    width: 100%;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .sr-only {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  .matiere {
+    padding: var(--space-4) var(--space-6);
+    transition: background var(--motion-instant);
+  }
+  .matiere + .matiere {
+    border-top: 1px solid var(--color-border);
+  }
+  .matiere:hover { background: var(--color-bg-3); }
+
+  /* Desktop : top row en 3 colonnes : matière name + warning indicator | note | actions */
+  .matiere__top {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: var(--space-6);
+  }
+  .matiere__name-cell {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+  .matiere__warning {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    color: var(--color-warning);
+  }
+  .matiere__warning svg { width: 18px; height: 18px; }
+  .matiere__name {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    font-weight: 500;
+    color: var(--color-text);
+    margin: 0;
+    min-width: 0;
+  }
+  .matiere__note {
+    font-size: var(--text-display-3);
+    line-height: var(--lh-display-3);
+    font-weight: 600;
+    color: var(--color-text);
+    font-feature-settings: "tnum" 1;
+    margin: 0;
+    min-width: 100px;
+    text-align: right;
+  }
+  .matiere__note .note-max {
+    font-size: var(--text-body);
+    color: var(--color-text-subtle);
+    font-weight: 400;
+  }
+  .matiere__actions {
+    display: inline-flex;
+    gap: var(--space-1);
+    flex-shrink: 0;
+  }
+  .matiere__action-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    transition: background var(--motion-instant), color var(--motion-instant);
+  }
+  .matiere__action-btn:hover {
+    background: var(--color-bg);
+    color: var(--color-text-muted);
+  }
+  .matiere__action-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .matiere__action-btn svg { width: 16px; height: 16px; }
+
+  /* Appréciation : desktop = pas de truncate, 3 lignes max naturel */
+  .matiere__appreciation {
+    margin: var(--space-2) 0 0 var(--space-8);   /* indent aligné après warning icon */
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+    max-width: 640px;
+  }
+
+  /* Low-conf : bande gauche 3 px ambre */
+  .matiere--warning {
+    border-left: 3px solid var(--color-warning);
+    padding-left: calc(var(--space-6) - 3px);
+  }
+
+  /* ============================================================
+     EDIT MODE — Input remplaçant la note (desktop : plus de place)
+     ============================================================ */
+  .matiere--editing {
+    background: var(--color-bg);
+  }
+  .matiere__note-input {
+    min-width: 120px;
+    height: 44px;
+    padding: 0 var(--space-3);
+    font: inherit;
+    font-size: var(--text-display-3);
+    font-weight: 600;
+    color: var(--color-text);
+    text-align: right;
+    background: var(--color-bg);
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-sm);
+    font-feature-settings: "tnum" 1;
+    box-shadow: 0 0 0 2px rgba(200, 49, 45, 0.15);
+  }
+  .matiere__note-input:focus { outline: none; }
+  .matiere__edit-help {
+    margin: var(--space-3) 0 0 var(--space-8);
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+  }
+  .matiere__edit-help kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    margin: 0 2px;
+    background: var(--color-bg-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+
+  /* ============================================================
+     ADD MATIÈRE — desktop : ne prend pas toute la largeur, inline
+     ============================================================ */
+  .btn-tertiary {
+    background: transparent;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: color var(--motion-instant), border-color var(--motion-instant);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+  .btn-tertiary:hover { color: var(--color-brand); border-color: var(--color-brand); }
+  .btn-tertiary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn-tertiary svg { width: 16px; height: 16px; }
+
+  /* ============================================================
+     FOOTER — desktop : right-aligned primary (convention UX spec)
+     ============================================================ */
+  .app__footer {
+    padding: var(--space-4) var(--space-8);
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    justify-content: flex-end;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding: 0 var(--space-6);
+    background: var(--color-brand);
+    color: #FFFFFF;
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+    min-width: 220px;
+  }
+  .btn-primary:hover { background: var(--color-brand-hover); border-color: var(--color-brand-hover); }
+  .btn-primary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     REDUCED MOTION
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============================================================
+     LEGEND
+     ============================================================ */
+  .legend {
+    max-width: 960px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-h3); color: var(--color-text); }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.3 — AC5 & AC6 — Récap éditable bulletins · Desktop 1024+ px</p>
+    <p class="mockup-subtitle">Path-Advisor · Container 1080 px · Note display-3 · footer primary right-aligned</p>
+  </header>
+
+  <!-- ============================================================
+       SCÈNE A — Sarah Terminale général · idle · 1 low-conf
+       Desktop : meta + warning inline horizontal, note display large
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">🖥️ Scène A · <strong>Sarah</strong> Terminale général · idle · 1 matière low-conf · viewport 1024+ px</span>
+
+    <div class="device" aria-label="Aperçu desktop 1024 px">
+      <div class="app">
+
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour au choix d'import">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+
+          <h2 class="screen-title">Voilà ce qu'on a lu</h2>
+          <p class="screen-subtitle">Corrige si besoin — on peut se tromper. Toi seul·e sais ce qui est juste.</p>
+
+          <div class="tabs" role="tablist" aria-label="Bulletins importés">
+            <button class="tab" role="tab" aria-selected="true">Trim. 1</button>
+            <button class="tab" role="tab" aria-selected="false">
+              <svg class="tab__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Trim. 2
+            </button>
+            <button class="tab tab--add" role="tab" aria-selected="false">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Ajouter un bulletin
+            </button>
+          </div>
+
+          <!-- Bulletin meta : label éditable à gauche + warning summary INLINE à droite (desktop only) -->
+          <div class="bulletin-meta">
+            <div class="bulletin-meta__left">
+              <button class="bulletin-label" type="button" aria-label="Modifier le libellé du bulletin">
+                Trim. 1 — Terminale
+                <svg class="bulletin-label__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <p class="bulletin-year">Année 2025-2026</p>
+            </div>
+
+            <div class="warning-summary" role="status">
+              <div class="warning-summary__left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                <span>1 matière à vérifier</span>
+              </div>
+              <button class="warning-summary__link" type="button">Voir →</button>
+            </div>
+          </div>
+
+          <!-- Section matières -->
+          <section class="matieres-section">
+            <h3 class="matieres-section__title">Tes matières</h3>
+
+            <div class="matieres-table" role="table" aria-label="Liste des matières du bulletin">
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">Mathématiques</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>14.5</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier Mathématiques">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    </button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer Mathématiques">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Excellents efforts ce trimestre, continue sur cette lancée. La méthode est solide en analyse, persiste sur la rigueur en démonstration. Très bonne participation orale et investissement régulier dans les exercices à la maison.</p>
+              </div>
+
+              <div class="matiere matiere--warning" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <span class="matiere__warning" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                    </span>
+                    <p class="matiere__name" role="cell">SVT <span class="sr-only">— à vérifier</span></p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>13.2</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier SVT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer SVT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Bon trimestre malgré quelques difficultés sur la génétique. Le travail personnel est régulier, ne lâche pas en deuxième partie. La curiosité scientifique se développe — encourager les lectures complémentaires.</p>
+              </div>
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">HGGSP</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>15.0</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier HGGSP"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer HGGSP"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Excellent niveau, élève très engagée dans les débats. Argumentation construite et nourrie de lectures personnelles. Bonne maîtrise des outils de la géopolitique contemporaine.</p>
+              </div>
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">Français (Bac anticipé)</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>13.0</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier Français"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer Français"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Niveau correct. Améliorer la précision lexicale et la diversité des structures de phrases en dissertation. Lectures personnelles encourageantes.</p>
+              </div>
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">Anglais LV1</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>16.5</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier Anglais LV1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer Anglais LV1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Très bon niveau, participe activement à l'oral. À l'aise dans les exercices de compréhension écrite. Aisance qui se ressent à l'écrit également.</p>
+              </div>
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">Espagnol LV2</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>14.0</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier Espagnol LV2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer Espagnol LV2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Niveau solide. Quelques difficultés persistantes sur le subjonctif imparfait à l'écrit, mais aisance à l'oral très satisfaisante.</p>
+              </div>
+
+              <div class="matiere" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">EPS</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>15.0</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier EPS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer EPS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Très bon investissement, motivée et impliquée dans toutes les disciplines proposées.</p>
+              </div>
+
+            </div>
+          </section>
+
+          <button class="btn-tertiary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+            Ajouter une matière manquante
+          </button>
+
+        </main>
+
+        <!-- Footer : primary RIGHT-aligned (convention desktop UX spec) -->
+        <footer class="app__footer">
+          <button class="btn-primary" type="button">
+            Valider ce trimestre
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </footer>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE B — Edit mode actif (desktop : input plus large, kbd helper)
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">✎ Scène B · <strong>Edit mode</strong> · note "Mathématiques" en cours d'édition · kbd hints visibles</span>
+
+    <div class="device" aria-label="Aperçu desktop 1024 px">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour au choix d'import">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+          <h2 class="screen-title">Voilà ce qu'on a lu</h2>
+          <p class="screen-subtitle">Corrige si besoin — on peut se tromper. Toi seul·e sais ce qui est juste.</p>
+
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true">Trim. 1</button>
+            <button class="tab" role="tab" aria-selected="false">
+              <svg class="tab__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Trim. 2
+            </button>
+            <button class="tab tab--add" role="tab" aria-selected="false">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Ajouter un bulletin
+            </button>
+          </div>
+
+          <div class="bulletin-meta">
+            <div class="bulletin-meta__left">
+              <button class="bulletin-label" type="button">
+                Trim. 1 — Terminale
+                <svg class="bulletin-label__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </button>
+              <p class="bulletin-year">Année 2025-2026</p>
+            </div>
+          </div>
+
+          <section class="matieres-section">
+            <h3 class="matieres-section__title">Tes matières</h3>
+
+            <div class="matieres-table" role="table">
+
+              <!-- Edit mode actif sur Mathématiques -->
+              <div class="matiere matiere--editing" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <p class="matiere__name" role="cell">Mathématiques</p>
+                  </div>
+                  <input
+                    class="matiere__note-input"
+                    type="text"
+                    inputmode="decimal"
+                    value="14,5"
+                    aria-label="Note Mathématiques sur 20"
+                    autofocus
+                  />
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier Mathématiques">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                    </button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer Mathématiques">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Excellents efforts ce trimestre, continue sur cette lancée. La méthode est solide en analyse, persiste sur la rigueur en démonstration.</p>
+                <p class="matiere__edit-help">
+                  <kbd>Entrée</kbd> valider · <kbd>Échap</kbd> annuler · note entre 0 et 20
+                </p>
+              </div>
+
+              <div class="matiere matiere--warning" role="row">
+                <div class="matiere__top">
+                  <div class="matiere__name-cell">
+                    <span class="matiere__warning" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+                    </span>
+                    <p class="matiere__name" role="cell">SVT</p>
+                  </div>
+                  <p class="matiere__note" role="cell"><span>13.2</span> <span class="note-max">/ 20</span></p>
+                  <div class="matiere__actions" role="cell">
+                    <button class="matiere__action-btn" type="button" aria-label="Modifier SVT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg></button>
+                    <button class="matiere__action-btn" type="button" aria-label="Supprimer SVT"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                  </div>
+                </div>
+                <p class="matiere__appreciation">Bon trimestre malgré quelques difficultés sur la génétique. Le travail personnel est régulier.</p>
+              </div>
+
+            </div>
+          </section>
+
+        </main>
+
+        <footer class="app__footer">
+          <button class="btn-primary" type="button">
+            Valider ce trimestre
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LEGEND
+       ============================================================ -->
+  <aside class="legend">
+    <h3>Différences mobile vs desktop — tests de validation</h3>
+    <ul>
+      <li><strong>Container 1080 px max</strong> (mobile = full-width). Bumpé depuis 960 sur retour utilisateur pour donner plus d'air aux appréciations longues. Reste sous le plafond 1200 du design system (UX spec § Layout).</li>
+      <li><strong>Bulletin meta + warning INLINE horizontal :</strong> sur mobile c'est stacked vertical, sur desktop la place permet de mettre le warning summary à droite (gain ~80 px vertical, plus de matières visibles above-the-fold).</li>
+      <li><strong>Note en display-3 (28 px)</strong> : sur mobile elle était body 16 px. Desktop = profite de l'espace pour donner du poids visuel au chiffre (ergo Doctolib). Reste tabular-numbers pour alignement vertical entre lignes.</li>
+      <li><strong>Appréciation NON tronquée</strong> : sur mobile -webkit-line-clamp 2 (place limitée). Desktop = max-width 640 px, naturel jusqu'à 3-4 lignes. Sarah peut tout lire sans tap.</li>
+      <li><strong>Footer primary right-aligned</strong> : convention UX spec § Form Patterns desktop. Width min 220 px pour visibility, pas full-width (non nécessaire ici).</li>
+      <li><strong>Tab "+ Ajouter un bulletin"</strong> avec label plus explicite que mobile ("Ajouter" seul). Place suffisante en desktop.</li>
+      <li><strong>Kbd hints en edit mode (Scène B)</strong> : <code>&lt;kbd&gt;Entrée&lt;/kbd&gt;</code> et <code>&lt;kbd&gt;Échap&lt;/kbd&gt;</code> stylés en pill — convention desktop power-users. Sur mobile, simple texte sans pills (clavier physique rare).</li>
+      <li><strong>Touch / hover :</strong> les actions edit/delete restent visibles toujours (cohérence mobile). Hover desktop ajoute background subtil sur la ligne entière (`color-bg-3`).</li>
+      <li><strong>Test parité mobile/desktop :</strong> ouvre le 2-3-recap-editor.html à côté. Structure stricte identique : tabs → bulletin meta → matières → add btn → primary. Seuls les details horizontaux changent.</li>
+      <li><strong>Test responsive intermédiaire (768 px) :</strong> le container devra graduellement passer de 960 desktop → 600 (form) → full-width (mobile). À tester en redimensionnant la fenêtre.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

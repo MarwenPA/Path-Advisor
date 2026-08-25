@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.7 — ProfileMaturityIndicator (3 variants × 3 niveaux)</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.7 — ProfileMaturityIndicator (3 variants × 3 niveaux)
+  ----------------------------------------------------------------------------
+  Matrice de validation visuelle pour le composant Couche 3. PILIER du
+  principe émotionnel #2 dignité avant positivité. Aucun pourcentage,
+  aucune jauge, aucune couleur progressive — uniquement libellés qualitatifs.
+
+  Sections empilées :
+    Section 1 — Variant profile-header (page profil 2-6) × 3 niveaux base/enriched/complete
+    Section 2 — Variant dashboard-card (dashboard Epic 3) × 2 niveaux (complete = null)
+    Section 3 — Variant inline-compact (autres pages) × 3 niveaux
+    Section 4 — Toast célébration discrète level-up (AC8)
+
+  Tokens cohérents avec mockups Epic 2 précédents.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-success-bg:      #E5EFE9;
+    --color-warning:         #C7841B;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-h2:   20px;  --lh-h2:   28px;
+    --text-h3:   18px;  --lh-h3:   26px;
+    --text-body: 16px;  --lh-body: 24px;
+    --text-sm:   14px;  --lh-sm:   20px;
+    --text-caption: 12px; --lh-caption: 16px;
+
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 999px;
+
+    --motion-instant: 100ms; --motion-quick: 200ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: #F0EDE8;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+
+  /* Section header */
+  .section-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-2) 0;
+  }
+  .section-desc {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-6) 0;
+    max-width: 720px;
+    text-align: center;
+  }
+
+  .section-wrap {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8) var(--space-4);
+  }
+
+  /* Grid 3 niveaux côte à côte */
+  .level-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+    width: 100%;
+    max-width: 1200px;
+  }
+  @media (min-width: 900px) {
+    .level-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  .level-cell {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .level-cell__label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 4px 10px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+    align-self: flex-start;
+  }
+  .level-cell__label strong { color: var(--color-text); font-weight: 600; }
+
+  /* ============================================================
+     VARIANT 1 — profile-header (full card)
+     Story 2.7 AC3 — utilisé sur page profil 2-6
+     ============================================================ */
+  .maturity-card {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    /* PAS DE BORDURE COLORÉE PAR NIVEAU — anti-distinction stigma.
+       Les 3 niveaux ont strictement le même rendu visuel. */
+  }
+  .maturity-card__title {
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-2) 0;
+  }
+  .maturity-card__desc {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-4) 0;
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-4);
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+  }
+  .btn-secondary:hover { background: var(--color-bg); border-color: var(--color-text-subtle); }
+  .btn-secondary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn-secondary svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     VARIANT 2 — dashboard-card (compact horizontal)
+     Story 2.7 AC5 — utilisé dashboard Epic 3, DISPARAÎT à complete
+     ============================================================ */
+  .maturity-dashboard {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+  }
+  .maturity-dashboard__text {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  .maturity-dashboard__text strong { font-weight: 600; }
+  .maturity-dashboard__link {
+    background: transparent;
+    border: 0;
+    color: var(--color-brand);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+  }
+  .maturity-dashboard__link:hover { color: var(--color-brand-hover); }
+  .maturity-dashboard__link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .maturity-dashboard__link svg { width: 14px; height: 14px; }
+
+  .null-state {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--color-bg),
+      var(--color-bg) 8px,
+      var(--color-bg-2) 8px,
+      var(--color-bg-2) 16px
+    );
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    text-align: center;
+    color: var(--color-text-subtle);
+    font-size: var(--text-sm);
+    font-style: italic;
+  }
+
+  /* ============================================================
+     VARIANT 3 — inline-compact (pill)
+     Story 2.7 AC6
+     ============================================================ */
+  .maturity-pill-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-6);
+    background: var(--color-bg-3);
+    border-radius: var(--radius-md);
+    min-height: 120px;
+  }
+  .maturity-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    text-decoration: none;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+  }
+  .maturity-pill:hover { background: var(--color-bg); border-color: var(--color-border-strong); }
+  .maturity-pill:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     SECTION 4 — Toast célébration level-up (AC8)
+     ============================================================ */
+  .toast-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    width: 100%;
+    max-width: 720px;
+  }
+  .toast-success {
+    width: 100%;
+    background: var(--color-success-bg);
+    border: 1px solid var(--color-success);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .toast-success__icon {
+    width: 20px; height: 20px;
+    color: var(--color-success);
+    flex-shrink: 0;
+  }
+  .toast-success__icon svg { width: 20px; height: 20px; }
+  .toast-success__text {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+    margin: 0;
+    flex: 1;
+  }
+  .toast-success__text strong { font-weight: 600; }
+  .toast-success__close {
+    width: 24px; height: 24px;
+    background: transparent;
+    border: 0;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .toast-success__close:hover { color: var(--color-text); }
+
+  /* Verdict / scoring fictif "wrong" pattern à mettre en contraste */
+  .anti-pattern {
+    width: 100%;
+    background: linear-gradient(135deg, #FFE5E5, #FFD0D0);
+    border: 2px dashed #D04040;
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    position: relative;
+  }
+  .anti-pattern__warning {
+    position: absolute;
+    top: -10px; left: var(--space-3);
+    background: #D04040;
+    color: #FFFFFF;
+    font-size: var(--text-caption);
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .anti-pattern__progress {
+    margin: var(--space-3) 0;
+    background: #E5C0C0;
+    height: 8px;
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+  .anti-pattern__progress-fill {
+    width: 73%;
+    height: 100%;
+    background: linear-gradient(90deg, #FF6B6B, #FFA500, #4CAF50);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  }
+
+  /* Legend */
+  .legend {
+    max-width: 960px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-h3); color: var(--color-text); }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+
+  /* Word-banned highlight */
+  .banned {
+    color: var(--color-danger, #9E2A24);
+    background: #FFE5E5;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.7 — ProfileMaturityIndicator — 3 variants × 3 niveaux</p>
+    <p class="mockup-subtitle">Path-Advisor · PILIER principe émotionnel #2 dignité · Aucun pourcentage, aucune jauge</p>
+  </header>
+
+  <!-- ============================================================
+       SECTION 1 — Variant profile-header (full card)
+       ============================================================ -->
+  <section class="section-wrap">
+    <h2 class="section-title">Variant <code>profile-header</code></h2>
+    <p class="section-desc">Card complète utilisée en haut de la page profil (Story 2.6). Présente le niveau ATTEINT et ce qu'il débloque, jamais ce qu'il manque.</p>
+
+    <div class="level-grid">
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>base</strong> — Léa qui vient d'arriver</span>
+        <section class="maturity-card" role="region" aria-labelledby="m1-title">
+          <h2 class="maturity-card__title" id="m1-title">Profil de base</h2>
+          <p class="maturity-card__desc">Tu as l'essentiel pour des recos indicatives — toutes les explorations sont ouvertes.</p>
+          <button class="btn-secondary" type="button">
+            Voir comment compléter
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </section>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>enriched</strong> — Sarah en février</span>
+        <section class="maturity-card" role="region" aria-labelledby="m2-title">
+          <h2 class="maturity-card__title" id="m2-title">Profil enrichi</h2>
+          <p class="maturity-card__desc">Tu débloques les stats personnalisées sur tes parcours.</p>
+          <button class="btn-secondary" type="button">
+            Voir comment compléter
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </section>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>complete</strong> — Sarah fin d'année</span>
+        <section class="maturity-card" role="region" aria-labelledby="m3-title">
+          <h2 class="maturity-card__title" id="m3-title">Profil complet</h2>
+          <p class="maturity-card__desc">Tu profites de toutes les features — recos affinées, stats précises, parcours ciblés.</p>
+          <!-- Pas de bouton "Voir comment compléter" pour level=complete (showCallToAction défaut false) -->
+        </section>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 2 — Variant dashboard-card (compact horizontal)
+       DISPARAÎT à level=complete (AC5)
+       ============================================================ -->
+  <section class="section-wrap">
+    <h2 class="section-title">Variant <code>dashboard-card</code></h2>
+    <p class="section-desc">Card compacte utilisée en haut du dashboard Epic 3. <em>Disparaît du DOM quand level=complete</em> — anti-bruit.</p>
+
+    <div class="level-grid">
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>base</strong></span>
+        <div class="maturity-dashboard" role="region" aria-label="Maturité de profil">
+          <p class="maturity-dashboard__text">
+            <strong>Profil de base</strong> · Tu as l'essentiel pour des recos indicatives.
+          </p>
+          <button class="maturity-dashboard__link" type="button">
+            Mon profil
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>enriched</strong></span>
+        <div class="maturity-dashboard" role="region" aria-label="Maturité de profil">
+          <p class="maturity-dashboard__text">
+            <strong>Profil enrichi</strong> · Tu débloques les stats personnalisées.
+          </p>
+          <button class="maturity-dashboard__link" type="button">
+            Mon profil
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>complete</strong></span>
+        <div class="null-state">
+          <code>return null</code><br>
+          Composant absent du DOM (AC5 anti-bruit)
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 3 — Variant inline-compact (pill)
+       ============================================================ -->
+  <section class="section-wrap">
+    <h2 class="section-title">Variant <code>inline-compact</code></h2>
+    <p class="section-desc">Pill discret utilisé sur les pages contextuelles (fiche métier, fiche école…). Pas d'action — juste un tooltip + navigation vers /profile.</p>
+
+    <div class="level-grid">
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>base</strong></span>
+        <div class="maturity-pill-wrap">
+          <a href="#profile" class="maturity-pill" title="Profil de base — Tu as l'essentiel pour des recos indicatives.">
+            <span aria-hidden="true">●</span>
+            Profil de base
+          </a>
+        </div>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>enriched</strong></span>
+        <div class="maturity-pill-wrap">
+          <a href="#profile" class="maturity-pill" title="Profil enrichi — Tu débloques les stats personnalisées.">
+            <span aria-hidden="true">●●</span>
+            Profil enrichi
+          </a>
+        </div>
+      </div>
+
+      <div class="level-cell">
+        <span class="level-cell__label">Niveau <strong>complete</strong></span>
+        <div class="maturity-pill-wrap">
+          <a href="#profile" class="maturity-pill" title="Profil complet — Tu profites de toutes les features.">
+            <span aria-hidden="true">●●●</span>
+            Profil complet
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 4 — Toast célébration level-up (AC8)
+       ============================================================ -->
+  <section class="section-wrap">
+    <h2 class="section-title">Toast célébration <code>level-up</code></h2>
+    <p class="section-desc">Apparaît 3 s auto-dismiss après transition vers un niveau supérieur. Ton calme, couleur success (#2F6B4F) — <em>pas brand</em>, <em>pas confetti</em>. Émis une seule fois par transition (déduplication serveur).</p>
+
+    <div class="toast-stack">
+
+      <div class="toast-success" role="status" aria-live="polite">
+        <span class="toast-success__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+        </span>
+        <p class="toast-success__text">
+          <strong>Profil enrichi débloqué</strong> — tes stats sont maintenant personnalisées.
+        </p>
+        <button class="toast-success__close" aria-label="Fermer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <div class="toast-success" role="status" aria-live="polite">
+        <span class="toast-success__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 11 14 15 10"/></svg>
+        </span>
+        <p class="toast-success__text">
+          <strong>Profil complet débloqué</strong> — tu profites maintenant de toutes les features.
+        </p>
+        <button class="toast-success__close" aria-label="Fermer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============================================================
+       SECTION 5 — Anti-pattern (ce qu'on ne fait PAS)
+       ============================================================ -->
+  <section class="section-wrap" style="border-color: #D04040; border-width: 2px; border-style: dashed;">
+    <h2 class="section-title" style="color: #D04040;">❌ Ce qu'on ne fait PAS</h2>
+    <p class="section-desc">Patterns que Path-Advisor REJETTE (Diplomeo, LinkedIn). Aucun pourcentage, aucune jauge de progression, aucune gamification de complétion.</p>
+
+    <div class="anti-pattern">
+      <span class="anti-pattern__warning">Interdit</span>
+      <div style="font-weight: 600; color: #1A1A1A; margin-top: var(--space-2);">
+        Profil complété à 73 %
+      </div>
+      <div class="anti-pattern__progress">
+        <div class="anti-pattern__progress-fill"></div>
+      </div>
+      <div style="font-size: 14px; color: #666660;">
+        <span class="banned">Il te manque</span> tes bulletins du Trim. 3 et 2 spécialités pour
+        atteindre <span class="banned">100 %</span>. <span class="banned">Allez, tu y es presque !</span>
+        <br>
+        <button style="margin-top: var(--space-2); background: #C8312D; color: white; border: 0; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+          Terminer mon profil →
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       LEGEND
+       ============================================================ -->
+  <aside class="legend">
+    <h3>Tests de validation visuelle</h3>
+    <ul>
+      <li><strong>Test "AUCUN pourcentage" :</strong> recherche dans la page entière des caractères <code>%</code> ou des mots <span class="banned">pourcentage</span>, <span class="banned">complet à X</span>, <span class="banned">il te manque</span>, <span class="banned">termine</span>, <span class="banned">tu rates</span>. Aucun match dans les 3 variants × 3 niveaux. Match uniquement dans l'anti-pattern de référence (Section 5).</li>
+      <li><strong>Test "couleur uniforme par niveau" :</strong> les 3 niveaux (base/enriched/complete) doivent avoir <em>strictement la même couleur de fond, border, texte</em>. Une couleur progressive (rouge → orange → vert) trahit le pattern stigma. Seul le libellé et la description changent.</li>
+      <li><strong>Test "showCallToAction par défaut" :</strong> le bouton "Voir comment compléter" est PRÉSENT en base et enriched, ABSENT en complete (rien à compléter). Cohérent avec Story 2.7 AC1 default <code>showCallToAction: level !== 'complete'</code>.</li>
+      <li><strong>Test "dashboard-card disparaît à complete" :</strong> Section 2 colonne 3 montre <code>return null</code> — composant absent du DOM (anti-bruit AC5). Sarah au complet ne voit pas de rappel maturité sur son dashboard.</li>
+      <li><strong>Test "inline-compact pill discret" :</strong> 1 dot (base) / 2 dots (enriched) / 3 dots (complete) comme indicateur visuel discret <em>sans</em> couleur progressive. Au tooltip hover, la description complète apparaît.</li>
+      <li><strong>Test "toast level-up calme" :</strong> couleur success #2F6B4F (vert sobre), pas brand #C8312D. Pas de confetti, pas d'icône célébration emoji 🎉. Auto-dismiss 3 s, dismissible manual. Émis 1 seule fois par transition (déduplication serveur sur flag <code>maturity_celebration_shown_for_{level}_at</code>).</li>
+      <li><strong>Test "level-down silence" :</strong> si Sarah supprime ses bulletins et redescend de enriched → base, AUCUN toast (pas de "tu as régressé"). La card maturité reflète silencieusement le nouveau niveau au prochain refresh.</li>
+      <li><strong>Test sprint review copy :</strong> Léa proxy lit la description du niveau <em>base</em>. Si elle pense "donc je manque de trucs", on refait. Cible : "Voilà ce que j'ai aujourd'hui — je peux explorer, je verrai si je veux compléter."</li>
+      <li><strong>Test runtime validation dev :</strong> si un dev passe une <code>title</code> ou <code>description</code> contenant les mots interdits (cf §4.3 Story 2.7), un <code>console.warn</code> est émis. Garde-fou minimal anti-drift.</li>
+      <li><strong>Test focus a11y :</strong> Tab traverse les boutons "Voir comment compléter" / "Mon profil →" / pills. Focus ring 2 px brand + offset. Toast success dismissable au clavier (Esc OK aussi).</li>
+      <li><strong>Test reduced motion :</strong> aucune animation propre sur les composants ; transitions hover collapse à 0 ms.</li>
+      <li><strong>Test parité Léa vs Sarah :</strong> dans une UI réelle, Léa postponed verra "Profil de base" et Sarah enriched. <em>Aucune autre différence visuelle ailleurs dans l'app</em> ne signale leur état différent (cf Story 2.5). Le maturity indicator est le SEUL endroit où le niveau est expliqué — toutes les autres pages restent agnostiques.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

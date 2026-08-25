@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.6 — Page profil + édition niveau majeur</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.6 — Page profil (continuité temporelle) + Story 2.7 maturité
+  ----------------------------------------------------------------------------
+  L'écran de la continuité temporelle. Sarah revient 3 mois après onboarding,
+  consulte son profil, modifie une section. Pas de re-onboarding, pas de drame.
+
+  Préfigure aussi Story 2.7 (ProfileMaturityIndicator variant 'profile-header').
+
+  2 scènes empilées :
+    Scène A — Page profil mobile · idle · "Profil enrichi" + 3 sections
+    Scène B — Sheet édition niveau ouvert + ConsentDialog Cas 2 (changement
+              de filière majeur) — Sarah passe Bac général → Bac techno STMG
+
+  Tokens cohérents avec mockups Epic 2 précédents.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+    --color-warning-bg:      #FBF0DD;
+    --color-danger:          #9E2A24;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-h1:           24px;  --lh-h1:           32px;
+    --text-h2:           20px;  --lh-h2:           28px;
+    --text-h3:           18px;  --lh-h3:           26px;
+    --text-body:         16px;  --lh-body:         24px;
+    --text-sm:           14px;  --lh-sm:           20px;
+    --text-caption:      12px;  --lh-caption:      16px;
+
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12:48px;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+
+    --motion-instant:  100ms;
+    --motion-quick:    200ms;
+    --motion-standard: 300ms;
+    --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .scene-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .scene-label strong { color: var(--color-text); font-weight: 600; }
+
+  /* ============================================================
+     DEVICE FRAME
+     ============================================================ */
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+    width: 375px;
+    min-height: 860px;
+    position: relative;       /* pour overlay scene B */
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 860px;
+    background: var(--color-bg);
+  }
+
+  /* ============================================================
+     HEADER APP STANDARD (post-onboarding)
+     ============================================================ */
+  .app__header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .icon-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background var(--motion-instant);
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .app__header-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+  }
+
+  /* ============================================================
+     MAIN
+     ============================================================ */
+  .app__main {
+    flex: 1;
+    padding: var(--space-6) var(--space-4) var(--space-12);
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  /* ============================================================
+     PROFILE MATURITY INDICATOR — variant profile-header
+     Story 2.7 AC3. Décrit le NIVEAU ATTEINT, pas ce qui manque.
+     ============================================================ */
+  .maturity-card {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    margin-bottom: var(--space-6);
+    /* NOTE : pas de bordure colorée par niveau — anti-distinction stigma */
+  }
+  .maturity-card__title {
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-2) 0;
+  }
+  .maturity-card__desc {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-4) 0;
+  }
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    height: 40px;
+    padding: 0 var(--space-4);
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+  }
+  .btn-secondary:hover { background: var(--color-bg); border-color: var(--color-text-subtle); }
+  .btn-secondary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn-secondary svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     SECTIONS PROFIL — 3 cartes empilées
+     ============================================================ */
+  .section-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    margin-bottom: var(--space-4);
+    transition: border-color var(--motion-instant);
+  }
+  .section-card:hover { border-color: var(--color-border-strong); }
+  .section-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  .section-card__title {
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+  }
+  .section-card__edit-btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: 36px;
+    padding: 0 var(--space-3);
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), color var(--motion-instant), border-color var(--motion-instant);
+  }
+  .section-card__edit-btn:hover {
+    background: var(--color-bg-2);
+    color: var(--color-text);
+    border-color: var(--color-border-strong);
+  }
+  .section-card__edit-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .section-card__edit-btn svg { width: 14px; height: 14px; }
+
+  .section-card__body {
+    margin: 0 0 var(--space-3) 0;
+  }
+  .section-card__primary {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    margin: 0 0 var(--space-1) 0;
+    font-weight: 500;
+  }
+  .section-card__secondary {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+    margin: 0;
+  }
+
+  .section-card__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .section-card__list li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-body);
+    color: var(--color-text);
+  }
+  .section-card__list .check-icon {
+    width: 14px; height: 14px;
+    color: var(--color-success);
+    flex-shrink: 0;
+  }
+  .section-card__list .check-icon svg { width: 14px; height: 14px; }
+
+  .section-card__caption {
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
+  }
+
+  /* + Ajouter un trimestre dans card bulletins */
+  .add-trimestre-btn {
+    margin-top: var(--space-2);
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 44px;
+    transition: color var(--motion-instant), border-color var(--motion-instant);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+  }
+  .add-trimestre-btn:hover { color: var(--color-brand); border-color: var(--color-brand); }
+  .add-trimestre-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .add-trimestre-btn svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     HISTORIQUE LINK FOOTER
+     ============================================================ */
+  .history-section {
+    margin-top: var(--space-8);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .history-section__title {
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0;
+    text-align: center;
+  }
+  .history-link {
+    background: transparent;
+    border: 0;
+    color: var(--color-brand);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .history-link:hover { color: var(--color-brand-hover); }
+  .history-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .history-link svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     SHEET OVERLAY (Scène B)
+     ============================================================ */
+  .sheet-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.40);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  .sheet {
+    background: var(--color-bg);
+    border-radius: 16px 16px 0 0;
+    padding: var(--space-2) var(--space-4) var(--space-4) var(--space-4);
+    max-height: 85%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.12);
+  }
+  .sheet__handle {
+    width: 36px;
+    height: 4px;
+    background: var(--color-border-strong);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-3) auto;
+  }
+  .sheet__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .sheet__title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0;
+    flex: 1;
+  }
+  .sheet__close-btn {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+  .sheet__close-btn svg { width: 18px; height: 18px; }
+  .sheet__close-btn:hover { background: var(--color-bg-2); }
+  .sheet__close-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  .sheet__body {
+    overflow-y: auto;
+    padding: var(--space-2) 0 var(--space-4) 0;
+    flex: 1;
+  }
+  .sheet__field-label {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    font-weight: 500;
+    color: var(--color-text);
+    margin: var(--space-4) 0 var(--space-2) 0;
+  }
+  .sheet__field-radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .radio-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 56px;
+    transition: border-color var(--motion-instant), background var(--motion-instant);
+  }
+  .radio-card:hover { border-color: var(--color-border-strong); }
+  .radio-card[data-checked="true"] {
+    border-color: var(--color-brand);
+    background: var(--color-bg);
+  }
+  .radio-card__radio {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    border: 2px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: var(--color-bg);
+    position: relative;
+  }
+  .radio-card[data-checked="true"] .radio-card__radio {
+    border-color: var(--color-brand);
+  }
+  .radio-card[data-checked="true"] .radio-card__radio::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    background: var(--color-brand);
+    border-radius: 50%;
+  }
+  .radio-card__label {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  .sheet__footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    height: 48px;
+    padding: 0 var(--space-4);
+    background: var(--color-brand);
+    color: #FFFFFF;
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+  }
+  .btn-primary:hover { background: var(--color-brand-hover); border-color: var(--color-brand-hover); }
+  .btn-primary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  .sheet__cancel {
+    background: transparent;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-text);
+    height: 48px;
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .sheet__cancel:hover { background: var(--color-bg-2); }
+  .sheet__cancel:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     CONSENT DIALOG OVERLAY — Cas 2 changement filière (Story 1.14)
+     ============================================================ */
+  .consent-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .consent-dialog {
+    background: var(--color-bg);
+    border-radius: 16px 16px 0 0;
+    padding: var(--space-2) var(--space-6) var(--space-6) var(--space-6);
+    max-height: 75%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.16);
+  }
+  .consent-dialog__handle {
+    width: 36px;
+    height: 4px;
+    background: var(--color-border-strong);
+    border-radius: var(--radius-full);
+    margin: 0 auto var(--space-4) auto;
+  }
+  .consent-dialog__title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-3) 0;
+  }
+  .consent-dialog__desc {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-5) 0;
+  }
+  .consent-dialog__metadata {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-4);
+    margin-bottom: var(--space-5);
+  }
+  .consent-dialog__meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-bottom: var(--space-3);
+  }
+  .consent-dialog__meta-row:last-child { margin-bottom: 0; }
+  .consent-dialog__meta-label {
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .consent-dialog__meta-value {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+  }
+  .consent-dialog__meta-value ul {
+    margin: 0;
+    padding-left: var(--space-4);
+  }
+  .consent-dialog__meta-value li {
+    margin-bottom: 2px;
+  }
+
+  .consent-dialog__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  /* ============================================================
+     REDUCED MOTION
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============================================================
+     LEGEND
+     ============================================================ */
+  .legend {
+    max-width: 720px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-h3); color: var(--color-text); }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.6 — Page profil · continuité temporelle</p>
+    <p class="mockup-subtitle">Path-Advisor · Préfigure Story 2.7 (ProfileMaturityIndicator variant profile-header)</p>
+  </header>
+
+  <!-- ============================================================
+       SCÈNE A — Page profil mobile idle · "Profil enrichi"
+       Sarah revient en février, a déjà 2 trimestres validés.
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">👤 Scène A · <strong>Sarah</strong> Terminale général · "Profil enrichi" · idle</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour au dashboard">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h1 class="app__header-title">Mon profil</h1>
+          <button class="icon-btn" aria-label="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          </button>
+        </div>
+
+        <main class="app__main">
+
+          <!-- Maturity indicator (Story 2.7) variant profile-header -->
+          <section class="maturity-card" role="region" aria-labelledby="maturity-title">
+            <h2 class="maturity-card__title" id="maturity-title">Profil enrichi</h2>
+            <p class="maturity-card__desc">Tu débloques les stats personnalisées sur tes parcours.</p>
+            <button class="btn-secondary" type="button">
+              Voir comment compléter
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </section>
+
+          <!-- Section 1 — Passions & valeurs -->
+          <section class="section-card" aria-labelledby="section-passions-title">
+            <div class="section-card__header">
+              <h2 class="section-card__title" id="section-passions-title">Passions &amp; valeurs</h2>
+              <button class="section-card__edit-btn" type="button" aria-label="Modifier passions et valeurs">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Modifier
+              </button>
+            </div>
+            <div class="section-card__body">
+              <p class="section-card__primary">5 passions · 4 valeurs · 2 intérêts</p>
+              <p class="section-card__secondary">Sciences &amp; nature · Cinéma &amp; séries · Tech &amp; code · Aider les autres · Lecture</p>
+            </div>
+            <p class="section-card__caption">Modifié il y a 3 mois</p>
+          </section>
+
+          <!-- Section 2 — Niveau scolaire -->
+          <section class="section-card" aria-labelledby="section-level-title">
+            <div class="section-card__header">
+              <h2 class="section-card__title" id="section-level-title">Niveau scolaire</h2>
+              <button class="section-card__edit-btn" type="button" aria-label="Modifier niveau scolaire">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Modifier
+              </button>
+            </div>
+            <div class="section-card__body">
+              <p class="section-card__primary">Terminale · Bac général</p>
+              <p class="section-card__secondary">Spécialités : Mathématiques · SVT · HGGSP</p>
+            </div>
+            <p class="section-card__caption">Modifié il y a 3 mois</p>
+          </section>
+
+          <!-- Section 3 — Bulletins -->
+          <section class="section-card" aria-labelledby="section-bulletins-title">
+            <div class="section-card__header">
+              <h2 class="section-card__title" id="section-bulletins-title">Bulletins</h2>
+              <button class="section-card__edit-btn" type="button" aria-label="Modifier bulletins">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                Modifier
+              </button>
+            </div>
+            <div class="section-card__body">
+              <ul class="section-card__list">
+                <li>
+                  <span class="check-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  Trim. 1 Terminale
+                </li>
+                <li>
+                  <span class="check-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  Trim. 2 Terminale <span style="color: var(--color-text-subtle); font-size: var(--text-caption);">(il y a 12 jours)</span>
+                </li>
+              </ul>
+              <button class="add-trimestre-btn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+                Ajouter un trimestre
+              </button>
+            </div>
+            <p class="section-card__caption">Dernier ajout il y a 12 jours</p>
+          </section>
+
+          <!-- Historique section -->
+          <div class="history-section">
+            <p class="history-section__title">Historique des changements</p>
+            <button class="history-link" type="button">
+              Voir l'historique
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE B — Sheet édition niveau ouvert + ConsentDialog
+       Cas 2 changement filière majeur (Sarah Bac général → techno)
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">⚠️ Scène B · <strong>Sarah</strong> change Bac général → Bac techno · ConsentDialog Cas 2 majeur</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <!-- Page profil en fond, sheet en overlay -->
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <h1 class="app__header-title">Mon profil</h1>
+          <button class="icon-btn" aria-label="Notifications"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></button>
+        </div>
+
+        <main class="app__main">
+          <section class="maturity-card" aria-hidden="true">
+            <h2 class="maturity-card__title">Profil enrichi</h2>
+            <p class="maturity-card__desc">Tu débloques les stats personnalisées…</p>
+          </section>
+          <section class="section-card" aria-hidden="true">
+            <div class="section-card__header">
+              <h2 class="section-card__title">Niveau scolaire</h2>
+            </div>
+            <p class="section-card__primary">Terminale · Bac général</p>
+          </section>
+        </main>
+
+        <!-- Sheet overlay : édition niveau (Story 2.6 AC3 + Story 2.2 LevelForm) -->
+        <div class="sheet-overlay" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+          <div class="sheet">
+            <div class="sheet__handle" aria-hidden="true"></div>
+            <div class="sheet__header">
+              <h2 class="sheet__title" id="sheet-title">Niveau scolaire</h2>
+              <button class="sheet__close-btn" aria-label="Fermer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div class="sheet__body">
+              <p class="sheet__field-label">Ta filière au lycée</p>
+              <div class="sheet__field-radio-group" role="radiogroup">
+                <div class="radio-card" data-checked="false" role="radio" aria-checked="false">
+                  <span class="radio-card__radio" aria-hidden="true"></span>
+                  <span class="radio-card__label">Bac général</span>
+                </div>
+                <div class="radio-card" data-checked="true" role="radio" aria-checked="true">
+                  <span class="radio-card__radio" aria-hidden="true"></span>
+                  <span class="radio-card__label">Bac techno</span>
+                </div>
+                <div class="radio-card" data-checked="false" role="radio" aria-checked="false">
+                  <span class="radio-card__radio" aria-hidden="true"></span>
+                  <span class="radio-card__label">Bac pro</span>
+                </div>
+              </div>
+            </div>
+            <div class="sheet__footer">
+              <button class="btn-primary" type="button">
+                Sauvegarder
+              </button>
+              <button class="sheet__cancel" type="button">Annuler</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ConsentDialog overlay PAR-DESSUS le sheet (Story 1.14, Cas 2 majeur) -->
+        <div class="consent-overlay" role="alertdialog" aria-modal="true" aria-labelledby="consent-title" aria-describedby="consent-desc">
+          <div class="consent-dialog">
+            <div class="consent-dialog__handle" aria-hidden="true"></div>
+            <h2 class="consent-dialog__title" id="consent-title">Tu changes de trajectoire scolaire</h2>
+            <p class="consent-dialog__desc" id="consent-desc">
+              Tes recos vocationnelles et tes parcours sauvegardés vont être recalculés à partir de ta nouvelle situation. On garde ton ancien profil dans ton historique.
+            </p>
+
+            <div class="consent-dialog__metadata" role="group" aria-label="Détails du changement">
+              <div class="consent-dialog__meta-row">
+                <span class="consent-dialog__meta-label">Ce qui change</span>
+                <div class="consent-dialog__meta-value">
+                  <ul>
+                    <li>Recos vocationnelles (Epic 3)</li>
+                    <li>Parcours sauvegardés « Mes paris » (Epic 4)</li>
+                    <li>Stats d'admission (Epic 4)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="consent-dialog__meta-row">
+                <span class="consent-dialog__meta-label">Durée</span>
+                <span class="consent-dialog__meta-value">L'historique de ton ancien profil reste consultable</span>
+              </div>
+              <div class="consent-dialog__meta-row">
+                <span class="consent-dialog__meta-label">Bénéficiaire</span>
+                <span class="consent-dialog__meta-value">Toi — tu peux revenir en arrière depuis l'historique</span>
+              </div>
+            </div>
+
+            <div class="consent-dialog__actions">
+              <button class="sheet__cancel" type="button">Annuler</button>
+              <button class="btn-primary" type="button">Oui, je confirme</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LEGEND
+       ============================================================ -->
+  <aside class="legend">
+    <h3>Tests de validation visuelle</h3>
+    <ul>
+      <li><strong>Maturity Indicator (Scène A, haut de page) :</strong> "Profil enrichi" + description du gain ("Tu débloques…") + bouton secondary. Aucun pourcentage, aucune jauge, aucune bordure colorée. Présente le NIVEAU ATTEINT, pas ce qui manque.</li>
+      <li><strong>Test mots interdits :</strong> aucun "incomplet", "manque", "X %", "tu rates", "termine ton profil" dans le copy. Validation runtime dev (Story 2.7 AC3).</li>
+      <li><strong>3 sections empilées (Scène A) :</strong> chacune avec titre h3 + bouton Modifier secondary à droite + récap statique + caption "Modifié il y a X". Cohérence stricte de structure entre sections.</li>
+      <li><strong>Bouton "Modifier" en secondary outline</strong> (pas primary brand) — c'est une action contextuelle de section, pas une décision principale.</li>
+      <li><strong>Section bulletins (Scène A) :</strong> liste matières avec check verts ✓ + ajout direct via bouton tertiary dashed. Pas besoin de re-ouvrir le sheet pour ajouter un trimestre.</li>
+      <li><strong>Sheet édition niveau (Scène B) :</strong> Story 2.6 AC3 — réutilise `<LevelForm mode="profile_edit">` (Story 2.2 T3 factorisé). Format bottom sheet mobile, drawer right desktop.</li>
+      <li><strong>ConsentDialog Cas 2 majeur (Scène B overlay) :</strong> Story 1.14 réutilisé. Title factuel ("Tu changes de trajectoire scolaire"), pas drame. Metadata structurée avec ce qui change / durée / bénéficiaire. <em>NE PAS</em> avoir <code>isAcceptDestructive</code> (changement, pas suppression).</li>
+      <li><strong>Boutons ConsentDialog équivalents weight :</strong> "Annuler" outline + "Oui, je confirme" primary. Même hauteur, même font-weight (no-dark-pattern Story 1.14).</li>
+      <li><strong>Cas 2 sur Cas 1 mineur :</strong> si Sarah change juste sa LV2 (mineur), pas de ConsentDialog. Pour la filière (majeur), oui. Matrice complète dans Story 2.6 §4.2.</li>
+      <li><strong>Test parité Léa :</strong> dans une version Léa postponed, la section bulletins afficherait "0 trimestres" + un bouton primary "Ajouter mes notes" — strict même layout, copy adapté. Le bandeau Story 2.5 apparaîtrait en footer dashboard, pas dans /profile.</li>
+      <li><strong>Test focus a11y :</strong> Tab : back → header notifications → bouton maturity → section 1 modifier → section 2 modifier → section 3 modifier → section 3 ajouter → historique → footer. Focus ring 2 px brand + offset.</li>
+      <li><strong>Test reduced motion :</strong> transitions hover sections collapse à 0 ms. Sheet ouverture/fermeture instantanée.</li>
+      <li><strong>Test continuité temporelle (le moat) :</strong> chaque section affiche "Modifié il y a X" — c'est la signature visuelle que le profil est un objet VIVANT, pas figé après onboarding.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

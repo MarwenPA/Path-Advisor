@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.3 AC4 & AC7 — ScenarioLoader OCR + GracefulFallback</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.3 AC4 & AC7 — OCR loading + Graceful fallback
+  ----------------------------------------------------------------------------
+  Préfigure les composants Couche 3 :
+    - 2-8 ScenarioLoader  (utilisé ici pendant l'OCR ~30 s)
+    - 2-9 GracefulFallback (utilisé ici si OCR rate)
+
+  3 scènes empilées :
+    Scène A — ScenarioLoader t=10 s   (phrase "On lit les notes…")
+    Scène B — ScenarioLoader t=30 s+  (warning banner + bouton manuel apparu)
+    Scène C — GracefulFallback        (OCR rate, ton calme, 2 CTAs équivalents)
+
+  Tokens cohérents avec mockup AC1 (3 cards) et UX spec Step 8.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     TOKENS — identiques au mockup AC1 (cohérence design system)
+     ============================================================ */
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+    --color-warning-bg:      #FBF0DD;
+    --color-danger:          #9E2A24;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-display-2:    32px;  --lh-display-2:    40px;
+    --text-display-2-d:  40px;  --lh-display-2-d:  48px;
+    --text-h2:           20px;  --lh-h2:           28px;
+    --text-h2-d:         24px;  --lh-h2-d:         32px;
+    --text-h3:           18px;  --lh-h3:           26px;
+    --text-body:         16px;  --lh-body:         24px;
+    --text-sm:           14px;  --lh-sm:           20px;
+    --text-caption:      12px;  --lh-caption:      16px;
+
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12:48px;
+
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 999px;
+
+    --motion-instant:  100ms;
+    --motion-quick:    200ms;
+    --motion-standard: 300ms;
+    --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .scene-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .scene-label strong { color: var(--color-text); font-weight: 600; }
+
+  /* ============================================================
+     DEVICE FRAME
+     ============================================================ */
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+    width: 375px;
+    min-height: 720px;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 720px;
+    background: var(--color-bg);
+  }
+
+  /* ============================================================
+     HEADER — sticky, mais MASQUÉ pendant OCR loader (focus exclusif)
+     Pour la scène A et B, on n'a pas de header — vue plein écran loader.
+     Pour la scène C (fallback), le header est de retour.
+     ============================================================ */
+  .app__header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .icon-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background var(--motion-instant);
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .progress-dots {
+    display: inline-flex; gap: var(--space-1);
+    align-items: center;
+  }
+  .progress-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-brand);
+    display: inline-block;
+  }
+  .header-spacer { width: 44px; height: 44px; }
+
+  /* ============================================================
+     SCENARIOLOADER — vue plein écran centrée, focus exclusif
+     ============================================================ */
+  .loader-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-12) var(--space-4);
+    gap: var(--space-8);
+  }
+
+  /* Illustration discrète (icône composée). Color subtle, non agressif. */
+  .loader-illustration {
+    width: 96px; height: 96px;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    position: relative;
+  }
+  .loader-illustration svg { width: 40px; height: 40px; }
+  .loader-illustration::after {
+    /* Mini-particule animée pour un signe de vie. Économise un spinner nu. */
+    content: "";
+    position: absolute;
+    top: 14px; right: 14px;
+    width: 10px; height: 10px;
+    background: var(--color-brand);
+    border-radius: 50%;
+    animation: sparkle 1.8s var(--ease-out) infinite;
+  }
+  @keyframes sparkle {
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50%      { opacity: 1;   transform: scale(1.1); }
+  }
+
+  .loader-phrase {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    text-align: center;
+    color: var(--color-text);
+    margin: 0;
+    min-height: 28px;
+    /* Démo : on imagine ici un crossfade entre phrases via aria-live */
+  }
+
+  .loader-progress-wrap {
+    width: 100%;
+    max-width: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .loader-progress {
+    width: 100%;
+    height: 4px;
+    background: var(--color-bg-3);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    /* role="progressbar" en HTML */
+  }
+  .loader-progress__fill {
+    height: 100%;
+    background: var(--color-brand);
+    border-radius: var(--radius-full);
+    /* Animation linéaire pure — pas d'easing (anti-frustration "ça avance vite puis ralentit") */
+  }
+  .loader-progress__fill[data-progress="33"]  { width: 33%; }
+  .loader-progress__fill[data-progress="100"] { width: 100%; }
+
+  .loader-est {
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+
+  /* Banner warning "Ça prend un peu plus de temps que prévu" — apparaît à t=30s+ */
+  .loader-warning {
+    margin-top: var(--space-8);
+    width: 100%;
+    max-width: 320px;
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+  }
+  .loader-warning__icon {
+    flex-shrink: 0;
+    width: 18px; height: 18px;
+    color: var(--color-warning);
+  }
+  .loader-warning__icon svg { width: 18px; height: 18px; }
+
+  /* Bouton tertiary "Saisir à la main plutôt" — apparaît avec le warning */
+  .btn-tertiary {
+    margin-top: var(--space-2);
+    background: transparent;
+    border: 0;
+    color: var(--color-brand);
+    font: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    transition: color var(--motion-instant);
+    min-height: 44px;
+  }
+  .btn-tertiary:hover { color: var(--color-brand-hover); }
+  .btn-tertiary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     GRACEFULFALLBACK — vue calme, 2 CTAs équivalents weight
+     ============================================================ */
+  .app__main {
+    flex: 1;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fallback-illustration {
+    align-self: center;
+    width: 96px; height: 96px;
+    border-radius: var(--radius-full);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-6);
+    /* Aucun cri visuel — surtout PAS de couleur danger.
+       Le ton est calme et factuel, principe expérience #4 dignité. */
+  }
+  .fallback-illustration svg { width: 40px; height: 40px; }
+
+  .fallback-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 var(--space-3) 0;
+    color: var(--color-text);
+  }
+  .fallback-desc {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    text-align: center;
+    margin: 0 0 var(--space-8) 0;
+  }
+
+  /* Boutons primary + secondary — STRICTE équivalence visuelle
+     (no-dark-pattern Story 1.14) : même height, même padding, même
+     font-weight. Seule la couleur de fond / border diffère. */
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
+  }
+  .btn {
+    height: 48px;             /* size lg — mobile primary */
+    padding: 0 var(--space-4);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+    min-width: 0;
+  }
+  .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn--primary {
+    background: var(--color-brand);
+    color: #FFFFFF;
+    border: 1px solid var(--color-brand);
+  }
+  .btn--primary:hover { background: var(--color-brand-hover); border-color: var(--color-brand-hover); }
+  .btn--secondary {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+  }
+  .btn--secondary:hover { background: var(--color-bg-2); }
+
+  .fallback-link {
+    display: inline-block;
+    text-align: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-brand);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font: inherit;
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    min-height: 44px;
+    align-self: center;
+  }
+  .fallback-link:hover { color: var(--color-brand-hover); }
+  .fallback-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+  /* ============================================================
+     REDUCED MOTION
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ============================================================
+     LEGEND
+     ============================================================ */
+  .legend {
+    max-width: 720px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--text-h3);
+    color: var(--color-text);
+  }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.3 — AC4 & AC7 — OCR loading + Graceful fallback</p>
+    <p class="mockup-subtitle">Path-Advisor · Préfigure les composants Couche 3 : 2-8 <code>ScenarioLoader</code> + 2-9 <code>GracefulFallback</code></p>
+  </header>
+
+  <!-- ============================================================
+       SCÈNE A — ScenarioLoader, t ≈ 10 s
+       Phrase 2/4, barre 33 %, pas de warning encore
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">⏱ Scène A · <strong>ScenarioLoader t ≈ 10 s</strong> · phrase "On lit les notes…" · barre ~33 %</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <!-- PAS de header ici (focus exclusif loader, AC4) -->
+
+        <div class="loader-main">
+
+          <!-- Illustration : icône composée + particule animée brand.
+               Préfigure l'illustration Couche 3 ScenarioLoader. -->
+          <div class="loader-illustration" aria-hidden="true">
+            <!-- Lucide BookOpen -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+
+          <!-- Phrase actuelle. aria-live="polite" en prod, annonce SR à
+               chaque transition. Anti-saturation : pas plus de 1 phrase / 8 s. -->
+          <p class="loader-phrase" role="status" aria-live="polite">On lit les notes…</p>
+
+          <div class="loader-progress-wrap">
+            <div class="loader-progress" role="progressbar"
+                 aria-label="Progression de l'analyse OCR"
+                 aria-valuenow="33" aria-valuemin="0" aria-valuemax="100">
+              <div class="loader-progress__fill" data-progress="33"></div>
+            </div>
+            <p class="loader-est">Estimation : ~25 secondes</p>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE B — ScenarioLoader, t > 30 s (au-delà estimation)
+       Warning banner apparaît + bouton tertiary fallback opt-in
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">⏱ Scène B · <strong>ScenarioLoader t > 30 s</strong> · banner warning + fallback opt-in</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <div class="loader-main">
+          <div class="loader-illustration" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </div>
+
+          <p class="loader-phrase" role="status" aria-live="polite">On vérifie tout ça…</p>
+
+          <div class="loader-progress-wrap">
+            <div class="loader-progress" role="progressbar"
+                 aria-label="Progression de l'analyse OCR"
+                 aria-valuenow="100" aria-valuemin="0" aria-valuemax="100">
+              <div class="loader-progress__fill" data-progress="100"></div>
+            </div>
+            <p class="loader-est">Estimation : ~25 secondes</p>
+          </div>
+
+          <!-- Banner non bloquant. Le job continue côté serveur. -->
+          <div class="loader-warning" role="status">
+            <span class="loader-warning__icon" aria-hidden="true">
+              <!-- Lucide AlertTriangle -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+            </span>
+            <div>
+              Ça prend un peu plus de temps que prévu, on continue.
+            </div>
+          </div>
+
+          <button class="btn-tertiary" type="button">Saisir à la main plutôt</button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE C — GracefulFallback (OCR rate)
+       Header de retour. Ton calme. 2 CTAs strictement équivalents.
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">🛟 Scène C · <strong>GracefulFallback</strong> · OCR rate · ton calme · 2 CTAs équivalents weight</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <!-- Header revient — fallback est un écran interactif normal -->
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour à l'écran précédent">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+
+          <!-- Illustration NEUTRE — icône doc avec point d'interrogation.
+               PAS de rouge, PAS d'icône cassée, PAS de "X" alarme.
+               Préfigure l'illustration Couche 3 GracefulFallback. -->
+          <div class="fallback-illustration" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 3v4a1 1 0 0 0 1 1h4"/>
+              <path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2Z"/>
+              <path d="M9 14a3 3 0 1 1 5.83 1c-.36.79-1.83 1-1.83 2"/>
+              <line x1="12" x2="12.01" y1="20" y2="20"/>
+            </svg>
+          </div>
+
+          <h2 class="fallback-title">Ton bulletin a un format qu'on connaît pas encore</h2>
+          <p class="fallback-desc">Pas grave. Saisis-le à la main — 5 champs et c'est bon. Tu pourras retenter avec une photo plus nette si tu veux.</p>
+
+          <!-- 2 CTAs équivalents weight (no-dark-pattern Story 1.14).
+               Même height 48 px, même padding, même font-weight 500.
+               Seule la couleur de fond / border distingue intent.
+               Test à automatiser : assertion className h-12 + font-medium identiques. -->
+          <div class="btn-group">
+            <button class="btn btn--primary" type="button">
+              Saisir à la main
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+            <button class="btn btn--secondary" type="button">Réessayer avec une autre photo</button>
+          </div>
+
+          <!-- Lien tertiary discret — "Plus tard" reste accessible -->
+          <button class="fallback-link" type="button">Plus tard, je préfère explorer d'abord</button>
+
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LEGEND
+       ============================================================ -->
+  <aside class="legend">
+    <h3>Tests de validation visuelle</h3>
+    <ul>
+      <li><strong>Test "spinner nu interdit" (Scène A) :</strong> la vue contient une <em>phrase narrative</em>, une <em>illustration apaisée</em>, une <em>particule discrète animée</em> et une <em>barre linéaire</em>. Aucun spinner Material/iOS — sinon le composant <code>ScenarioLoader</code> a échoué.</li>
+      <li><strong>Test "fallback opt-in non bloquant" (Scène B) :</strong> le warning et le bouton "Saisir à la main plutôt" apparaissent au-delà de 30 s. Le job OCR continue côté serveur. Si l'élève bascule manuel et l'OCR finit, un toast info propose le merge.</li>
+      <li><strong>Test "no-dark-pattern" (Scène C) :</strong> les 2 CTAs Saisir / Réessayer ont la <em>même hauteur</em> (48 px), la <em>même police</em> (Inter weight 500), le <em>même padding horizontal</em>. Mesurer dans devtools : différence ≤ 0 px sur ces dimensions. Seuls fond et border distinguent.</li>
+      <li><strong>Test "ton calme" (Scène C) :</strong> aucun rouge danger, aucun icône cassée, copy commençant par "Pas grave" — Mehdi/Léa lisent ça à 23 h sans se sentir nuls.</li>
+      <li><strong>Test focus a11y :</strong> dans une vraie implémentation, Tab traverse Saisir → Réessayer → Plus tard. Focus ring visible (2 px brand + offset).</li>
+      <li><strong>Test reduced motion :</strong> active <code>prefers-reduced-motion: reduce</code> dans devtools → la particule animée s'arrête, transitions de phrase deviennent instantanées, barre de progression reste statique à 100 %.</li>
+      <li><strong>Test daltonisme :</strong> simulateur DevTools — le warning banner reste lisible (ambre + icône triangle + texte explicite), aucune info portée par couleur seule.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

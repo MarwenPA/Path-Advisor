@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.4 — Saisie manuelle assistée</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.4 — Saisie manuelle assistée des notes
+  ----------------------------------------------------------------------------
+  Chemin alternatif équivalent OCR. 3 entrées : card 2 direct, fallback OCR,
+  opt-in loader > 30 s. Anti-friction : matières pré-remplies par niveau,
+  validation on blur seulement, sauvegarde partielle OK.
+
+  3 scènes empilées :
+    Scène A — Mobile · Sarah Terminale général · ~5 matières remplies
+    Scène B — Edit mode actif · appréciation expandée (Textarea visible)
+    Scène C — Validation rejected · note > 20 error inline (UX-DR35)
+
+  Tokens cohérents avec mockups Epic 2 précédents.
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+    --color-warning-bg:      #FBF0DD;
+    --color-danger:          #9E2A24;
+    --color-danger-bg:       #FCE8E7;
+
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-h2:   20px;  --lh-h2:   28px;
+    --text-h3:   18px;  --lh-h3:   26px;
+    --text-body: 16px;  --lh-body: 24px;
+    --text-sm:   14px;  --lh-sm:   20px;
+    --text-caption: 12px; --lh-caption: 16px;
+
+    --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+    --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-12: 48px;
+
+    --radius-sm: 6px; --radius-md: 8px; --radius-lg: 12px; --radius-full: 999px;
+
+    --motion-instant: 100ms; --motion-quick: 200ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: #F0EDE8;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1;
+  }
+
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  .scene-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .scene-label strong { color: var(--color-text); font-weight: 600; }
+
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+    width: 375px;
+    min-height: 900px;
+  }
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 900px;
+    background: var(--color-bg);
+  }
+
+  .app__header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .icon-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text); cursor: pointer;
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .progress-dots {
+    display: inline-flex; gap: var(--space-1);
+    align-items: center;
+  }
+  .progress-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-brand);
+  }
+  .header-spacer { width: 44px; height: 44px; }
+
+  .app__main {
+    flex: 1;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    overflow-y: auto;
+  }
+
+  /* ============================================================
+     BREADCRUMB (cas fallback OCR origin)
+     ============================================================ */
+  .breadcrumb-fallback {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3);
+    margin-bottom: var(--space-4);
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .breadcrumb-fallback svg {
+    width: 14px; height: 14px;
+    color: var(--color-warning);
+    flex-shrink: 0;
+  }
+
+  /* Titles */
+  .screen-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .screen-subtitle {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-6) 0;
+  }
+
+  /* Tabs trimestre (cohérent récap 2.3) */
+  .tabs {
+    display: flex;
+    gap: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: var(--space-6);
+  }
+  .tab {
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 500;
+    margin-bottom: -1px;
+  }
+  .tab[aria-selected="true"] {
+    color: var(--color-text);
+    border-bottom-color: var(--color-brand);
+    font-weight: 600;
+  }
+  .tab--add { color: var(--color-text-subtle); }
+  .tab--add:hover { color: var(--color-brand); }
+  .tab svg { width: 14px; height: 14px; }
+
+  /* Bulletin label */
+  .bulletin-label-block {
+    margin-bottom: var(--space-6);
+  }
+  .bulletin-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: text;
+  }
+  .bulletin-label svg { width: 14px; height: 14px; color: var(--color-text-subtle); }
+  .bulletin-year {
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+    margin: var(--space-1) 0 0 0;
+  }
+
+  /* Section title */
+  .section-label {
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-2) 0;
+  }
+
+  /* ============================================================
+     MATIÈRES TABLE
+     ============================================================ */
+  .matieres-table {
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: var(--space-4);
+  }
+
+  .matiere {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+  }
+  .matiere:first-child { border-top: 0; }
+  .matiere:hover { background: var(--color-bg-3); }
+
+  .matiere__top {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .matiere__name {
+    flex: 1;
+    font-size: var(--text-body);
+    font-weight: 500;
+    margin: 0;
+    min-width: 0;
+  }
+
+  /* Note input — états : empty, filled, error, focused */
+  .note-input {
+    flex-shrink: 0;
+    width: 96px;
+    height: 40px;
+    padding: 0 var(--space-2);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 600;
+    color: var(--color-text);
+    text-align: right;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    font-feature-settings: "tnum" 1;
+    transition: border-color var(--motion-instant);
+  }
+  .note-input::placeholder {
+    color: var(--color-text-subtle);
+    font-weight: 400;
+  }
+  .note-input:hover { border-color: var(--color-text-subtle); }
+  .note-input:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(200, 49, 45, 0.15);
+  }
+  .note-input--filled { color: var(--color-text); }
+  .note-input--empty { color: var(--color-text-subtle); }
+  .note-input--error {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
+    background: var(--color-danger-bg);
+  }
+
+  /* Action buttons inline */
+  .matiere__actions {
+    flex-shrink: 0;
+    display: inline-flex;
+    gap: var(--space-1);
+  }
+  .matiere-action-btn {
+    width: 32px; height: 32px;
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--motion-instant), color var(--motion-instant);
+  }
+  .matiere-action-btn:hover { background: var(--color-bg); color: var(--color-text-muted); }
+  .matiere-action-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .matiere-action-btn svg { width: 14px; height: 14px; }
+
+  /* Appréciation expand */
+  .matiere__appreciation-toggle {
+    margin-top: var(--space-2);
+    background: transparent;
+    border: 0;
+    color: var(--color-text-subtle);
+    font: inherit;
+    font-size: var(--text-caption);
+    font-weight: 500;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 32px;
+  }
+  .matiere__appreciation-toggle:hover { color: var(--color-text); }
+  .matiere__appreciation-toggle svg {
+    width: 12px; height: 12px;
+    transition: transform var(--motion-quick);
+  }
+  .matiere__appreciation-toggle[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .matiere__appreciation-textarea {
+    width: 100%;
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    font: inherit;
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    resize: vertical;
+    min-height: 80px;
+  }
+  .matiere__appreciation-textarea:focus {
+    outline: none;
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px rgba(200, 49, 45, 0.15);
+  }
+  .matiere__appreciation-textarea::placeholder {
+    color: var(--color-text-subtle);
+  }
+
+  /* Error message inline */
+  .matiere__error {
+    margin: var(--space-2) 0 0 0;
+    padding-left: 0;
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-danger);
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .matiere__error svg {
+    width: 12px; height: 12px;
+  }
+
+  /* Add matière manquante (tertiary dashed) */
+  .add-matiere-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-8);
+    transition: color var(--motion-instant), border-color var(--motion-instant);
+  }
+  .add-matiere-btn:hover { color: var(--color-brand); border-color: var(--color-brand); }
+  .add-matiere-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .add-matiere-btn svg { width: 14px; height: 14px; }
+
+  /* ============================================================
+     FOOTER — primary + lien tertiary Plus tard
+     ============================================================ */
+  .app__footer {
+    background: var(--color-bg);
+    border-top: 1px solid var(--color-border);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-items: stretch;
+  }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    width: 100%;
+    height: 48px;
+    padding: 0 var(--space-4);
+    background: var(--color-brand);
+    color: #FFFFFF;
+    border: 1px solid var(--color-brand);
+    border-radius: var(--radius-md);
+    font: inherit;
+    font-size: var(--text-body);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--motion-instant), border-color var(--motion-instant);
+  }
+  .btn-primary:hover { background: var(--color-brand-hover); border-color: var(--color-brand-hover); }
+  .btn-primary:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .btn-primary svg { width: 18px; height: 18px; }
+
+  .footer-tertiary-link {
+    align-self: center;
+    background: transparent;
+    border: 0;
+    color: var(--color-brand);
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+  .footer-tertiary-link:hover { color: var(--color-brand-hover); }
+  .footer-tertiary-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .footer-tertiary-link svg { width: 14px; height: 14px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+  }
+
+  .legend {
+    max-width: 960px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-h3); color: var(--color-text); }
+  .legend ul { margin: 0; padding-left: var(--space-6); }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code { background: var(--color-bg-3); padding: 2px 6px; border-radius: var(--radius-sm); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <header>
+    <p class="mockup-title">Story 2.4 — Saisie manuelle assistée</p>
+    <p class="mockup-subtitle">Path-Advisor · Chemin alternatif équivalent OCR · ~25-35 % du funnel attendu</p>
+  </header>
+
+  <!-- ============================================================
+       SCÈNE A — Mobile · Sarah Terminale général · 5/10 matières
+       Entry direct (card 2 AC1) — pas de breadcrumb fallback
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">📝 Scène A · <strong>Sarah</strong> Terminale général · entry card 2 direct · 5/10 matières remplies</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour au choix d'import">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+
+          <h2 class="screen-title">Tes notes, à la main</h2>
+          <p class="screen-subtitle">On a préparé la liste des matières selon ton niveau. À toi de remplir — tu peux en sauter, on s'en fiche.</p>
+
+          <div class="tabs" role="tablist" aria-label="Bulletins importés">
+            <button class="tab" role="tab" aria-selected="true">Trim. 1</button>
+            <button class="tab" role="tab" aria-selected="false">Trim. 2</button>
+            <button class="tab" role="tab" aria-selected="false">Trim. 3</button>
+            <button class="tab tab--add" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Ajouter
+            </button>
+          </div>
+
+          <div class="bulletin-label-block">
+            <button class="bulletin-label" type="button" aria-label="Modifier le libellé">
+              Trim. 1 — Terminale
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+            <p class="bulletin-year">Année 2025-2026</p>
+          </div>
+
+          <!-- Tronc commun -->
+          <p class="section-label">Tronc commun</p>
+          <div class="matieres-table">
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Français (Bac anticipé)</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="13,0" aria-label="Note Français sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Français">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button class="matiere__appreciation-toggle" type="button" aria-expanded="false">
+                + Ajouter une appréciation
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Philosophie</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--empty" placeholder="—,— / 20" aria-label="Note Philosophie sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Philosophie">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Histoire-Géo</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="15,5" aria-label="Note Histoire-Géo sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Histoire-Géo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button class="matiere__appreciation-toggle" type="button" aria-expanded="false">
+                + Ajouter une appréciation
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Anglais LV1</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="16,5" aria-label="Note Anglais LV1 sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Anglais LV1">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Espagnol LV2</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--empty" placeholder="—,— / 20" aria-label="Note Espagnol LV2 sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Espagnol LV2">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">EPS</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="15,0" aria-label="Note EPS sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer EPS">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Ens. scientifique</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--empty" placeholder="—,— / 20" aria-label="Note Enseignement scientifique sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Spécialités -->
+          <p class="section-label">Tes spécialités</p>
+          <div class="matieres-table">
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Mathématiques</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="14,5" aria-label="Note Mathématiques sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Mathématiques">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">SVT</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--empty" placeholder="—,— / 20" aria-label="Note SVT sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer SVT">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">HGGSP</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--empty" placeholder="—,— / 20" aria-label="Note HGGSP sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer HGGSP">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <button class="add-matiere-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+            Ajouter une matière manquante
+          </button>
+
+        </main>
+
+        <footer class="app__footer">
+          <button class="btn-primary" type="button">
+            Valider et continuer
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+          <button class="footer-tertiary-link" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+            Plus tard, je préfère explorer d'abord
+          </button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE B — Edit mode actif · appréciation expandée (Textarea)
+       Entry via fallback OCR — breadcrumb visible
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">✎ Scène B · <strong>Mehdi</strong> via fallback OCR · breadcrumb visible + appréciation expandée</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+
+          <h2 class="screen-title">Tes notes, à la main</h2>
+          <p class="screen-subtitle">Pas grave, on continue à la main. On a préparé la liste des matières selon ton niveau — tu peux en sauter, on s'en fiche.</p>
+
+          <!-- Breadcrumb fallback OCR (Story 2.4 AC1, désactivable au scroll) -->
+          <div class="breadcrumb-fallback">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+            Tu reviens du scan qui n'a pas marché — on reprend ici.
+          </div>
+
+          <div class="tabs">
+            <button class="tab" aria-selected="true">Trim. 1</button>
+            <button class="tab tab--add" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Ajouter
+            </button>
+          </div>
+
+          <div class="bulletin-label-block">
+            <button class="bulletin-label" type="button">
+              Trim. 1 — 3ème
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+            <p class="bulletin-year">Année 2025-2026</p>
+          </div>
+
+          <p class="section-label">Tes matières</p>
+          <div class="matieres-table">
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Maths</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="12,0" aria-label="Note Maths sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Maths">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button class="matiere__appreciation-toggle" type="button" aria-expanded="true">
+                ▲ Plier l'appréciation
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <textarea class="matiere__appreciation-textarea" aria-label="Appréciation Maths" placeholder="Saisis l'appréciation du prof si tu veux…">Bons efforts ce trimestre, continue d'appliquer les méthodes vues en classe. Engagement régulier.</textarea>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Français</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="11,5" aria-label="Note Français sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Français">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Techno</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="15,5" aria-label="Note Techno sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Techno">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+
+        <footer class="app__footer">
+          <button class="btn-primary" type="button">
+            Valider et continuer
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SCÈNE C — Validation error · note > 20 inline error
+       ============================================================ -->
+  <div class="scene">
+    <span class="scene-label">⚠️ Scène C · <strong>Edge case</strong> · note &gt; 20 · erreur inline UX-DR35</span>
+
+    <div class="device" aria-label="Aperçu mobile 375 px">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg></button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+          <h2 class="screen-title">Tes notes, à la main</h2>
+          <p class="screen-subtitle">On a préparé la liste des matières selon ton niveau. À toi de remplir — tu peux en sauter, on s'en fiche.</p>
+
+          <div class="tabs">
+            <button class="tab" aria-selected="true">Trim. 1</button>
+            <button class="tab tab--add" aria-selected="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+              Ajouter
+            </button>
+          </div>
+
+          <div class="bulletin-label-block">
+            <button class="bulletin-label" type="button">
+              Trim. 1 — Terminale
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </button>
+            <p class="bulletin-year">Année 2025-2026</p>
+          </div>
+
+          <p class="section-label">Tronc commun</p>
+          <div class="matieres-table">
+
+            <!-- Matière en erreur : note > 20 -->
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Français (Bac anticipé)</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--error" value="22" aria-label="Note Français sur 20" aria-invalid="true" aria-describedby="francais-error" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Français">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+              <p class="matiere__error" id="francais-error" role="alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Note entre 0 et 20
+              </p>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Philosophie</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="13,0" aria-label="Note Philosophie sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Philosophie">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="matiere">
+              <div class="matiere__top">
+                <p class="matiere__name">Histoire-Géo</p>
+                <input type="text" inputmode="decimal" class="note-input note-input--filled" value="15,5" aria-label="Note Histoire-Géo sur 20" />
+                <div class="matiere__actions">
+                  <button class="matiere-action-btn" aria-label="Supprimer Histoire-Géo">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
+
+        <footer class="app__footer">
+          <button class="btn-primary" type="button">
+            Valider et continuer
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <aside class="legend">
+    <h3>Tests de validation visuelle</h3>
+    <ul>
+      <li><strong>Matières pré-remplies par niveau (Scène A) :</strong> Sarah Terminale général voit tronc commun (Français Bac anticipé, Philosophie, Histoire-Géo, Anglais, Espagnol, EPS, Ens. scientifique) + ses 3 spés (Maths, SVT, HGGSP). Référentiel adapté selon Story 2.2 niveau + filière + spés.</li>
+      <li><strong>Saisie partielle OK (Scène A) :</strong> 5/10 matières remplies, autres en placeholder <code>—,— / 20</code>. Bouton "Valider et continuer" toujours enabled (au moins 1 matière suffit pour commit, cf Story 2.4 AC5). Anti-paywall implicite.</li>
+      <li><strong>Pas d'astérisque "obligatoire" :</strong> aucun champ marqué required avec * rouge. Les matières sont toutes optionnelles, l'utilisateur décide combien remplir (UX spec § Form Patterns).</li>
+      <li><strong>Validation on blur seulement (UX-DR35) :</strong> aucune validation à chaque keystroke. L'erreur Scène C n'apparaît qu'après que l'utilisateur quitte le champ avec une valeur invalide.</li>
+      <li><strong>Format français accepté :</strong> notes affichées avec virgule (<code>14,5</code>) — normalisé en <code>.</code> côté serveur. <code>inputmode="decimal"</code> active le clavier numérique mobile.</li>
+      <li><strong>Appréciation facultative et repliée (Scène A/B) :</strong> bouton tertiary "+ Ajouter une appréciation" replie par défaut. Tap → expand Textarea 3 lignes (Scène B). Densité visuelle réduite, l'élève qui veut juste taper des chiffres le fait vite.</li>
+      <li><strong>Breadcrumb fallback OCR (Scène B) :</strong> seulement si <code>origin=ocr_fallback</code>. Bandeau discret <code>text-caption</code> avec icône retry + ton calme ("Pas grave, on continue à la main"). Désactivable au scroll (disparaît dès premier scroll).</li>
+      <li><strong>Référentiel adapté niveau collège (Scène B Mehdi) :</strong> 3ème → matières collège (Maths, Français, Techno, Histoire-Géo, EPS, etc.), pas lycée. Cohérent <code>getSubjectsForLevel</code> Story 2.4 T1.</li>
+      <li><strong>Erreur inline sous champ (Scène C, UX-DR35) :</strong> bordure <code>color-danger</code> + texte error <code>color-danger</code> + icône warning. Pas de toast ambient. La valeur invalide est CONSERVÉE dans le champ (pas effacée auto), l'utilisateur la corrige.</li>
+      <li><strong>Lien tertiary "Plus tard" footer (Scène A) :</strong> sortie élégante sans repasser par l'écran 3 cards AC1. Déclenche Story 2.5 (mode postponed). Visible en permanence, jamais en CTA principal.</li>
+      <li><strong>Tabs trimestres avec ajout libre :</strong> bouton "+ Ajouter" tab pour 4e trimestre (rare en lycée FR, mais possible). Drafts séparés par trimestre en localStorage (cohérent Story 2.4 AC7).</li>
+      <li><strong>Bouton supprimer matière (icône ✕) :</strong> visible toujours sur mobile (pas seulement au hover — anti-discrimination touch). À droite, 32×32 px touch target. Tap → toast "Annuler" 5 s (Story 2.4 AC3).</li>
+      <li><strong>Test focus a11y :</strong> Tab order : back → tabs → bulletin label edit → champ matière 1 → bouton "+ Ajouter appréciation" matière 1 → bouton supprimer matière 1 → champ matière 2 → … → "+ Ajouter matière manquante" → primary "Valider" → "Plus tard" tertiary. Focus ring 2 px brand.</li>
+      <li><strong>Mobile keyboard "Suivant" :</strong> sur iOS, le bouton "Suivant" du clavier numérique passe au prochain champ note (skip les boutons appréciation et supprimer) — UX power-user pour saisie rapide successive.</li>
+      <li><strong>Test reduced motion :</strong> pas d'animation expand appréciation (hauteur transition à 0 ms). Aucune autre animation.</li>
+      <li><strong>Test sentiment sortie écran :</strong> à la fin, l'élève pense quoi ? Cible : "OK, c'était pas si long en fait." — pas "J'aurais préféré scanner." Cohérent §4.2 Story 2.4 état émotionnel.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>

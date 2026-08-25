@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Path-Advisor — Mockup Story 2.3 AC1 — Import bulletins (3 cards)</title>
+
+<!--
+  ============================================================================
+  MOCKUP — Story 2.3 AC1 — Import bulletins step-3 (3 cards de choix)
+  ----------------------------------------------------------------------------
+  Objectif : valider VISUELLEMENT la parité Mehdi / Léa / Sarah.
+  Les 3 cards (Scan / Manuel / Plus tard) DOIVENT être indiscernables au
+  premier coup d'œil — c'est le mode dégradé invisible (UX spec Step 7).
+
+  Direction visuelle : R1 Vermillon sobre + Inter + Atelier (Step 9).
+  Tokens : extraits de _bmad-output/planning-artifacts/ux-design-specification.md
+  Self-contained HTML (Inter via Google Fonts, sinon aucune dépendance externe).
+  ============================================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  /* ============================================================
+     DESIGN TOKENS — extraits de Story 1.2 + UX spec § Step 8
+     ============================================================ */
+  :root {
+    /* Couleurs */
+    --color-brand:           #C8312D;
+    --color-brand-hover:     #A6231F;
+    --color-bg:              #FAFAF7;
+    --color-bg-2:            #F4F1ED;
+    --color-bg-3:            #EBE7E1;
+    --color-text:            #1A1A1A;
+    --color-text-muted:      #666660;
+    --color-text-subtle:     #8C8C86;
+    --color-border:          #E0DDD8;
+    --color-border-strong:   #C9C5BE;
+    --color-success:         #2F6B4F;
+    --color-warning:         #C7841B;
+    --color-danger:          #9E2A24;
+
+    /* Type — Inter, ratio 1.25 modeste */
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --text-h2:     20px;   --lh-h2:     28px;
+    --text-h2-d:   24px;   --lh-h2-d:   32px;
+    --text-h3:     18px;   --lh-h3:     26px;
+    --text-body:   16px;   --lh-body:   24px;
+    --text-sm:     14px;   --lh-sm:     20px;
+    --text-caption:12px;   --lh-caption:16px;
+
+    /* Spacing (base 4 px) */
+    --space-1:  4px;
+    --space-2:  8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-12:48px;
+
+    /* Radius */
+    --radius-sm: 6px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Motion */
+    --motion-instant:  100ms;
+    --motion-quick:    200ms;
+    --motion-standard: 300ms;
+    --ease-out:        cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Focus ring (RGAA) */
+    --focus-ring: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-brand);
+  }
+
+  /* ============================================================
+     RESET LIGHT + BODY
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 1; /* tabular numbers */
+  }
+
+  /* ============================================================
+     LAYOUT — page wrapper (mockup container, 2 viewports côte à côte)
+     ============================================================ */
+  .mockup-page {
+    padding: var(--space-8) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-12);
+    align-items: center;
+  }
+  .mockup-title {
+    font-size: 14px;
+    color: var(--color-text-subtle);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0 0 var(--space-2) 0;
+  }
+  .mockup-subtitle {
+    font-size: var(--text-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+  .mockup-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+  @media (min-width: 1024px) {
+    .mockup-wrap {
+      display: flex;
+      flex-direction: row;
+      gap: var(--space-12);
+      align-items: flex-start;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+  }
+
+  /* ============================================================
+     DEVICE FRAMES — pour visualiser mobile + desktop
+     ============================================================ */
+  .device {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04), 0 12px 32px rgba(0,0,0,0.06);
+  }
+  .device--mobile {
+    width: 375px;
+    min-height: 720px;
+  }
+  .device--desktop {
+    width: 100%;
+    max-width: 1024px;
+    min-height: 540px;
+  }
+
+  /* ============================================================
+     APP — header + main + footer (sticky header)
+     ============================================================ */
+  .app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    background: var(--color-bg);
+  }
+
+  /* Header sticky — back chevron, progress dots, NO "Plus tard" header
+     (l'une des 3 cards EST l'option Plus tard, anti-redondance) */
+  .app__header {
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-4);
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+  }
+  .icon-btn {
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: 0; border-radius: var(--radius-sm);
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background var(--motion-instant);
+  }
+  .icon-btn:hover { background: var(--color-bg-2); }
+  .icon-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .progress-dots {
+    display: inline-flex; gap: var(--space-1);
+    align-items: center;
+  }
+  .progress-dots span {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--color-brand);
+    display: inline-block;
+  }
+  .progress-dots[aria-hidden="false"] [aria-current="step"] {
+    /* dot 3 actif, déjà brand */
+  }
+
+  /* Spacer pour équilibrer le header (back à gauche, dots au centre, vide à droite) */
+  .header-spacer { width: 44px; height: 44px; }
+
+  /* Main content area */
+  .app__main {
+    flex: 1;
+    padding: var(--space-6) var(--space-4) var(--space-8);
+    max-width: 600px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  @media (min-width: 768px) {
+    .app__main { padding: var(--space-12) var(--space-6) var(--space-12); }
+  }
+
+  /* ============================================================
+     TYPOGRAPHIE
+     ============================================================ */
+  h2.screen-title {
+    font-size: var(--text-h2);
+    line-height: var(--lh-h2);
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
+    letter-spacing: -0.01em;
+  }
+  @media (min-width: 768px) {
+    h2.screen-title { font-size: var(--text-h2-d); line-height: var(--lh-h2-d); }
+  }
+  p.screen-subtitle {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-8) 0;
+  }
+
+  /* ============================================================
+     CARD GROUP — 3 cards STRICTEMENT identiques visuellement
+     ⚠ CRITIQUE : aucune card ne doit se démarquer par couleur,
+     ribbon, ombre, ou "recommandé". Mode dégradé invisible.
+     ============================================================ */
+  .card-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+  .card {
+    /* Container link — touch target ≥ 80 px (size xl, AC1) */
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-4);
+    min-height: 80px;
+    padding: var(--space-6);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    /* Texte */
+    color: var(--color-text);
+    text-decoration: none;
+
+    /* Interactivité */
+    cursor: pointer;
+    transition:
+      background var(--motion-instant),
+      border-color var(--motion-instant),
+      transform var(--motion-instant);
+  }
+  .card:hover {
+    background: var(--color-bg-3);
+    border-color: var(--color-border-strong);
+  }
+  .card:active {
+    transform: scale(0.998);
+  }
+  .card:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+  .card__icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+  }
+  .card__icon svg { width: 22px; height: 22px; }
+
+  .card__body { flex: 1; min-width: 0; }
+  .card__title {
+    font-size: var(--text-h3);
+    line-height: var(--lh-h3);
+    font-weight: 600;
+    color: var(--color-text);
+    margin: 0 0 var(--space-1) 0;
+  }
+  .card__desc {
+    font-size: var(--text-body);
+    line-height: var(--lh-body);
+    color: var(--color-text-muted);
+    margin: 0 0 var(--space-2) 0;
+  }
+  .card__meta {
+    font-size: var(--text-caption);
+    line-height: var(--lh-caption);
+    color: var(--color-text-subtle);
+    margin: 0;
+  }
+
+  /* Chevron indicateur d'action (visuel discret, pas un CTA brand) */
+  .card__arrow {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    color: var(--color-text-subtle);
+    align-self: center;
+    transition: transform var(--motion-quick) var(--ease-out),
+                color var(--motion-quick);
+  }
+  .card:hover .card__arrow {
+    transform: translateX(3px);
+    color: var(--color-text-muted);
+  }
+
+  /* ============================================================
+     ÉTAT "FOCUS DEMO" — pour montrer la focus ring en pre-vue
+     (la 2e card du desktop est marquée focused pour démo a11y)
+     ============================================================ */
+  .card[data-demo="focused"] {
+    box-shadow: var(--focus-ring);
+  }
+
+  /* ============================================================
+     REDUCED MOTION (RGAA AA)
+     ============================================================ */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+    .card:hover .card__arrow { transform: none; }
+  }
+
+  /* ============================================================
+     PERSONA LABEL — au-dessus de chaque device, indique la
+     persona simulée. La cohérence VISUELLE est la preuve que
+     la parité Sarah / Mehdi / Léa est atteinte.
+     ============================================================ */
+  .persona-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: var(--text-caption);
+    color: var(--color-text-muted);
+  }
+  .persona-label strong {
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  /* ============================================================
+     LEGEND — explication du mockup
+     ============================================================ */
+  .legend {
+    max-width: 720px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-6);
+    font-size: var(--text-sm);
+    line-height: var(--lh-sm);
+    color: var(--color-text-muted);
+  }
+  .legend h3 {
+    margin: 0 0 var(--space-3) 0;
+    font-size: var(--text-h3);
+    color: var(--color-text);
+  }
+  .legend ul {
+    margin: 0;
+    padding-left: var(--space-6);
+  }
+  .legend li { margin-bottom: var(--space-2); }
+  .legend code {
+    background: var(--color-bg-3);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<main class="mockup-page">
+
+  <!-- ============================================================
+       HEADER MOCKUP
+       ============================================================ -->
+  <header>
+    <p class="mockup-title">Story 2.3 — AC1 — Écran d'entrée import bulletins</p>
+    <p class="mockup-subtitle">Path-Advisor · Direction R1 Vermillon sobre · Atelier · Inter</p>
+  </header>
+
+  <!-- ============================================================
+       VIEWPORT MOBILE — Sarah (Terminale lycée général)
+       ============================================================ -->
+  <div class="mockup-row">
+    <span class="persona-label">📱 Mobile 375 px · <strong>Sarah</strong> Terminale général · iPhone soir 22 h</span>
+
+    <div class="device device--mobile">
+      <div class="app">
+        <!-- Header sticky -->
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour à l'étape précédente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span aria-label="Étape 1 sur 3, terminée"></span>
+            <span aria-label="Étape 2 sur 3, terminée"></span>
+            <span aria-current="step" aria-label="Étape 3 sur 3, en cours"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <!-- Main -->
+        <main class="app__main">
+          <h2 class="screen-title">Tes bulletins, comment tu préfères ?</h2>
+          <p class="screen-subtitle">3 façons de faire. Aucune n'est mieux qu'une autre — choisis selon ton humeur du moment.</p>
+
+          <div class="card-group" role="list">
+
+            <!-- Card 1 — Scanner -->
+            <a href="#scan" class="card" role="listitem" aria-label="Scanner ou importer mes bulletins, environ 30 secondes">
+              <span class="card__icon" aria-hidden="true">
+                <!-- Lucide Camera -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Scanner / importer mes bulletins</p>
+                <p class="card__desc">Photo ou PDF, on lit pour toi</p>
+                <p class="card__meta">~30 secondes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <!-- Card 2 — Manuel -->
+            <a href="#manuel" class="card" role="listitem" aria-label="Saisir mes notes à la main, environ 3 minutes">
+              <span class="card__icon" aria-hidden="true">
+                <!-- Lucide Pencil -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Saisir mes notes à la main</p>
+                <p class="card__desc">Formulaire structuré, simple</p>
+                <p class="card__meta">~3 minutes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <!-- Card 3 — Plus tard (Léa) -->
+            <a href="#plus-tard" class="card" role="listitem" aria-label="Plus tard, je préfère explorer d'abord. Tu pourras ajouter à tout moment.">
+              <span class="card__icon" aria-hidden="true">
+                <!-- Lucide Clock -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Plus tard, je préfère explorer d'abord</p>
+                <p class="card__desc">Tu pourras ajouter à tout moment</p>
+                <p class="card__meta">Recos un peu plus génériques pour l'instant</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VIEWPORT MOBILE — Mehdi (3ème, Android fissuré)
+       Aspect strictement identique à Sarah — c'est la preuve.
+       ============================================================ -->
+  <div class="mockup-row">
+    <span class="persona-label">📱 Mobile 375 px · <strong>Mehdi</strong> 3ème bac pro · Android fissuré chambre 21 h</span>
+
+    <div class="device device--mobile">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour à l'étape précédente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+          <h2 class="screen-title">Tes bulletins, comment tu préfères ?</h2>
+          <p class="screen-subtitle">3 façons de faire. Aucune n'est mieux qu'une autre — choisis selon ton humeur du moment.</p>
+
+          <div class="card-group" role="list">
+
+            <a href="#scan" class="card" role="listitem" aria-label="Scanner ou importer mes bulletins, environ 30 secondes">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Scanner / importer mes bulletins</p>
+                <p class="card__desc">Photo ou PDF, on lit pour toi</p>
+                <p class="card__meta">~30 secondes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <a href="#manuel" class="card" role="listitem" aria-label="Saisir mes notes à la main, environ 3 minutes">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Saisir mes notes à la main</p>
+                <p class="card__desc">Formulaire structuré, simple</p>
+                <p class="card__meta">~3 minutes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <a href="#plus-tard" class="card" role="listitem" aria-label="Plus tard, je préfère explorer d'abord">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Plus tard, je préfère explorer d'abord</p>
+                <p class="card__desc">Tu pourras ajouter à tout moment</p>
+                <p class="card__meta">Recos un peu plus génériques pour l'instant</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VIEWPORT MOBILE — Léa (sans bulletins, dignité)
+       Toujours strictement identique. C'est le test final.
+       ============================================================ -->
+  <div class="mockup-row">
+    <span class="persona-label">📱 Mobile 375 px · <strong>Léa</strong> sans bulletins · indistinguable de Sarah & Mehdi</span>
+
+    <div class="device device--mobile">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour à l'étape précédente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+          <h2 class="screen-title">Tes bulletins, comment tu préfères ?</h2>
+          <p class="screen-subtitle">3 façons de faire. Aucune n'est mieux qu'une autre — choisis selon ton humeur du moment.</p>
+
+          <div class="card-group" role="list">
+
+            <a href="#scan" class="card" role="listitem" aria-label="Scanner ou importer mes bulletins, environ 30 secondes">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Scanner / importer mes bulletins</p>
+                <p class="card__desc">Photo ou PDF, on lit pour toi</p>
+                <p class="card__meta">~30 secondes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <a href="#manuel" class="card" role="listitem" aria-label="Saisir mes notes à la main, environ 3 minutes">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Saisir mes notes à la main</p>
+                <p class="card__desc">Formulaire structuré, simple</p>
+                <p class="card__meta">~3 minutes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <!-- Léa choisira probablement celle-ci — mais elle ne le sait pas en arrivant,
+                 et l'écran ne lui SUGGÈRE pas. C'est le principe dignité. -->
+            <a href="#plus-tard" class="card" role="listitem" aria-label="Plus tard, je préfère explorer d'abord">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Plus tard, je préfère explorer d'abord</p>
+                <p class="card__desc">Tu pourras ajouter à tout moment</p>
+                <p class="card__meta">Recos un peu plus génériques pour l'instant</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       VIEWPORT DESKTOP 1024 px — même structure, single column 600 px
+       ============================================================ -->
+  <div class="mockup-row">
+    <span class="persona-label">🖥️ Desktop 1024 px · max-width 600 px container · Sarah à la maison sur ordi familial</span>
+
+    <div class="device device--desktop">
+      <div class="app">
+        <div class="app__header">
+          <button class="icon-btn" aria-label="Retour à l'étape précédente">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <nav class="progress-dots" aria-label="Progression onboarding">
+            <span></span><span></span><span aria-current="step"></span>
+          </nav>
+          <span class="header-spacer" aria-hidden="true"></span>
+        </div>
+
+        <main class="app__main">
+          <h2 class="screen-title">Tes bulletins, comment tu préfères ?</h2>
+          <p class="screen-subtitle">3 façons de faire. Aucune n'est mieux qu'une autre — choisis selon ton humeur du moment.</p>
+
+          <div class="card-group" role="list">
+
+            <a href="#scan" class="card" role="listitem" aria-label="Scanner ou importer mes bulletins, environ 30 secondes">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Scanner / importer mes bulletins</p>
+                <p class="card__desc">Photo ou PDF, on lit pour toi</p>
+                <p class="card__meta">~30 secondes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <!-- 2e card mise en état focused pour démo a11y (focus ring) -->
+            <a href="#manuel" class="card" role="listitem" data-demo="focused" aria-label="Saisir mes notes à la main — focus a11y démo">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Saisir mes notes à la main</p>
+                <p class="card__desc">Formulaire structuré, simple</p>
+                <p class="card__meta">~3 minutes</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+            <a href="#plus-tard" class="card" role="listitem" aria-label="Plus tard, je préfère explorer d'abord">
+              <span class="card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </span>
+              <div class="card__body">
+                <p class="card__title">Plus tard, je préfère explorer d'abord</p>
+                <p class="card__desc">Tu pourras ajouter à tout moment</p>
+                <p class="card__meta">Recos un peu plus génériques pour l'instant</p>
+              </div>
+              <svg class="card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>
+            </a>
+
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       LEGEND — test de validation visuelle
+       ============================================================ -->
+  <aside class="legend">
+    <h3>Test de validation visuelle</h3>
+    <ul>
+      <li><strong>Test parité Mehdi/Léa/Sarah :</strong> les 3 viewports mobiles ci-dessus sont <em>strictement identiques</em>. Si tu peux distinguer celui de Léa au premier coup d'œil, le mode dégradé invisible est cassé.</li>
+      <li><strong>Test 3 secondes :</strong> couvre l'écran et révèle-le 3 s. Tu dois pouvoir nommer les 3 options sans les relire.</li>
+      <li><strong>Test focus a11y :</strong> la 2e card du viewport desktop est en état <code>focus-visible</code> (focus ring brand 2 px + offset). Tab dans une vraie implémentation produira ce résultat.</li>
+      <li><strong>Test touch target :</strong> chaque card mesure ≥ 80 px de haut (size xl AC1). Mesure à la règle dans le devtools = OK.</li>
+      <li><strong>Test reduced motion :</strong> active <code>prefers-reduced-motion: reduce</code> dans devtools → l'animation de chevron au hover disparaît, le reste reste fonctionnel.</li>
+      <li><strong>Test daltonisme :</strong> active le simulateur daltonisme devtools (deuteranopie / protanopie / tritanopie) — aucun signal critique n'est porté par la couleur seule.</li>
+    </ul>
+  </aside>
+
+</main>
+
+</body>
+</html>
