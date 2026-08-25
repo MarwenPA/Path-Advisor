@@ -82,3 +82,6 @@ coverage/
 playwright-report/
 test-results/
 .code-review/
+
+# ============ Claude Code ============
+.claude/worktrees/
