@@ -34,6 +34,7 @@ dependencies = [
     "python-Levenshtein>=0.25,<1.0",
     "pyjwt>=2.10,<3.0",
     "httpx>=0.27,<1.0",
+    "stripe>=11.0,<13.0",
 ]
 
 [dependency-groups]
@@ -87,6 +88,10 @@ ignore = [
 "apps/recommendations/**" = ["RUF012", "DJ001"]
 # Django convention: permission_classes, fields, ordering, indexes are class-level lists.
 "apps/schools/**" = ["RUF012", "DJ001"]
+# Django convention: permission_classes / Meta.ordering are class-level lists (Story 5.1).
+"apps/billing/**" = ["RUF012", "DJ001"]
+# Django convention: serializer/Meta fields are class-level lists. DJ001: nullable relationship/custom_message fields intentional (Story 6.1).
+"apps/family/**" = ["RUF012", "DJ001"]
 
 [tool.ruff.format]
 quote-style = "double"
