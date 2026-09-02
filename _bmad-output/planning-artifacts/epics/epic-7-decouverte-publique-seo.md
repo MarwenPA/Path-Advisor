@@ -137,6 +137,37 @@ So that le SEO ne soit pas pénalisé et l'acquisition organique reste forte (NF
 **When** une page est servie
 **Then** images en AVIF/WebP avec `srcset` responsive, polices preloadées + `font-display: swap`, JS critique < 200 ko, code-splitting par route Next.js
 
+## Story 7.8 : Page d'accueil publique moderne
+
+As a visiteur non connecté (Sarah, Mehdi, ou un parent) arrivant sur `path-advisor.fr`,
+I want une vraie page d'accueil moderne qui explique la proposition de valeur de Path-Advisor et me guide vers l'inscription ou la connexion,
+So that je comprenne en quelques secondes ce que fait le produit et sois incité·e à créer un compte (remplace le seed de démo Story 1.2, FR46).
+
+**Acceptance Criteria :**
+
+**Given** un visiteur non connecté
+**When** il visite `/` (racine du domaine)
+**Then** il voit un hero section avec proposition de valeur claire (headline + sous-titre + illustration/visuel), et deux CTA primaires "Créer un compte" → `/auth/signup` et "Se connecter" → `/auth/login`
+**And** le placeholder de démo Story 1.2 ("Hello Path-Advisor" + showcase design tokens) est retiré du bundle public
+
+**Given** la page d'accueil
+**When** le visiteur scrolle
+**Then** il voit au minimum : une section "comment ça marche" (3-4 étapes : profil → recommandations → parcours → suivi), une section mettant en avant les 2 "aha moments" produit (recommandation vocationnelle Epic 3, graphe de parcours + stats admission Epic 4), une section de réassurance (confidentialité RGPD / gratuit pour commencer) et un footer avec liens légaux (`/legal/rgpd`)
+
+**Given** un visiteur déjà authentifié (session active)
+**When** il visite `/`
+**Then** il est redirigé vers son espace applicatif (dashboard élève/parent/conseillère selon rôle) plutôt que de revoir la landing page
+
+**Given** la conformité Core Web Vitals et SEO (cf. Story 7.6)
+**When** Google PageSpeed Insights audite `/` sur mobile
+**Then** LCP < 2,5 s, CLS < 0,1, Performance ≥ 80, SEO ≥ 95
+**And** la page expose `title` + `meta description` + Open Graph de base (cf. Story 7.5) même si celle-ci est implémentée après
+
+**Given** le design system Path-Advisor (Story 1.2 — tokens R1 Vermillon)
+**When** la page est construite
+**Then** elle réutilise exclusivement les tokens et composants `shadcn`/`ui` existants (`src/components/ui`), aucune valeur de couleur/espacement en dur
+**And** elle est responsive (mobile-first) et accessible RGAA AA (structure de titres correcte, contrastes suffisants, navigation clavier)
+
 ## Story 7.7 : i18n foundation (français MVP, préparation francophonie)
 
 As a système Path-Advisor,
