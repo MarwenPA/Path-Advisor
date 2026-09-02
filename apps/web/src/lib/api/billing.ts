@@ -25,9 +25,18 @@ export interface SubscriptionStatus {
   tier: "free" | "premium";
   status: "active" | "past_due" | "cancelled";
   current_period_end: string | null;
+  cancel_at_period_end: boolean;
   is_premium: boolean;
 }
 
 export async function getSubscription(): Promise<SubscriptionStatus> {
   return apiFetch<SubscriptionStatus>("/api/v1/billing/subscription");
+}
+
+// Story 5.3 — schedule cancellation at period end (NOT immediate).
+export async function cancelSubscription(): Promise<SubscriptionStatus> {
+  return apiFetch<SubscriptionStatus>("/api/v1/billing/subscription/cancel", {
+    method: "POST",
+    csrfToken: readCsrfCookie() ?? undefined,
+  });
 }

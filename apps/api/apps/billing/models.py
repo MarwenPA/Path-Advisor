@@ -69,6 +69,12 @@ class Subscription(models.Model):
     # Set when status → past_due: premium stays live until this instant (7-day
     # dunning grace). Cleared on recovery.
     grace_until = models.DateTimeField(null=True, blank=True)
+    # Story 5.3 — set when the user requests cancellation: the subscription
+    # keeps premium access until `current_period_end`, then Stripe's
+    # `customer.subscription.deleted` (5.2) flips tier→free/status→cancelled.
+    # Distinct from an immediate cancel (merge-on-second-checkout, RGPD
+    # pre_delete signal) which never sets this flag.
+    cancel_at_period_end = models.BooleanField(default=False)
     stripe_customer_id = models.CharField(max_length=255, blank=True, default="")
     stripe_subscription_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -1,7 +1,7 @@
 # Story 6.2: Vue parent — métiers explorés, parcours sauvegardés et coûts
 
 **Epic:** 6 — Espaces Tiers : Parent & Conseillère B2B
-**Status:** review
+**Status:** done
 **Sprint:** Epic 6
 **Story Key:** `6-2-vue-parent-metiers-parcours-couts`
 **Estimation:** M (medium) — la brique d'autorisation parent↔élève (`ParentStudentLink`, `IsLinkedParent`) est déjà posée par Story 6.1 ; 6.2 se limite à exposer des endpoints parent-scoped en lecture seule qui réutilisent les services existants (`compute_recommendations` d'Epic 3, `FavoriteSchool`/`School` d'Epic 4) sans nouveau modèle ni migration. Le coût réel est la frontière RBAC (AC3 : bulletins 403 + audit) et la garantie qu'aucun champ bulletin ne fuit dans les réponses parent.

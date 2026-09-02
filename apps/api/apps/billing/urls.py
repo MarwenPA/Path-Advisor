@@ -6,11 +6,16 @@ module only exposes the authenticated /api/v1/billing/ surface.
 
 from django.urls import path
 
-from apps.billing.views import CheckoutSessionView, SubscriptionStatusView
+from apps.billing.views import (
+    CheckoutSessionView,
+    SubscriptionCancelView,
+    SubscriptionStatusView,
+)
 
 app_name = "billing"
 
 urlpatterns = [
     path("checkout-session", CheckoutSessionView.as_view(), name="checkout-session"),
     path("subscription", SubscriptionStatusView.as_view(), name="subscription"),
+    path("subscription/cancel", SubscriptionCancelView.as_view(), name="subscription-cancel"),
 ]

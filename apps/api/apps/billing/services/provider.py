@@ -45,7 +45,21 @@ class PaymentProvider(abc.ABC):
 
     @abc.abstractmethod
     def cancel_subscription(self, *, stripe_subscription_id: str) -> None:
-        """Cancel an active subscription at the provider."""
+        """Cancel a subscription IMMEDIATELY at the provider.
+
+        Used by merge-on-second-checkout and the RGPD `pre_delete` signal —
+        both need the subscription gone now, not at period end. User-initiated
+        cancellation (Story 5.3 AC3) must use `schedule_cancellation` instead.
+        """
+
+    @abc.abstractmethod
+    def schedule_cancellation(self, *, stripe_subscription_id: str) -> None:
+        """Schedule a subscription to cancel AT THE END of its current period.
+
+        Story 5.3 AC3 — the user keeps premium access until
+        `current_period_end`; Stripe fires `customer.subscription.deleted`
+        (already handled, Story 5.2) once the period actually ends.
+        """
 
     @abc.abstractmethod
     def get_subscription_status(self, *, stripe_subscription_id: str) -> str:

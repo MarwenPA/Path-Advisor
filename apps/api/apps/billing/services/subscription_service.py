@@ -15,6 +15,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.audit.decorators import audit_action
+from apps.billing.exceptions import NoActiveSubscription
 from apps.billing.models import Subscription
 from apps.core.exceptions import InsufficientPlan
 from apps.core.rls import bypass_rls
@@ -47,6 +48,35 @@ class SubscriptionService:
         """Raise `InsufficientPlan` (402 RFC 7807) if the user is not premium."""
         if not cls.is_premium(user):
             raise InsufficientPlan()
+
+    # --- user-initiated cancellation (Story 5.3 AC3) ----------------------
+
+    @classmethod
+    @audit_action(
+        "billing.subscription_cancellation_requested",
+        subject_from=lambda kwargs, ret: kwargs["user"].id,
+    )
+    def request_cancellation(cls, *, user) -> Subscription:
+        """Schedule the user's subscription to cancel at period end.
+
+        Distinct from the provider's immediate `cancel_subscription` (used by
+        merge-on-second-checkout and the RGPD `pre_delete` signal) — this
+        keeps premium access live until `current_period_end`; Stripe's
+        `customer.subscription.deleted` (5.2) does the actual downgrade once
+        the period ends. Idempotent: calling twice is a no-op the second time.
+        """
+        sub = cls.get_for_user(user)
+        if sub is None or not sub.stripe_subscription_id or not sub.is_active_now:
+            raise NoActiveSubscription()
+        if not sub.cancel_at_period_end:
+            from apps.billing.services import get_payment_provider
+
+            get_payment_provider().schedule_cancellation(
+                stripe_subscription_id=sub.stripe_subscription_id
+            )
+            sub.cancel_at_period_end = True
+            sub.save(update_fields=["cancel_at_period_end", "updated_at"])
+        return sub
 
     # --- webhook-driven lifecycle ----------------------------------------
 
@@ -132,11 +162,24 @@ class SubscriptionService:
                 "tier": Subscription.Tier.PREMIUM,
                 "status": Subscription.Status.ACTIVE,
                 "grace_until": None,
+                # A fresh activation clears any prior scheduled cancellation
+                # (Story 5.3) — this IS the new subscription, not a
+                # continuation of one the user had asked to end.
+                "cancel_at_period_end": False,
                 "stripe_customer_id": obj.get("customer", "") or "",
                 "stripe_subscription_id": new_stripe_sub_id,
                 "current_period_end": _ts(obj.get("current_period_end")),
             },
         )
+        # Story 5.3 AC2 — best-effort confirmation email; must never fail the
+        # webhook (record_webhook_event's transaction would roll back the
+        # activation itself on any raise here).
+        try:
+            from apps.billing.services.emails import send_premium_activated
+
+            send_premium_activated(user)
+        except Exception as exc:
+            log.warning("billing.premium_activated_email_failed", error=str(exc))
         return True
 
     @staticmethod
@@ -192,8 +235,20 @@ class SubscriptionService:
             sub.tier = Subscription.Tier.FREE
             sub.grace_until = None
         sub.current_period_end = _ts(obj.get("current_period_end")) or sub.current_period_end
+        # Story 5.3 AC3 — Stripe is the source of truth for this flag; syncs
+        # both directions (a user could also toggle it back off from the
+        # Stripe customer portal, if that's ever exposed).
+        if "cancel_at_period_end" in obj:
+            sub.cancel_at_period_end = bool(obj.get("cancel_at_period_end"))
         sub.save(
-            update_fields=["status", "tier", "grace_until", "current_period_end", "updated_at"]
+            update_fields=[
+                "status",
+                "tier",
+                "grace_until",
+                "current_period_end",
+                "cancel_at_period_end",
+                "updated_at",
+            ]
         )
         return True
 
@@ -205,7 +260,10 @@ class SubscriptionService:
         sub.status = Subscription.Status.CANCELLED
         sub.tier = Subscription.Tier.FREE
         sub.grace_until = None
-        sub.save(update_fields=["status", "tier", "grace_until", "updated_at"])
+        sub.cancel_at_period_end = False
+        sub.save(
+            update_fields=["status", "tier", "grace_until", "cancel_at_period_end", "updated_at"]
+        )
         return True
 
     @classmethod

@@ -54,7 +54,30 @@ class SubscriptionStatusView(APIView):
                 "tier": sub.tier if sub else "free",
                 "status": sub.status if sub else "active",
                 "current_period_end": sub.current_period_end if sub else None,
+                "cancel_at_period_end": bool(sub and sub.cancel_at_period_end),
                 "is_premium": bool(sub and sub.is_active_now),
+            }
+        )
+
+
+class SubscriptionCancelView(APIView):
+    """POST /api/v1/billing/subscription/cancel — schedule cancellation at
+    period end (Story 5.3 AC3). Raises `NoActiveSubscription` (404 RFC 7807)
+    if there's nothing to cancel."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive]
+
+    def post(self, request: Request) -> Response:
+        from apps.billing.services.subscription_service import SubscriptionService
+
+        sub = SubscriptionService.request_cancellation(user=request.user)
+        return Response(
+            {
+                "tier": sub.tier,
+                "status": sub.status,
+                "current_period_end": sub.current_period_end,
+                "cancel_at_period_end": sub.cancel_at_period_end,
+                "is_premium": sub.is_active_now,
             }
         )
 

@@ -1,7 +1,7 @@
 # Story 5.2: Subscription tiers (freemium / premium) + gating
 
 **Epic:** 5 — Premium B2C & Biface Early Outreach
-**Status:** ready-for-dev
+**Status:** done
 **Sprint:** 9 (Premium foundations)
 **Story Key:** `5-2-tiers-abonnement-gating`
 **Estimation:** L
@@ -73,7 +73,7 @@
 - [Source: apps/api/apps/core/exceptions.py] — `InsufficientPlan`
 - [Source: apps/api/apps/core/permissions.py], [apps/api/apps/core/rls.py], [apps/api/apps/audit/decorators.py]
 
-**Status:** review
+**Status:** done
 
 ### Review Findings (BMad code-review, 2026-08-26 — 3 adversarial layers)
 

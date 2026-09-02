@@ -58,6 +58,9 @@ class StripeProvider(PaymentProvider):
     def cancel_subscription(self, *, stripe_subscription_id: str) -> None:
         self._client.Subscription.cancel(stripe_subscription_id)
 
+    def schedule_cancellation(self, *, stripe_subscription_id: str) -> None:
+        self._client.Subscription.modify(stripe_subscription_id, cancel_at_period_end=True)
+
     def get_subscription_status(self, *, stripe_subscription_id: str) -> str:
         subscription = self._client.Subscription.retrieve(stripe_subscription_id)
         return subscription["status"]
