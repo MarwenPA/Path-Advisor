@@ -293,3 +293,12 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 - **`SalaryInfo` section blanche si tous champs null** — `FicheMetier.tsx:104-144`. Pas d'empty-state "Information non disponible". Adresser en Story 3.5 (intégration page) ou lors du quality pass UX.
 - **`level_compatibility` tokens bruts affichés** — `FicheMetier.tsx:137`. Libellés lisibles manquants (ex. "lycee 1ere tle general" au lieu de "Lycée 1ère/Tle générale"). Adresser avec un mapping i18n lors de l'Epic 7 ou du quality pass.
 - **"Tout afficher" one-way sans "Tout masquer"** — `FicheMetier.tsx:348-355`. UX mineure. Adresser si retour utilisateur lors des tests terrain.
+
+## Deferred from: code review of story-5.2 (2026-08-26)
+
+- **Out-of-order Stripe webhook delivery can overwrite newer state** — `apps/billing/services/subscription_service.py` `_on_checkout_completed`. A stale/replayed `checkout.session.completed` unconditionally sets `tier=PREMIUM, status=ACTIVE, grace_until=None`, even if a later-arriving `past_due`/`cancelled` transition already applied. Fixing requires plumbing the Stripe event's top-level `created` timestamp through `apply_event`/`WebhookEvent` and comparing against the row's last-applied event time before mutating. Revisit when Story 5.3 adds real subscription-lifecycle side effects (the current risk window is narrow — MVP has a single checkout path per user).
+
+## Deferred from: code review of story-6.2 (2026-08-26)
+
+- **AI-service signal free text not content-filtered against bulletin-derived phrasing** — `apps/family/services/parent_view.py` `get_child_professions` passes `signals_contributifs`/`phrase_recopiable` from `compute_recommendations` through unfiltered to the parent dashboard. `compute_recommendations` sends a `bulletin_summary` to the ai-service; nothing guarantees the ai-service never echoes bulletin-adjacent phrasing back in a signal label. Pre-existing characteristic of the Epic 3 recommendation engine, cross-cutting beyond one story. Audit `compute_recommendations`' signal generation if bulletin-phrase leakage is ever reported.
+- **`ParentStudentLink.tenant_id` written but never enforced** — `resolve_linked_child`/`get_linked_children` never cross-check parent vs. child `tenant_id`. No impact today (B2C-only parent-child links). Revisit when a B2B story introduces tenant-scoped parent access.

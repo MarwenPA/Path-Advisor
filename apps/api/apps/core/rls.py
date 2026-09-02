@@ -48,7 +48,19 @@ def _set_guc(name: str, value: str) -> None:
 
 
 def _audit_bypass(reason: str, metadata: dict[str, Any] | None = None) -> None:
-    """Best-effort `rls.bypass_used` audit row. Never raises."""
+    """Best-effort `rls.bypass_used` audit row. Never raises.
+
+    Caveat (Story 5.2 code review): if a caller runs `bypass_rls()` inside its
+    own `transaction.atomic()` block (e.g. a webhook handler) and that block
+    later rolls back, this row is rolled back with it — `record_audit()`
+    intentionally joins the caller's transaction (Story 1.13 §9 #4 policy).
+    Callers that must preserve this module's "every bypass leaves a trail"
+    promise even across a failure should keep their `bypass_rls()` usage
+    inside a transaction that is guaranteed to commit regardless of business
+    outcome, or emit a second, dedicated failure-audit event from OUTSIDE
+    their atomic block on the except path (see
+    `BillingService.record_webhook_event` for the pattern).
+    """
     try:
         from apps.audit.decorators import record_audit
         from apps.audit.models import AuditResult

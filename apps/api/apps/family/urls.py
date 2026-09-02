@@ -45,4 +45,15 @@ urlpatterns = [
         views.parent_child_bulletins_denied,
         name="parent-child-bulletins",
     ),
+    # Code review (2026-08) — dedicated parent-scoped detail views (AC2).
+    path(
+        "children/<str:student_id>/metiers/<slug:slug>/",
+        views.parent_child_metier_detail,
+        name="parent-child-metier-detail",
+    ),
+    path(
+        "children/<str:student_id>/ecoles/<slug:slug>/",
+        views.parent_child_ecole_detail,
+        name="parent-child-ecole-detail",
+    ),
 ]

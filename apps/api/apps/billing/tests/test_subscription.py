@@ -97,6 +97,79 @@ def test_checkout_completed_activates_premium():
     assert sub.stripe_subscription_id == "sub_1"
 
 
+def test_checkout_completed_no_user_returns_false_and_stays_unhandled():
+    # Code review fix: a handler that finds no match must report it wasn't
+    # applied, not just "a handler existed" — proven by the return value.
+    handled = SubscriptionService.apply_event(
+        event_type="checkout.session.completed", obj={"client_reference_id": "usr_doesnotexist"}
+    )
+    assert handled is False
+
+
+def test_subscription_updated_unknown_target_returns_false():
+    handled = SubscriptionService.apply_event(
+        event_type="customer.subscription.updated",
+        obj={"id": "sub_no_such_row", "status": "active"},
+    )
+    assert handled is False
+
+
+def test_second_checkout_merges_and_cancels_superseded_subscription():
+    """Code review decision: 'merge subscriptions' — a second checkout for an
+    already-subscribed user must cancel the old Stripe subscription rather
+    than silently orphaning it (billing leak)."""
+    u = _make_user()
+    _sub(u, tier="premium", status="active", stripe_subscription_id="sub_old")
+    with patch(
+        "apps.billing.services.stripe_provider.StripeProvider.cancel_subscription"
+    ) as mock_cancel:
+        SubscriptionService.apply_event(
+            event_type="checkout.session.completed",
+            obj={"client_reference_id": u.id, "customer": "cus_2", "subscription": "sub_new"},
+        )
+    mock_cancel.assert_called_once_with(stripe_subscription_id="sub_old")
+    sub = Subscription.objects.get(user=u)
+    assert sub.stripe_subscription_id == "sub_new"
+    assert sub.tier == "premium" and sub.status == "active"
+
+
+def test_second_checkout_cancel_failure_does_not_block_new_activation():
+    u = _make_user()
+    _sub(u, tier="premium", status="active", stripe_subscription_id="sub_old")
+    with patch(
+        "apps.billing.services.stripe_provider.StripeProvider.cancel_subscription",
+        side_effect=RuntimeError("stripe down"),
+    ):
+        handled = SubscriptionService.apply_event(
+            event_type="checkout.session.completed",
+            obj={"client_reference_id": u.id, "customer": "cus_2", "subscription": "sub_new"},
+        )
+    assert handled is True
+    assert Subscription.objects.get(user=u).stripe_subscription_id == "sub_new"
+
+
+def test_subscription_updated_terminal_status_downgrades_to_free():
+    """Code review fix: a Stripe status outside active/trialing/past_due
+    (canceled, unpaid, incomplete_expired, ...) must not leave the local row
+    stale at premium/active."""
+    u = _make_user()
+    _sub(u, tier="premium", status="active", stripe_subscription_id="sub_term")
+    SubscriptionService.apply_event(
+        event_type="customer.subscription.updated", obj={"id": "sub_term", "status": "canceled"}
+    )
+    sub = Subscription.objects.get(user=u)
+    assert sub.tier == "free" and sub.status == "cancelled"
+    assert u.is_premium is False
+
+
+def test_ts_guards_malformed_current_period_end():
+    from apps.billing.services.subscription_service import _ts
+
+    assert _ts("not-a-number") is None
+    assert _ts(None) is None
+    assert _ts(0) is None
+
+
 def test_subscription_deleted_cancels():
     u = _make_user()
     _sub(u, tier="premium", status="active", stripe_subscription_id="sub_x")

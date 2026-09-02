@@ -10,7 +10,16 @@
  *
  * Receives already-fetched data from the Server Component page; contains no
  * fetch of its own. No bulletin data ever reaches this component (AC2/AC3).
+ *
+ * AC2 (code review, 2026-08): each card now links to a dedicated parent-scoped
+ * detail view (`/parent/enfants/{studentId}/metiers|ecoles/{slug}`) — reusing
+ * the student-facing `/metiers/[slug]` page was not an option, it's gated
+ * `IsStudent`. Follows the same `<Link>`-wraps-`<ScoreVocationnel>` pattern as
+ * `mes-metiers/MetiersList.tsx` — inner interactive elements (signal chips)
+ * already `stopPropagation()` so they don't trigger navigation.
  */
+import Link from "next/link";
+
 import { ScoreVocationnel } from "@/components/professions/ScoreVocationnel";
 import type { ParentChildDashboard } from "@/lib/api/parent";
 import { PARENT_COPY } from "@/lib/i18n/fr/parent";
@@ -24,8 +33,15 @@ function formatCost(min: number | null, max: number | null): string {
   return COPY.costs.perYear(min ?? 0, max ?? 0);
 }
 
-export function ParentDashboard({ dashboard }: { dashboard: ParentChildDashboard }) {
+export function ParentDashboard({
+  dashboard,
+  studentId,
+}: {
+  dashboard: ParentChildDashboard;
+  studentId: string;
+}) {
   const { metiers_explores, mes_paris, couts_estimes } = dashboard;
+  const base = `/parent/enfants/${encodeURIComponent(studentId)}`;
 
   return (
     <div className="flex flex-col gap-8">
@@ -39,16 +55,21 @@ export function ParentDashboard({ dashboard }: { dashboard: ParentChildDashboard
         ) : (
           <div className="flex flex-wrap gap-4">
             {metiers_explores.map((m) => (
-              <ScoreVocationnel
+              <Link
                 key={m.metier_id}
-                metierId={m.metier_id}
-                metiersName={m.name}
-                score={m.score}
-                phraseRecopiable={m.phrase_recopiable}
-                signals={m.signals}
-                variant="compact"
-                confidenceLevel={m.confidence_level === "low" ? "indicative" : "normal"}
-              />
+                href={`${base}/metiers/${encodeURIComponent(m.slug)}`}
+                className="block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <ScoreVocationnel
+                  metierId={m.metier_id}
+                  metiersName={m.name}
+                  score={m.score}
+                  phraseRecopiable={m.phrase_recopiable}
+                  signals={m.signals}
+                  variant="compact"
+                  confidenceLevel={m.confidence_level === "low" ? "indicative" : "normal"}
+                />
+              </Link>
             ))}
           </div>
         )}
@@ -64,17 +85,19 @@ export function ParentDashboard({ dashboard }: { dashboard: ParentChildDashboard
         ) : (
           <ul className="flex flex-col gap-3">
             {mes_paris.map((p) => (
-              <li
-                key={p.school_id}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card p-4"
-              >
-                <div>
-                  <p className="text-body font-medium text-text">{p.name}</p>
-                  <span className="text-body-sm text-text-muted">{p.city}</span>
-                </div>
-                <span className="text-body-sm text-text-subtle">
-                  {formatCost(p.tuition_min_eur, p.tuition_max_eur)}
-                </span>
+              <li key={p.school_id}>
+                <Link
+                  href={`${base}/ecoles/${encodeURIComponent(p.slug)}`}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card p-4 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <div>
+                    <p className="text-body font-medium text-text">{p.name}</p>
+                    <span className="text-body-sm text-text-muted">{p.city}</span>
+                  </div>
+                  <span className="text-body-sm text-text-subtle">
+                    {formatCost(p.tuition_min_eur, p.tuition_max_eur)}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

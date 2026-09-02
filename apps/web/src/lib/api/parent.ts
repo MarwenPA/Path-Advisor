@@ -70,3 +70,57 @@ export async function fetchChildDashboard(studentId: string): Promise<ParentChil
     `/api/v1/family/children/${encodeURIComponent(studentId)}/dashboard/`,
   );
 }
+
+// --- Dedicated detail views (AC2, code review 2026-08) ---------------------
+
+export interface ParentMetierDetail {
+  metier_id: string;
+  slug: string;
+  name: string;
+  sector: string | null;
+  description: string;
+  daily_routine: string;
+  median_salary_eur: number | null;
+  prospects_text: string;
+  score: number | null;
+  confidence_level: "low" | "medium" | "high" | null;
+  signals: ParentProfessionSignal[];
+}
+
+export interface ParentEcoleFormation {
+  name: string;
+  duration_years: number;
+  parcoursup_open: boolean;
+  affelnet_open: boolean;
+}
+
+export interface ParentEcoleDetail {
+  school_id: string;
+  slug: string;
+  name: string;
+  type: string;
+  city: string;
+  region: string;
+  description: string;
+  tuition_min_eur: number | null;
+  tuition_max_eur: number | null;
+  formations: ParentEcoleFormation[];
+}
+
+export async function fetchChildMetierDetail(
+  studentId: string,
+  slug: string,
+): Promise<ParentMetierDetail> {
+  return apiFetch<ParentMetierDetail>(
+    `/api/v1/family/children/${encodeURIComponent(studentId)}/metiers/${encodeURIComponent(slug)}/`,
+  );
+}
+
+export async function fetchChildEcoleDetail(
+  studentId: string,
+  slug: string,
+): Promise<ParentEcoleDetail> {
+  return apiFetch<ParentEcoleDetail>(
+    `/api/v1/family/children/${encodeURIComponent(studentId)}/ecoles/${encodeURIComponent(slug)}/`,
+  );
+}

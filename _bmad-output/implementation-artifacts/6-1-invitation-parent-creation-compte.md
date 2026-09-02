@@ -1,7 +1,7 @@
 # Story 6.1: Invitation d'un parent par l'élève → création de compte parent lié
 
 **Epic:** 6 — Espaces Tiers : Parent & Conseillère B2B
-**Status:** review
+**Status:** done
 **Sprint:** Epic 6 (lancé en parallèle d'Epic 5 — voir sprint-status.yaml)
 **Story Key:** `6-1-invitation-parent-creation-compte`
 **Estimation:** M (medium) — le flow d'invitation + création de compte réutilise la quasi-totalité de l'infrastructure de Story 1.4 (email tokenisé, `ConsentDialog`, audit) mais introduit un **nouveau rôle applicatif `parent`** avec un compte réel (contrairement au parent de Story 1.4 qui n'a jamais de compte, seulement un email de décision). C'est la première brique d'Epic 6 : elle doit poser un modèle `ParentInvitation` + un lien `parent_id ↔ student_id` propre, extensible par les Stories 6.2/6.3/6.4 sans re-migration.

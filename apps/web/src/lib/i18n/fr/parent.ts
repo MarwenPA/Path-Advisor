@@ -29,4 +29,18 @@ export const PARENT_COPY = {
   },
   privacyNote:
     "Tu ne vois jamais les bulletins ni les appréciations des enseignants de ton enfant.",
+  // Dedicated detail pages (AC2, code review 2026-08).
+  metierDetail: {
+    backLabel: "Retour au tableau de bord",
+    dailyRoutineTitle: "Une journée type",
+    prospectsTitle: "Débouchés",
+    salaryLabel: "Salaire médian",
+    salaryUnknown: "Non communiqué",
+  },
+  ecoleDetail: {
+    backLabel: "Retour au tableau de bord",
+    formationsTitle: "Formations proposées",
+    formationsEmpty: "Aucune formation référencée pour cette école.",
+    costLabel: "Coût annuel",
+  },
 } as const;

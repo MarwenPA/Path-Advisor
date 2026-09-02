@@ -17,6 +17,7 @@ from apps.billing.services.provider import (
     InvalidWebhookSignature,
     WebhookEvent,
 )
+from apps.billing.services.subscription_service import SubscriptionService
 from apps.core.rls import bypass_rls
 
 pytestmark = pytest.mark.django_db
@@ -119,11 +120,19 @@ def test_webhook_bad_signature_writes_audit_row():
 
 
 def test_webhook_accepts_valid_event_and_records_it():
+    # `processed_at` is only stamped when the event was actually applied
+    # (code review fix) — the payload must resolve to a real user via
+    # `client_reference_id`, otherwise `_on_checkout_completed` correctly
+    # no-ops and the event stays reprocessable.
+    user = _make_user()
     url = reverse("stripe-webhook")
     event = WebhookEvent(
         event_id="evt_100",
         event_type="checkout.session.completed",
-        payload={"id": "evt_100"},
+        payload={
+            "id": "evt_100",
+            "data": {"object": {"client_reference_id": user.id, "subscription": "sub_100"}},
+        },
     )
     with patch(
         "apps.billing.services.stripe_provider.StripeProvider.handle_webhook",
@@ -194,18 +203,34 @@ def test_webhook_unhandled_event_type_stays_reprocessable():
 
 
 def test_webhook_is_idempotent_on_redelivery():
+    # Uses a resolvable client_reference_id so the event is actually applied
+    # on first delivery (processed_at set) — proving the SECOND delivery
+    # short-circuits (no second Subscription upsert) rather than merely
+    # showing two no-ops that happen to share a ledger row.
+    user = _make_user()
     url = reverse("stripe-webhook")
     event = WebhookEvent(
         event_id="evt_dup",
         event_type="checkout.session.completed",
-        payload={"id": "evt_dup"},
+        payload={
+            "id": "evt_dup",
+            "data": {"object": {"client_reference_id": user.id, "subscription": "sub_dup"}},
+        },
     )
-    with patch(
-        "apps.billing.services.stripe_provider.StripeProvider.handle_webhook",
-        return_value=event,
+    with (
+        patch(
+            "apps.billing.services.stripe_provider.StripeProvider.handle_webhook",
+            return_value=event,
+        ),
+        patch(
+            "apps.billing.services.subscription_service.SubscriptionService._on_checkout_completed",
+            wraps=SubscriptionService._on_checkout_completed,
+        ) as spy,
     ):
         first = APIClient().post(url, data=b"{}", content_type="application/json")
         second = APIClient().post(url, data=b"{}", content_type="application/json")
     assert first.status_code == 200
     assert second.status_code == 200
     assert StripeEvent.objects.filter(stripe_event_id="evt_dup").count() == 1
+    assert StripeEvent.objects.get(stripe_event_id="evt_dup").processed_at is not None
+    spy.assert_called_once()

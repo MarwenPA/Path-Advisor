@@ -78,6 +78,18 @@ class ParentNotLinkedToStudent(DomainError):
     default_detail = "Tu n'as pas accès au profil de cet élève."
 
 
+class ParentChildResourceNotFound(DomainError):
+    """Story 6.2 detail views (code review, 2026-08) — the requested métier or
+    école slug does not exist. Distinct from `ParentNotLinkedToStudent` (which
+    covers the link itself); this is a plain 404 on the referential lookup.
+    """
+
+    type = "https://path-advisor.fr/errors/parent-child-resource-not-found"
+    title = "Ressource introuvable"
+    status_code = status.HTTP_404_NOT_FOUND
+    default_detail = "Cette fiche n'existe pas ou plus."
+
+
 class ParentBulletinsForbidden(DomainError):
     """Story 6.2 §AC3 — a parent (even a linked one) may never read a child's
     bulletins / teacher appreciations (FR41 / NFR-S4). Always 403 + audit.

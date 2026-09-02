@@ -139,3 +139,41 @@ class ParentChildDashboardSerializer(serializers.Serializer):
     metiers_explores = ParentProfessionSerializer(many=True)
     mes_paris = ParentMesParisItemSerializer(many=True)
     couts_estimes = ParentCostsSerializer()
+
+
+class ParentMetierDetailSerializer(serializers.Serializer):
+    """Story 6.2 AC2 (code review, 2026-08) — dedicated parent métier detail."""
+
+    metier_id = serializers.CharField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    sector = serializers.CharField(allow_null=True)
+    description = serializers.CharField()
+    daily_routine = serializers.CharField()
+    median_salary_eur = serializers.IntegerField(allow_null=True)
+    prospects_text = serializers.CharField()
+    score = serializers.IntegerField(allow_null=True)
+    confidence_level = serializers.CharField(allow_null=True)
+    signals = ParentProfessionSignalSerializer(many=True)
+
+
+class ParentEcoleFormationSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    duration_years = serializers.IntegerField()
+    parcoursup_open = serializers.BooleanField()
+    affelnet_open = serializers.BooleanField()
+
+
+class ParentEcoleDetailSerializer(serializers.Serializer):
+    """Story 6.2 AC2 (code review, 2026-08) — dedicated parent école detail."""
+
+    school_id = serializers.CharField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    type = serializers.CharField()
+    city = serializers.CharField()
+    region = serializers.CharField()
+    description = serializers.CharField(allow_blank=True)
+    tuition_min_eur = serializers.IntegerField(allow_null=True)
+    tuition_max_eur = serializers.IntegerField(allow_null=True)
+    formations = ParentEcoleFormationSerializer(many=True)

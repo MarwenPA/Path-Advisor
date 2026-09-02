@@ -20,13 +20,18 @@ log = structlog.get_logger(__name__)
     pre_delete, sender=settings.AUTH_USER_MODEL, dispatch_uid="billing_cancel_stripe_on_delete"
 )
 def cancel_stripe_subscription_on_user_delete(sender, instance, **kwargs) -> None:
-    from apps.billing.models import Subscription
-    from apps.billing.services import get_payment_provider
-
-    sub = Subscription.objects.filter(user=instance).first()
-    if not sub or not sub.stripe_subscription_id:
-        return
+    # Code review fix: the whole body is now inside one try/except — the
+    # original code left the initial `Subscription` lookup outside the guard,
+    # so a DB-level failure there (not just a Stripe API failure) would
+    # propagate out of this `pre_delete` signal and abort the RGPD hard-delete
+    # transaction, contradicting this module's own stated contract.
     try:
+        from apps.billing.models import Subscription
+        from apps.billing.services import get_payment_provider
+
+        sub = Subscription.objects.filter(user=instance).first()
+        if not sub or not sub.stripe_subscription_id:
+            return
         get_payment_provider().cancel_subscription(
             stripe_subscription_id=sub.stripe_subscription_id
         )
@@ -34,7 +39,6 @@ def cancel_stripe_subscription_on_user_delete(sender, instance, **kwargs) -> Non
         log.error(
             "billing.cancel_on_delete_failed",
             user_id=instance.id,
-            stripe_subscription_id=sub.stripe_subscription_id,
             error=str(exc),
         )
         try:

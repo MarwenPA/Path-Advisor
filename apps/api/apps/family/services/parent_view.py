@@ -23,13 +23,18 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserStatus
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 from apps.core.rls import bypass_rls
 from apps.core.text import mask_email
-from apps.family.exceptions import ParentBulletinsForbidden, ParentNotLinkedToStudent
+from apps.family.exceptions import (
+    ParentBulletinsForbidden,
+    ParentChildResourceNotFound,
+    ParentNotLinkedToStudent,
+)
 from apps.family.models import ParentStudentLink
+from apps.professions.models import Profession
 from apps.recommendations.services.ai_client import AIServiceUnavailableError
 from apps.recommendations.services.recommendation_service import compute_recommendations
 from apps.schools.models import School
@@ -49,12 +54,19 @@ def _child_summary(student: User) -> dict[str, Any]:
 
 
 def get_linked_children(parent: User) -> list[User]:
-    """AC4 — the students this parent is actively (non-revoked) linked to."""
+    """AC4 — the students this parent is actively (non-revoked) linked to.
+
+    Code review fix (2026-08): also excludes a student whose account is no
+    longer `ACTIVE` (soft-deleted / suspended) — a non-revoked link surviving
+    the account-deletion grace window must not keep serving that child's
+    dashboard.
+    """
     with bypass_rls(reason="parent_view.list_children"):
         links = list(
             ParentStudentLink.objects.filter(
                 parent=parent,
                 revoked_at__isnull=True,
+                student__status=UserStatus.ACTIVE,
             )
             .select_related("student")
             .only("id", "student__id", "student__email")
@@ -65,7 +77,12 @@ def get_linked_children(parent: User) -> list[User]:
 def resolve_linked_child(parent: User, student_id: str) -> User:
     """AC4 — return the child `User` iff an active link exists, else 403 + audit.
 
-    The non-revoked `ParentStudentLink` is the SOLE authorization source.
+    The non-revoked `ParentStudentLink` is the SOLE authorization source —
+    plus the student's own account being `ACTIVE` (code review fix: a
+    soft-deleted/suspended student's data must stop being served even if the
+    link itself was never revoked). Both conditions collapse to the same
+    403 + audit outcome so a caller cannot distinguish "not linked" from
+    "child account inactive" (no new oracle).
     """
     with bypass_rls(reason="parent_view.resolve_link"):
         link = (
@@ -73,6 +90,7 @@ def resolve_linked_child(parent: User, student_id: str) -> User:
                 parent=parent,
                 student_id=student_id,
                 revoked_at__isnull=True,
+                student__status=UserStatus.ACTIVE,
             )
             .select_related("student")
             .first()
@@ -89,12 +107,27 @@ def resolve_linked_child(parent: User, student_id: str) -> User:
     return link.student
 
 
+_MAX_PROFESSIONS = 8
+
+
 def get_child_professions(student: User) -> list[dict[str, Any]]:
     """AC1 — "métiers explorés" as compact `ScoreVocationnel` card DTOs.
 
+    Documented deviation (code review, 2026-08): this section shows the
+    child's top AI-scored vocational recommendations (`compute_recommendations`,
+    Epic 3), NOT a literal history of métiers the student clicked/opened —
+    Path-Advisor doesn't track per-métier view events today. A métier can
+    appear here purely because it scored highly, even if the child never
+    opened its fiche. This is the same "explored" framing already used
+    student-side (Story 3.4's list is the same recommendation set), so the
+    parent sees exactly what the student's own dashboard calls "métiers
+    explorés" — but it is worth naming explicitly here since the epic's FR41
+    wording ("métiers que mon enfant a explorés") reads more literally.
+
     Reuses `compute_recommendations` (Epic 3). Degrades gracefully to `[]` if
     the AI service is unavailable — the dashboard must still render mes-paris
-    and costs. Exposes NO bulletin field (AC2/AC3).
+    and costs. Exposes NO bulletin field (AC2/AC3). Limited to the top
+    `_MAX_PROFESSIONS` (code review fix — was previously unbounded).
     """
     try:
         with bypass_rls(reason="parent_view.child_professions"):
@@ -104,7 +137,7 @@ def get_child_professions(student: User) -> list[dict[str, Any]]:
         return []
 
     professions: list[dict[str, Any]] = []
-    for item in data.get("results", []):
+    for item in data.get("results", [])[:_MAX_PROFESSIONS]:
         signals = [
             {"id": str(s.get("id") or s.get("label") or ""), "label": s.get("label", "")}
             if isinstance(s, dict)
@@ -178,6 +211,81 @@ def get_child_parcours_costs(student: User) -> dict[str, Any]:
         "total_max_eur": total_max,
         "count": len(schools),
         "breakdown": breakdown,
+    }
+
+
+def get_child_metier_detail(parent: User, student_id: str, slug: str) -> dict[str, Any]:
+    """AC2 (code review, 2026-08) — dedicated parent-scoped métier detail.
+
+    Reuses `Profession`'s public referential fields (Story 3.2) — the same
+    curated content the student sees on their own fiche métier — merged with
+    this child's score/confidence for that métier (re-derived from
+    `get_child_professions`, capped the same way the dashboard is). NO
+    bulletin field: the profession row is public referential data, and the
+    score/signals come from the already-reviewed `compute_recommendations`
+    output (AC2/AC3).
+    """
+    student = resolve_linked_child(parent, student_id)
+    with bypass_rls(reason="parent_view.child_metier_detail"):
+        profession = Profession.objects.filter(slug=slug, is_active=True).first()
+    if profession is None:
+        raise ParentChildResourceNotFound()
+
+    match = next(
+        (p for p in get_child_professions(student) if p.get("slug") == slug),
+        None,
+    )
+    return {
+        "metier_id": profession.id,
+        "slug": profession.slug,
+        "name": profession.name,
+        "sector": profession.sector,
+        "description": profession.description,
+        "daily_routine": profession.daily_routine,
+        "median_salary_eur": profession.median_salary_eur,
+        "prospects_text": profession.prospects_text,
+        "score": match["score"] if match else None,
+        "confidence_level": match["confidence_level"] if match else None,
+        "signals": match["signals"] if match else [],
+    }
+
+
+def get_child_ecole_detail(parent: User, student_id: str, slug: str) -> dict[str, Any]:
+    """AC2 (code review, 2026-08) — dedicated parent-scoped école detail.
+
+    Reuses `School`'s public referential fields (Story 4.1) — deliberately
+    does NOT include the child's personal `AdmissionStat` probability (that
+    figure is derived from the student's bulletin averages; keeping it out of
+    the parent surface avoids reintroducing bulletin-adjacent content through
+    a computed aggregate). The parent already sees this school's cost figures
+    on the dashboard (`couts_estimes`) — this view adds the general
+    description + formations, nothing new/personal.
+    """
+    resolve_linked_child(parent, student_id)
+    with bypass_rls(reason="parent_view.child_ecole_detail"):
+        school = School.objects.prefetch_related("formations").filter(slug=slug).first()
+        if school is None:
+            raise ParentChildResourceNotFound()
+        formations = [
+            {
+                "name": f.name,
+                "duration_years": f.duration_years,
+                "parcoursup_open": f.parcoursup_open,
+                "affelnet_open": f.affelnet_open,
+            }
+            for f in school.formations.all()
+        ]
+    return {
+        "school_id": str(school.id),
+        "slug": school.slug,
+        "name": school.name,
+        "type": school.type,
+        "city": school.city,
+        "region": school.region,
+        "description": school.description,
+        "tuition_min_eur": school.tuition_min_eur,
+        "tuition_max_eur": school.tuition_max_eur,
+        "formations": formations,
     }
 
 

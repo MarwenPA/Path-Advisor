@@ -27,10 +27,12 @@ from apps.family.models import ParentInvitation, ParentInvitationStatus
 from apps.family.serializers import (
     LinkedChildSerializer,
     ParentChildDashboardSerializer,
+    ParentEcoleDetailSerializer,
     ParentInvitationAcceptSerializer,
     ParentInvitationCreateSerializer,
     ParentInvitationListItemSerializer,
     ParentInvitationPublicSerializer,
+    ParentMetierDetailSerializer,
 )
 from apps.family.services.parent_invitation import (
     accept_invitation,
@@ -41,6 +43,8 @@ from apps.family.services.parent_invitation import (
 from apps.family.services.parent_view import (
     deny_bulletins_access,
     get_child_dashboard,
+    get_child_ecole_detail,
+    get_child_metier_detail,
     get_linked_children,
 )
 
@@ -225,3 +229,25 @@ def parent_child_bulletins_denied(request: Request, student_id: str) -> Response
     # refused. `deny_bulletins_access` records the audit row and raises 403.
     deny_bulletins_access(request.user, student_id)
     return Response(status=drf_status.HTTP_403_FORBIDDEN)  # pragma: no cover
+
+
+@extend_schema(
+    summary="Dedicated parent-scoped métier detail (AC2, code review 2026-08)",
+    responses={200: ParentMetierDetailSerializer, 403: None, 404: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_metier_detail(request: Request, student_id: str, slug: str) -> Response:
+    detail = get_child_metier_detail(request.user, student_id, slug)
+    return Response(ParentMetierDetailSerializer(detail).data)
+
+
+@extend_schema(
+    summary="Dedicated parent-scoped école detail (AC2, code review 2026-08)",
+    responses={200: ParentEcoleDetailSerializer, 403: None, 404: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_ecole_detail(request: Request, student_id: str, slug: str) -> Response:
+    detail = get_child_ecole_detail(request.user, student_id, slug)
+    return Response(ParentEcoleDetailSerializer(detail).data)

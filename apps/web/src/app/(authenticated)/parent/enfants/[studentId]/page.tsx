@@ -39,7 +39,7 @@ export default async function ParentChildDashboardPage({
       </h1>
       <p className="mt-2 text-body text-text-muted">{dashboard.child.masked_email}</p>
       <div className="mt-8">
-        <ParentDashboard dashboard={dashboard} />
+        <ParentDashboard dashboard={dashboard} studentId={studentId} />
       </div>
     </main>
   );
