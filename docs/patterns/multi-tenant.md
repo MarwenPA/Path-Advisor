@@ -79,6 +79,25 @@ applicatifs s'exécutent sur SQLite, les tests d'isolation sur Postgres.
   `_assert_non_superuser_in_postgres_lane` plante au démarrage si le rôle
   test peut bypasser.
 
+## Exemple concret — `Establishment` / `Cohort` (Story 6.5)
+
+Story 6.5 est la première fois que `tenant_id` référence une vraie table :
+`apps.establishments.models.Establishment.id` (UUID) **EST** le `tenant_id`
+utilisé partout ailleurs — pas de FK séparée. `Establishment` lui-même
+**n'hérite pas** de `TenantScopedModel` : il *définit* le tenant, il n'est
+pas scopé par un tenant (règle : le modèle qui porte l'identité du tenant
+reste un `models.Model` nu, avec sa propre policy RLS restrictive —
+`path_admin`/bypass seulement, aucun accès same-tenant direct).
+
+`Cohort`, en revanche, hérite bien de `TenantScopedModel` et prend
+`tenant_id = establishment.id` à la création (`services/cohort.py`). Sa
+policy RLS ajoute un cas non couvert par le recipe ci-dessus : un
+**read-only same-tenant** pour un rôle non-admin (`counselor`) — pas de
+write policy same-tenant, la modification reste `path_admin`-only pour le
+MVP. Voir `apps/api/apps/establishments/migrations/0002_enable_rls.py` pour
+le policy SQL complet et `apps/api/apps/establishments/tests/test_rls_isolation.py`
+pour la paire de tests positif/bypass-admin + le cas same-tenant read-only.
+
 ## References
 
 - [ADR 0010 — Multi-tenant RLS](../adr/0010-multi-tenant-rls.md) — pourquoi cette architecture

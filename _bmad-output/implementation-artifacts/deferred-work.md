@@ -302,3 +302,11 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 
 - **AI-service signal free text not content-filtered against bulletin-derived phrasing** — `apps/family/services/parent_view.py` `get_child_professions` passes `signals_contributifs`/`phrase_recopiable` from `compute_recommendations` through unfiltered to the parent dashboard. `compute_recommendations` sends a `bulletin_summary` to the ai-service; nothing guarantees the ai-service never echoes bulletin-adjacent phrasing back in a signal label. Pre-existing characteristic of the Epic 3 recommendation engine, cross-cutting beyond one story. Audit `compute_recommendations`' signal generation if bulletin-phrase leakage is ever reported.
 - **`ParentStudentLink.tenant_id` written but never enforced** — `resolve_linked_child`/`get_linked_children` never cross-check parent vs. child `tenant_id`. No impact today (B2C-only parent-child links). Revisit when a B2B story introduces tenant-scoped parent access.
+
+## Deferred from: code review of story-7-8 (2026-09-02)
+
+- Audit chiffré Core Web Vitals (AC4) non exécuté — nécessite build de prod + Lighthouse CI (dépendance : Story 7.6).
+- Copie marketing de la homepage en dur, sans extraction i18n — dépendance : Story 7.7 (i18n foundation, backlog).
+- `apps/web/src/app/page.test.tsx` mocke tout le module `next/navigation` au lieu de ne mocker que `redirect` — piège pour un futur usage de `useRouter`/`usePathname` dans ce fichier.
+- Pas de `robots`/`alternates.canonical` dans les métadonnées de la homepage — scope Story 7.4 (sitemap/robots).
+- Lien footer "Mentions légales & RGPD" potentiellement dupliqué à l'identique sur plusieurs pages sans différenciation pour lecteurs d'écran — pattern pré-existant dans l'app.

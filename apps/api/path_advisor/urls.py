@@ -122,6 +122,12 @@ urlpatterns = [
     path("api/v1/", include("apps.schools.urls")),
     # Story 6.1 — parent invitation flow (POST/GET parent-invitations, accept, resend).
     path("api/v1/family/", include("apps.family.urls")),
+    # Story 6.5 — B2B onboarding admin endpoints (establishments/cohorts/import/counselors).
+    path("api/v1/admin/", include("apps.establishments.urls")),
+    # Story 6.5 — public counselor-invitation accept (token is the auth proof).
+    path("api/v1/auth/", include("apps.establishments.auth_urls")),
+    # Story 6.5 — public student-import-invitation accept (token is the auth proof).
+    path("api/v1/students/", include("apps.establishments.student_urls")),
     # Story 5.1 — billing: checkout session (api/v1) + Stripe webhook (distinct
     # surface, CSRF-exempt, HMAC-verified — NOT under api/v1).
     path("api/v1/billing/", include("apps.billing.urls")),

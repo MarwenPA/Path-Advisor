@@ -1,0 +1,11 @@
+Bonjour,
+
+{{ establishment_name }} t'a inscrit(e) sur Path-Advisor pour t'accompagner
+dans ton orientation.
+
+Pour choisir ton mot de passe et activer ton compte, clique ici :
+{{ invitation_url }}
+
+Ce lien est valable 30 jours.
+
+— L'équipe Path-Advisor

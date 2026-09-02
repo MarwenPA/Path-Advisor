@@ -69,6 +69,10 @@ INSTALLED_APPS = [
     # Story 6.1 — parent invitation + account creation (ParentInvitation,
     # ParentStudentLink, ParentLinkSource for the AccessListAggregator).
     "apps.family",
+    # Story 6.5 — B2B onboarding: Establishment (the tenant table `tenant_id`
+    # actually references), Cohort, CohortImportJob, StudentImportInvitation,
+    # CounselorInvitation.
+    "apps.establishments",
 ]
 
 MIDDLEWARE = [

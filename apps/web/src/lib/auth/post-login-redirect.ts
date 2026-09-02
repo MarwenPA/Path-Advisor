@@ -1,11 +1,14 @@
 /**
  * Role-based post-login redirect — Story 1.5 §AC8.
  *
- * Every authenticated user lands on the route picked by their `role`. For MVP
- * most role-specific dashboards (parent, counselor, school) are not yet
- * shipped — they all redirect to `/parametres/confidentialite`, the only
- * authenticated route that actually exists today. Future stories editing the
- * redirect table touch this single file.
+ * Every authenticated user lands on the route picked by their `role`. Student
+ * and parent dashboards shipped with Epic 3 (`/mes-metiers`) and Epic 6
+ * (`/parent`) respectively — updated here per Story 7.8 code review (the
+ * homepage's "redirect an authenticated visitor" guard reuses this same
+ * table, which surfaced the fact it had gone stale since those epics shipped).
+ * Roles without a dashboard yet (counselor, school_admin, support — Epic 6/9
+ * backlog) still fall back to `/parametres/confidentialite`. Future stories
+ * shipping those dashboards touch this single file.
  *
  * Important: the redirect is UX only. Every authenticated route MUST
  * independently check `request.user.role` server-side (Story 1.7 RBAC) — a
@@ -15,18 +18,19 @@
 import type { UserRole, UserStatus } from "@/lib/api/auth";
 
 /**
- * MVP fallback: most role-specific dashboards don't exist yet (Epics 2-6).
- * Until they ship, every signed-in user lands on the privacy/data settings
- * page — the only authenticated route guaranteed to exist.
+ * Fallback for roles without a dedicated dashboard yet (counselor,
+ * school_admin, support — Epic 6/9 backlog). Every signed-in user without a
+ * role-specific destination lands on the privacy/data settings page — the
+ * only generic authenticated route guaranteed to exist for every role
+ * (`ROUTE_ALLOWED_ROLES["/parametres"]` in `route-guards.ts` allows all).
  */
 export const MVP_FALLBACK_PATH = "/parametres/confidentialite";
 
 const ROLE_TO_PATH: Record<UserRole, string> = {
-  // Students → MVP fallback until Epic 2 onboarding + Epic 3 recommendations
-  // ship. When 2.1/2.2 land, route to `/onboarding` for incomplete profiles
-  // and `/recommendations` otherwise.
-  student: MVP_FALLBACK_PATH,
-  parent: MVP_FALLBACK_PATH, // Epic 6 — parent space placeholder.
+  // Epic 3 — recommendation list, ships as the student's real home.
+  student: "/mes-metiers",
+  // Epic 6 (Story 6.2) — parent dashboard (métiers explorés / mes paris / coûts).
+  parent: "/parent",
   counselor: MVP_FALLBACK_PATH, // Epic 6 — B2B counselor dashboard placeholder.
   school_admin: MVP_FALLBACK_PATH, // Epics 5/6 — school space placeholder.
   // path_admin uses Django admin (separate cookie auth there) — frontend
