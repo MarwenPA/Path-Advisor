@@ -1,0 +1,11 @@
+Bonjour,
+
+{{ establishment_name }} t'a inscrit(e) sur Path-Advisor en tant que conseillère
+d'orientation.
+
+Pour créer ton compte, clique ici :
+{{ invitation_url }}
+
+Ce lien est valable 30 jours.
+
+— L'équipe Path-Advisor

@@ -92,6 +92,10 @@ ignore = [
 "apps/billing/**" = ["RUF012", "DJ001"]
 # Django convention: serializer/Meta fields are class-level lists. DJ001: nullable relationship/custom_message fields intentional (Story 6.1).
 "apps/family/**" = ["RUF012", "DJ001"]
+# Django convention: permission_classes / Meta fields are class-level lists.
+# DJ001: nullable error_message/id fields on CohortImportJob are intentional
+# (NULL = "no error" vs "" = "empty string error", Story 6.5).
+"apps/establishments/**" = ["RUF012", "DJ001"]
 # Code-review pass (2026-08) — pre-existing debt from Epic 2/3, unrelated to
 # Epic 5/6 but fixed here to restore the `ruff check .` CI gate (was red,
 # masking the gate's ability to catch new regressions — see process finding).

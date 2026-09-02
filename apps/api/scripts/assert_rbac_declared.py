@@ -87,6 +87,19 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     "health": "Liveness probe for load balancer — must work without auth",
     # --- Stripe webhook (auth IS the HMAC signature, not a session — Story 5.1)
     "stripe-webhook": "Stripe webhook — HMAC signature is the auth proof, no session (Story 5.1)",
+    # --- Counselor-invitation public landing + accept (the token is the auth
+    #     proof for a not-yet-existing counselor account — Story 6.5)
+    "counselor-invitation-status": ("Public landing for counselor-invitation token — Story 6.5"),
+    "counselor-invitation-accept": (
+        "Public account-creation endpoint for counselor-invitation token — Story 6.5"
+    ),
+    # --- Student-import-invitation public landing + accept (the token is the
+    #     auth proof — the student's account already exists from the CSV
+    #     import, only the password is set here — Story 6.5)
+    "student-invitation-status": ("Public landing for student-import-invitation token — Story 6.5"),
+    "student-invitation-accept": (
+        "Public password-set endpoint for student-import-invitation token — Story 6.5"
+    ),
 }
 
 

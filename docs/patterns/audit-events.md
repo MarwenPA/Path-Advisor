@@ -244,6 +244,43 @@ Source canonique des événements `<domain>.<action>` persistés dans `audit_log
 - **Subject :** the composite entry id `parent_link:<uuid>`.
 - **Metadata :** `{"source_name": "parent_link", "source_pk": "<uuid>", "tier_type": "parent", "display_name": "<parent email>"}` — same shape as the `parental_consent` revocation row.
 
+## Story 6.5 — B2B onboarding (establishment/cohort/import/counselor)
+
+### `establishment.created`
+- **Posé par :** `apps.establishments.services.establishment.create_establishment` (AC1).
+- **Result :** `success`; `failure` (`error_type=EstablishmentUaiAlreadyTaken`) on a duplicate UAI.
+- **Actor :** the `path_admin` making the call.
+- **Subject :** the new establishment's `id` (UUID str) — the tenant id.
+- **Metadata :** `{"name": "...", "uai": "..."}`.
+
+### `cohort.created`
+- **Posé par :** `apps.establishments.services.cohort.create_cohort` (AC2).
+- **Result :** `success`.
+- **Actor :** the `path_admin` making the call.
+- **Subject :** the new cohort's id.
+- **Metadata :** `{"establishment_id": "<uuid>", "name": "...", "school_year": "..."}`.
+
+### `counselor_invitation.created`
+- **Posé par :** `apps.establishments.services.counselor_invitation.create_counselor_invitation` (AC4).
+- **Result :** `success`.
+- **Actor :** the `path_admin` making the call.
+- **Subject :** the establishment id.
+- **Metadata :** `{"invitation_id": "<id>", "email_hash": "<sha256-hex>"}` — the invited email is hashed (same convention as `parent_invitation.created`), never stored plain in the audit row.
+
+### `counselor_invitation.accepted`
+- **Posé par :** `apps.establishments.services.counselor_invitation.accept_invitation` (AC4).
+- **Result :** `success`.
+- **Actor :** `None` (anonymous accept — the counselor has no account until this call).
+- **Subject :** the establishment id.
+- **Metadata :** `{"invitation_id": "<id>", "establishment_id": "<uuid>"}`.
+
+### `student_import_invitation.accepted`
+- **Posé par :** `apps.establishments.services.student_import_invitation.accept_invitation` (AC5).
+- **Result :** `success`.
+- **Actor :** `None` (anonymous accept — the token is the auth proof).
+- **Subject :** the student's own id.
+- **Metadata :** `{"invitation_id": "<id>", "status": "active|pending_parental_consent"}`.
+
 ## Catalog (planned — à ajouter par les stories futures)
 
 - `consent.granted` / `consent.revoked` — Stories 1.4, 1.9, 1.10, 1.14.

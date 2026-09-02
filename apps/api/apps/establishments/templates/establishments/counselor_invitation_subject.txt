@@ -1,0 +1,1 @@
+Ton accès conseillère Path-Advisor pour {{ establishment_name }}
