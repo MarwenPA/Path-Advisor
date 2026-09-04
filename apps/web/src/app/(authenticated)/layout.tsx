@@ -8,7 +8,9 @@ import { MobileNav } from "@/components/features/navigation/mobile-nav";
 import type { UserRole } from "@/lib/api/auth";
 import { fetchCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
+import { hasBottomTabBar } from "@/lib/auth/nav-items";
 import { assertAllowedRole, sanitizeNextParam } from "@/lib/auth/route-guards";
+import { cn } from "@/lib/utils";
 
 /**
  * Authenticated route group layout — wraps every page under `/(authenticated)/*`.
@@ -69,7 +71,13 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         <MobileNav role={safeRole} email={email} />
         <MfaBanner />
         <LimitedModeBanner />
-        <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+        {/* Code-review fix (2026-09): the bottom-tab-bar space was reserved
+            unconditionally — roles without a tab bar (parent, counselor,
+            school_admin, support, path_admin) got 64px of dead space at the
+            bottom of every mobile page. */}
+        <main className={cn("flex-1", hasBottomTabBar(safeRole) && "pb-16 lg:pb-0")}>
+          {children}
+        </main>
       </div>
     </div>
   );

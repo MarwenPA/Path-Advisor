@@ -1,7 +1,7 @@
 # Story 1.15: Navigation globale multi-rôle — sidebar desktop, tab bar mobile, déconnexion
 
 **Epic:** 1 — Foundation : Auth multi-rôle, RBAC, Conformité RGPD, Infra technique
-**Status:** review
+**Status:** done
 **Sprint:** Epic 1 (hardening post-MVP — réouverture ciblée)
 **Story Key:** `1-15-navigation-globale-multi-role`
 **Estimation:** M (medium) — composants neufs mais simples (pas de nouvel état serveur), le risque est le câblage transverse dans `(authenticated)/layout.tsx`, partagé par TOUS les rôles.
@@ -183,9 +183,23 @@ Lire `_bmad-output/planning-artifacts/ux-design-specification.md`, section "Navi
 
 ## 7. Review Findings
 
-*(Revue adversariale par un second agent non encore lancée — à faire avant `done`. Auto-vérification faite pendant l'implémentation : voir §5 T6/T7.)*
+Revue adversariale menée par un second agent (2026-09-04) sur les 9 fichiers de la story. 7 findings réels remontés, tous corrigés et re-vérifiés (tests + lint + tsc + smoke test Docker) :
 
-**Limitations connues, volontairement non traitées ici (hors scope) :**
-- Icônes de la bottom tab bar utilisent `fill="currentColor"` sur des icônes `lucide-react` qui sont conçues stroke-only — l'effet "rempli" visé pour l'état actif (cf. addendum UX "icône remplie") est approximatif ; un vrai set d'icônes filled/outline pairées serait plus propre, jugé non bloquant pour cette story.
-- Pas de composant `Popover`/`DropdownMenu` du design system installé — `account-menu.tsx` est une implémentation maison minimale (cf. Dev Notes §4.1). Si une 2e story a besoin d'un popover similaire, factoriser à ce moment-là plutôt que d'anticiper.
-- `getPostLoginPath(role, "active")` dans `desktop-sidebar.tsx` passe un statut littéral `"active"` au lieu du vrai statut de l'utilisateur courant (non disponible dans les props du composant) — sans impact car `_status` n'est actuellement pas utilisé par `getPostLoginPath` (paramètre réservé pour un futur gate onboarding, cf. sa docstring). À revisiter si ce paramètre devient un jour actif.
+| # | Sévérité | Constat | Fix |
+|---|---|---|---|
+| 1 | HIGH | Le logo de `path_admin` était un `<Link>` Next vers `/admin/` (pas une route Next → 404 client-side), alors que l'item de nav lui-même gérait déjà le cas externe. Contredisait directement AC7. | `desktop-sidebar.tsx` : `homeIsExternal = homeHref.startsWith("/admin")` → rend un `<a target="_blank">` dans ce cas, comme pour l'item de nav. Test ajouté. |
+| 2 | HIGH | Le menu compte en variante `compact` s'ouvrait toujours vers le bas (`top-full`) — dans la bottom tab bar (`fixed bottom-0`), le popover s'ouvrait donc sous le viewport, inatteignable. Déconnexion cassée pour `student` sur mobile (AC2/AC4). | Nouvelle prop `placement: "up" \| "down"` sur `AccountMenu`. `desktop-sidebar` (déjà en bas) et la tab-bar mobile passent `"up"` ; le header sticky mobile passe `"down"`. Tests de placement ajoutés (assertion de classe `bottom-full`/`top-full`). |
+| 3 | MEDIUM | `handleLogout` utilisait `router.push` — le Router Cache App Router pouvait re-render le shell authentifié depuis le cache au bouton Retour après déconnexion, exactement le risque "session qui traîne sur poste partagé" qu'AC3 veut éviter. | `router.replace("/auth/login")` + `router.refresh()`. Test mis à jour pour vérifier les deux appels. |
+| 4 | MEDIUM | La branche "header sticky" (rôles à < 2 items) ne rendait QUE l'icône compte — l'unique item métier du rôle (`/parent`, `/admin/` pour `path_admin`) n'était accessible que via une re-saisie d'URL une fois qu'on avait navigué ailleurs (ex. `/parametres`). Contredisait la prémisse même de la story pour ces rôles. | `mobile-nav.tsx` : la branche header rend maintenant les items du rôle (icône + `aria-label`, external-aware) à côté du titre, avant l'icône compte. Tests ajoutés (`parent`, `path_admin`). |
+| 5 | LOW-MEDIUM | `pb-16` (espace pour la tab bar) appliqué inconditionnellement dans `layout.tsx`, même pour les rôles sans tab bar — 64px d'espace mort en bas sur mobile pour `parent`/`counselor`/`school_admin`/`support`/`path_admin`. | `cn("flex-1", hasBottomTabBar(safeRole) && "pb-16 lg:pb-0")` — `hasBottomTabBar` est une fonction pure, importable sans risque dans le Server Component. |
+| 6 | LOW-MEDIUM | Le popover portait `role="menu"`/`role="menuitem"` sans en implémenter le contrat clavier (flèches, Home/End, roving tabindex, focus-on-open) — contrat ARIA annoncé et non tenu, pire pour un lecteur d'écran qu'un simple disclosure. | Rôles ARIA `menu`/`menuitem` retirés ; popover devenu un simple conteneur (`data-testid` pour les tests) avec des `<Link>`/`<button>` normaux + `aria-expanded` sur le déclencheur — Tab atteint déjà tout dans l'ordre. Tests adaptés (`getByRole("link"/"button")` au lieu de `menuitem`). |
+| 7 | LOW | Le lien "Paramètres" réutilisait `MVP_FALLBACK_PATH` (sémantiquement "route de repli post-login pour les rôles sans dashboard") en `<a>` plein-reload plutôt qu'un `<Link>` avec sa propre constante. | Nouvelle constante locale `SETTINGS_PATH = "/parametres/confidentialite"` + `<Link>` (soft-navigation). |
+
+**Confirmé propre par la revue (pas de fix nécessaire)** : pas de fuite d'autorisation (`NAV_ITEMS` ⊆ `ROUTE_ALLOWED_ROLES` par rôle, testé), matching d'état actif correct (pas de faux positif `/mes-metiers-foo`), `hidden lg:flex` retire bien la sidebar de l'arbre d'accessibilité sur mobile, pas de fuite de listener, pas de mismatch d'hydratation (`usePathname()` disponible en SSR côté Client Component), typage sain (seul cast : `role as UserRole`, documenté et sûr).
+
+**Vérification post-fix** : `npx vitest run` → 744 passed (mêmes 5 échecs pré-existants, sans rapport, dans `onboarding/step-3` et `ParcoursList`) ; `eslint`/`tsc --noEmit` clean sur les fichiers touchés ; smoke test Docker (`/accueil` → 200 après connexion).
+
+**Limitations connues, volontairement non traitées (hors scope)** :
+- Icônes de la bottom tab bar utilisent `fill="currentColor"` sur des icônes `lucide-react` conçues stroke-only — effet "rempli" pour l'état actif approximatif ; un set filled/outline pairé serait plus propre, non bloquant.
+- Pas de composant `Popover`/`DropdownMenu` du design system installé — `account-menu.tsx` reste une implémentation maison minimale. Factoriser si un futur composant a besoin d'un popover similaire.
+- `getPostLoginPath(role, "active")` dans `desktop-sidebar.tsx` passe un statut littéral au lieu du vrai statut courant — sans impact, `_status` n'est pas encore consommé par `getPostLoginPath` (paramètre réservé, cf. sa docstring).

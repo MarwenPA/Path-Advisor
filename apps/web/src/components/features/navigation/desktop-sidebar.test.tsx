@@ -9,7 +9,7 @@ import { DesktopSidebar } from "./desktop-sidebar";
 let pathname = "/accueil";
 vi.mock("next/navigation", () => ({
   usePathname: () => pathname,
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -26,6 +26,18 @@ describe("DesktopSidebar", () => {
     expect(screen.getByRole("link", { name: /mes métiers/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /mes paris/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /premium/i })).toBeInTheDocument();
+  });
+
+  it("applies the active-item styling classes, not just aria-current", () => {
+    pathname = "/accueil";
+    render(<DesktopSidebar role="student" email="sarah@ex.test" />);
+
+    expect(screen.getByRole("link", { name: /accueil/i }).className).toEqual(
+      expect.stringContaining("border-brand"),
+    );
+    expect(screen.getByRole("link", { name: /mes métiers/i }).className).not.toContain(
+      "border-brand",
+    );
   });
 
   it("marks a nested route as active via prefix match", () => {
@@ -57,6 +69,16 @@ describe("DesktopSidebar", () => {
     expect(adminLink).toHaveAttribute("href", "/admin/");
     expect(adminLink).toHaveAttribute("target", "_blank");
     expect(adminLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("renders path_admin's logo as an external link too — /admin/ isn't a Next route", () => {
+    pathname = "/parametres/confidentialite";
+    render(<DesktopSidebar role="path_admin" email="admin@ex.test" />);
+
+    const logoLink = screen.getByRole("link", { name: /path advisor/i });
+    expect(logoLink).toHaveAttribute("href", "/admin/");
+    expect(logoLink).toHaveAttribute("target", "_blank");
+    expect(logoLink).toHaveAttribute("rel", "noopener noreferrer");
   });
 
   it("shows the account menu trigger with the user's email", () => {

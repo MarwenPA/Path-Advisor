@@ -30,15 +30,33 @@ export function DesktopSidebar({ role, email }: DesktopSidebarProps) {
   // user landing on any role's dashboard — pass a placeholder status literal
   // that resolves the same for every role's happy path.
   const homeHref = getPostLoginPath(role, "active");
+  // Code-review fix (2026-09): `path_admin`'s destination (`/admin/`) is
+  // Django, not a Next route — no `src/app/(authenticated)/admin/` exists.
+  // A `<Link>` there triggers a client-side navigation to a route that
+  // doesn't exist (404), which also directly contradicts AC7 ("cliquer
+  // 'Admin' ne déclenche AUCUNE navigation côté Next"). Only the nav-item
+  // path had this guard originally; the logo path didn't.
+  const homeIsExternal = homeHref.startsWith("/admin");
 
   return (
     <nav
       aria-label="Navigation principale"
       className="hidden w-56 shrink-0 flex-col border-r border-border bg-card lg:flex"
     >
-      <Link href={homeHref} className="px-4 py-5 text-h3 font-bold text-text">
-        Path Advisor
-      </Link>
+      {homeIsExternal ? (
+        <a
+          href={homeHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-4 py-5 text-h3 font-bold text-text"
+        >
+          Path Advisor
+        </a>
+      ) : (
+        <Link href={homeHref} className="px-4 py-5 text-h3 font-bold text-text">
+          Path Advisor
+        </Link>
+      )}
 
       <ul className="flex flex-1 flex-col gap-1 px-2">
         {items.map((item) => {
@@ -81,7 +99,7 @@ export function DesktopSidebar({ role, email }: DesktopSidebarProps) {
       </ul>
 
       <div className="border-t border-border p-2">
-        <AccountMenu email={email} variant="sidebar" />
+        <AccountMenu email={email} variant="sidebar" placement="up" />
       </div>
     </nav>
   );
