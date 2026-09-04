@@ -1324,6 +1324,46 @@ Beaucoup de patterns ont été touchés en passant (Step 4 émotion, Step 7 defi
 - **Breadcrumb** : uniquement sur fiches profondes (`Métiers › Ingénieure biomédicale › INSA Lyon`)
 - **Search** : toujours accessible via `⌘ K` / `Ctrl+K` (desktop) ou icône loupe header (mobile) — composant `Command` shadcn
 
+### Addendum — Navigation Multi-Rôle (2026-09)
+
+**Constat qui déclenche cet addendum** : `UX-DR31` (ci-dessus) n'a jamais été implémenté. `(authenticated)/layout.tsx` ne rend qu'un `MfaBanner` + `LimitedModeBanner` — aucune nav persistante, aucun bouton de déconnexion nulle part dans l'app (`logoutUser()` existe dans `lib/api/auth.ts` depuis la Story 1.5 mais n'est appelée par aucun composant). Un utilisateur connecté ne peut circuler qu'en tapant les URL à la main. Cet addendum comble ce trou avec le détail qui manquait à l'époque : **le mapping rôle → items** (6 rôles existent maintenant contre 2 personas de design en mai) et le traitement du **compte/déconnexion**.
+
+**Référence produit** : la cible de densité "entre Doctolib et Revolut" (Spacing & Layout Foundation, ci-dessus) est reprise ici à la lettre pour la nav elle-même — Revolut / N26 / Linear partagent trois traits qu'on porte tels quels :
+1. **Chrome minimal, contenu dominant** — la nav occupe le moins d'espace possible (bottom bar fine mobile, sidebar 224 px desktop déjà spécifiée), jamais de nav secondaire empilée.
+2. **Identité du compte en un point fixe, jamais perdue** — Revolut loge l'avatar en haut à droite (mobile) / bas de sidebar (desktop wide) ; c'est aussi l'endroit unique d'où partent déconnexion + paramètres. Un seul point d'entrée, toujours au même endroit, quel que soit l'écran.
+3. **Les items visibles reflètent ce que CE compte peut faire, pas un menu générique** — Revolut masque Crypto/Stocks si l'utilisateur n'a pas activé ces produits. Path-Advisor applique l'équivalent avec les rôles : la nav n'affiche jamais un lien vers une section interdite (cohérence stricte avec le guard serveur `ROUTE_ALLOWED_ROLES`, jamais de lien mort suivi d'un `/auth/forbidden`).
+
+**Mapping rôle → items de nav** (source de vérité applicative : `apps/web/src/lib/auth/route-guards.ts` `ROUTE_ALLOWED_ROLES` — la nav lit ce même registre, jamais une liste dupliquée) :
+
+| Rôle | Items (ordre d'affichage) | Notes |
+|---|---|---|
+| `student` | Accueil · Mes métiers · Mes paris · Premium · Paramètres | Reprend le tab-bar mobile déjà spécifié (Accueil/Métiers/Mes paris/Profil) ; "Notifications" du schéma original n'existe pas encore en tant que route dédiée (Epic 8 backlog) — remplacé par "Premium" qui, lui, est une route live |
+| `parent` | Tableau de bord · Paramètres | `/parent` (Story 6.2) est l'unique item métier |
+| `counselor` | Cohorte · Paramètres | `/cohorte` (Epic 6 backlog — item affiché dès que la route existe, pas avant, cf. §Risques) |
+| `school_admin` | École · Paramètres | `/ecole` (Epic 6/9 backlog — même remarque) |
+| `support` | Support · Paramètres | `/support` (Epic 9 backlog) |
+| `path_admin` | Admin (nouvel onglet) · Paramètres | Le lien "Admin" ouvre `/admin/` Django dans un nouvel onglet (cookie de session séparé, cf. `post-login-redirect.ts`) plutôt que de naviguer dans la SPA — pas de sidebar item pour une section qui vit hors de l'app Next |
+| *(tous)* | Avatar en pied de sidebar / coin haut-droit mobile | Ouvre un menu : email du compte (lecture seule), lien Paramètres, **Déconnexion** (`logoutUser()` → redirect `/auth/login`) |
+
+**Comportement des items "backlog"** : tant qu'une route n'existe pas encore (`/cohorte`, `/ecole`, `/support` sont déclarés dans `ROUTE_ALLOWED_ROLES` pour le guard serveur mais leurs pages ne sont pas encore livrées), la nav ne doit **jamais** afficher un item qui mène à un 404. Le composant nav filtre sur une liste `NAV_ITEMS` distincte et volontairement plus restreinte que `ROUTE_ALLOWED_ROLES` — chaque nouvelle story qui livre une page ajoute son entrée à `NAV_ITEMS`, jamais l'inverse. `path_admin` et `support` n'ont donc, au lancement de cet addendum, qu'un item "Paramètres" (+ le lien externe Admin pour `path_admin`).
+
+**Layout desktop (reprend "Side nav fixed left 224 px" ci-dessus, précisé)** :
+- Logo Path-Advisor en haut (lien vers `getPostLoginPath(role)`, jamais vers `/` — un connecté ne revoit jamais la landing publique)
+- Items de nav au centre, icône + label, état actif = fond `color-bg-2` + trait vertical `color-brand` 2 px à gauche de l'item (pas de couleur de texte seule — cohérent avec la règle anti-color-blind)
+- Bloc compte fixé en bas : avatar (initiale email, `color-brand` en fond) + email tronqué + chevron → popover (Paramètres / Déconnexion)
+- Contenu de page dans un conteneur `max-width` 1200 px comme spécifié en Spacing & Layout
+
+**Layout mobile (reprend "Bottom tab bar 5 onglets max" ci-dessus, précisé)** :
+- Bottom tab bar uniquement pour les rôles qui ont ≥ 2 items métier (aujourd'hui : `student` seul en a assez pour justifier une bottom bar à 3 items + Paramètres + Compte = 4, sous la limite de 5)
+- Pour les rôles à 1 item métier (`parent`, `counselor`, `school_admin`, `support`), pas de bottom bar : header sticky avec le nom de la section + icône compte à droite (menu Paramètres/Déconnexion) — évite une bottom bar avec 2 icônes qui a l'air cassée
+- Icône compte toujours présente (bottom bar OU header), jamais seulement accessible via `/parametres` tapé à la main
+
+**Accessibilité** : `<nav aria-label="Navigation principale">`, item actif marqué `aria-current="page"`, popover compte fermable au clavier (Échap) et rouvrable au focus, touch targets 44×44 px sur la bottom bar (déjà une règle globale du design system).
+
+**Risques identifiés** :
+- *Nav qui ment* (item visible → 403/404) si `NAV_ITEMS` dérive de `ROUTE_ALLOWED_ROLES` — mitigé par la séparation stricte des deux listes ci-dessus, à faire respecter en code review.
+- *Sur-scope* si l'implémentation essaie de construire déjà les pages `/cohorte`/`/ecole`/`/support` — hors scope de cet addendum et de la story qui en découle : seuls `student` et `parent` ont des items de nav actifs au lancement, les autres rôles n'ont que Paramètres + Compte.
+
 ### Modal & Overlay Patterns
 
 | Composant | Usage | Comportement |

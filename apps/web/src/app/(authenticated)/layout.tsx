@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 
 import { LimitedModeBanner } from "@/components/features/auth/limited-mode-banner";
 import { MfaBanner } from "@/components/features/auth/mfa-banner";
+import { DesktopSidebar } from "@/components/features/navigation/desktop-sidebar";
+import { MobileNav } from "@/components/features/navigation/mobile-nav";
+import type { UserRole } from "@/lib/api/auth";
 import { fetchCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { assertAllowedRole, sanitizeNextParam } from "@/lib/auth/route-guards";
@@ -32,10 +35,12 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   const safeNext = sanitizeNextParam(pathname);
 
   // 1. Auth guard
-  let role: string | null = null;
+  let role: UserRole | null = null;
+  let email = "";
   try {
     const user = await fetchCurrentUser();
     role = user.role;
+    email = user.email;
   } catch (cause) {
     if (cause instanceof ApiError && (cause.status === 401 || cause.status === 403)) {
       redirect(`/auth/login?next=${encodeURIComponent(safeNext)}`);
@@ -45,7 +50,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   }
 
   // 2. Role guard
-  const verdict = assertAllowedRole(pathname, role as Parameters<typeof assertAllowedRole>[1]);
+  const verdict = assertAllowedRole(pathname, role);
   if (verdict === "redirect-login") {
     redirect(`/auth/login?next=${encodeURIComponent(safeNext)}`);
   }
@@ -53,11 +58,19 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
     redirect(`/auth/forbidden?from=${encodeURIComponent(safeNext)}`);
   }
 
+  // `role` is guaranteed non-null past the two guards above (a null role
+  // always redirects before reaching here).
+  const safeRole: UserRole = role as UserRole;
+
   return (
-    <div className="flex min-h-screen flex-col bg-bg">
-      <MfaBanner />
-      <LimitedModeBanner />
-      {children}
+    <div className="flex min-h-screen bg-bg">
+      <DesktopSidebar role={safeRole} email={email} />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <MobileNav role={safeRole} email={email} />
+        <MfaBanner />
+        <LimitedModeBanner />
+        <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+      </div>
     </div>
   );
 }
