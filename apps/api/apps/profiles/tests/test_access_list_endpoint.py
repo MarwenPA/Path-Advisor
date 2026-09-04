@@ -49,7 +49,7 @@ def test_anonymous_user_refused_with_401():
 def test_student_with_no_grants_returns_empty_list():
     student = _make_student()
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
     assert response.status_code == 200
     assert response.json() == {"results": []}
@@ -60,7 +60,7 @@ def test_student_with_one_granted_consent_sees_parent_entry():
     _granted_consent(student)
 
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
 
     assert response.status_code == 200
@@ -83,7 +83,7 @@ def test_revoked_consent_is_NOT_in_the_list():
     consent.save(update_fields=["revoked_at"])
 
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
     assert response.json()["results"] == []
 
@@ -98,7 +98,7 @@ def test_pending_consent_is_NOT_in_the_list():
         # decision left NULL → pending
     )
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
     assert response.json()["results"] == []
 
@@ -115,7 +115,7 @@ def test_non_student_roles_receive_403():
         user = UserFactory(email=f"{role.value}@example.test", role=role)
         EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
         client = APIClient(REMOTE_ADDR="127.0.0.1")
-        client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+        client.force_login(user, backend="apps.accounts.backends.TenantAwareModelBackend")
         response = client.get("/api/v1/profile/access-list/")
         assert response.status_code == 403, (
             f"Role {role.value} should be refused, got {response.status_code}"
@@ -127,7 +127,7 @@ def test_successful_read_writes_audit_row():
     _granted_consent(student)
 
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     # AuditLog is append-only (Story 1.13) — measure delta, not absolute count.
     before = AuditLog.objects.filter(action="profile.access_list_read").count()
 
@@ -149,7 +149,7 @@ def test_only_own_consents_visible_no_cross_student_leak():
     _granted_consent(student_b, parent_email="parent-b@example.test")
 
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student_a, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student_a, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
     results = response.json()["results"]
     assert len(results) == 1
@@ -163,7 +163,7 @@ def test_truncated_flag_emitted_when_cap_is_hit():
 
     student = _make_student()
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
 
     # Mock aggregator to return exactly MAX_ENTRIES entries.
     from datetime import UTC, datetime
@@ -199,7 +199,7 @@ def test_truncated_flag_emitted_when_cap_is_hit():
 def test_truncated_flag_absent_when_below_cap():
     student = _make_student()
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
     response = client.get("/api/v1/profile/access-list/")
     assert response.status_code == 200
     assert "truncated" not in response.json()
@@ -213,7 +213,7 @@ def test_audit_failure_does_not_break_read_path():
     student = _make_student()
     _granted_consent(student)
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(student, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(student, backend="apps.accounts.backends.TenantAwareModelBackend")
 
     with patch(
         "apps.profiles.views.access_list.record_audit",

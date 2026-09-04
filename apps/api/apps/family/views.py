@@ -157,7 +157,9 @@ def parent_invitation_accept(request: Request, token: str) -> Response:
         # first login is part of the same system-driven activation, so the
         # bypass is legitimate here too.
         with bypass_rls(reason="parent_invitation.accept_autologin"):
-            django_login(request, parent_user, backend="django.contrib.auth.backends.ModelBackend")
+            django_login(
+                request, parent_user, backend="apps.accounts.backends.TenantAwareModelBackend"
+            )
 
     return Response({"detail": "Invitation acceptée.", "role": parent_user.role})
 

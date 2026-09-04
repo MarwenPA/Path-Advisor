@@ -44,7 +44,7 @@ def _granted_consent(student, parent_email: str = "parent@example.test"):
 
 def _authed_client(user):
     client = APIClient(REMOTE_ADDR="127.0.0.1")
-    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+    client.force_login(user, backend="apps.accounts.backends.TenantAwareModelBackend")
     return client
 
 

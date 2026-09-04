@@ -27,6 +27,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.permissions import IsAuthenticatedAndActive, IsPathAdmin
+from apps.core.rls import bypass_rls
 from apps.establishments.exceptions import CsvTooManyRows
 from apps.establishments.models import CohortImportJob, Establishment
 from apps.establishments.serializers import (
@@ -171,25 +172,44 @@ class EstablishmentCounselorListCreateView(APIView):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def counselor_invitation_status(request: Request, token: str) -> Response:
-    invitation = get_counselor_invitation_by_token(token)
-    return Response(
-        {
+    # Code-review fix (2026-09): this endpoint is anonymous — the request has
+    # no `app.current_user_id`/`app.current_tenant_id` GUC, so without
+    # `bypass_rls` the `select_related("establishment")` JOIN is filtered to
+    # zero rows by `establishments_isolation_select` (path_admin/bypass
+    # only), making the endpoint 404 on every valid token in any real
+    # Postgres/RLS environment (verified: only the RLS-less SQLite test lane
+    # ever passed). Same pattern as `apps.family.views.parent_invitation_status`.
+    with bypass_rls(
+        reason="counselor_invitation.status_read",
+        metadata={"token_prefix": token[:8] if token else ""},
+    ):
+        invitation = get_counselor_invitation_by_token(token)
+        payload = {
             "establishment_name": invitation.establishment.name,
             "email": invitation.email,
             "status": invitation.status,
         }
-    )
+    return Response(payload)
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def counselor_invitation_accept(request: Request, token: str) -> Response:
-    invitation = get_counselor_invitation_by_token(token)
     serializer = CounselorInvitationAcceptSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    accept_counselor_invitation(
-        invitation=invitation, password=serializer.validated_data["password"]
-    )
+    # Code-review fix (2026-09): same RLS gap as `counselor_invitation_status`
+    # PLUS the `User.objects.create_user(...)` write inside
+    # `accept_counselor_invitation` is itself refused by
+    # `users_isolation_modify` for an anonymous session — both the read and
+    # the write need the bypass.
+    with bypass_rls(
+        reason="counselor_invitation.accept",
+        metadata={"token_prefix": token[:8] if token else ""},
+    ):
+        invitation = get_counselor_invitation_by_token(token)
+        accept_counselor_invitation(
+            invitation=invitation, password=serializer.validated_data["password"]
+        )
     # No auto-login (story §AC4 second clause) — requires_mfa=True from
     # creation means the normal login+MFA-enrollment flow must run.
     return Response({"detail": "Invitation acceptée — connecte-toi pour continuer."})
@@ -198,24 +218,35 @@ def counselor_invitation_accept(request: Request, token: str) -> Response:
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def student_invitation_status(request: Request, token: str) -> Response:
-    invitation = get_student_invitation_by_token(token)
-    return Response(
-        StudentInvitationPublicSerializer(
-            {
-                "establishment_name": invitation.cohort.establishment.name,
-                "status": invitation.status,
-            }
-        ).data
-    )
+    # Code-review fix (2026-09): see counselor_invitation_status — same gap,
+    # `select_related("cohort")` is filtered by `cohorts_isolation_select`.
+    with bypass_rls(
+        reason="student_invitation.status_read",
+        metadata={"token_prefix": token[:8] if token else ""},
+    ):
+        invitation = get_student_invitation_by_token(token)
+        payload = {
+            "establishment_name": invitation.cohort.establishment.name,
+            "status": invitation.status,
+        }
+    return Response(StudentInvitationPublicSerializer(payload).data)
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def student_invitation_accept(request: Request, token: str) -> Response:
-    invitation = get_student_invitation_by_token(token)
     serializer = StudentInvitationAcceptSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    student = accept_student_invitation(
-        invitation=invitation, password=serializer.validated_data["password"]
-    )
-    return Response({"detail": "Mot de passe défini.", "status": student.status})
+    # Code-review fix (2026-09): see counselor_invitation_accept — the read
+    # AND the password write on the pre-existing (CSV-imported) `User` row
+    # both need the bypass for an anonymous session.
+    with bypass_rls(
+        reason="student_invitation.accept",
+        metadata={"token_prefix": token[:8] if token else ""},
+    ):
+        invitation = get_student_invitation_by_token(token)
+        student = accept_student_invitation(
+            invitation=invitation, password=serializer.validated_data["password"]
+        )
+        student_status = student.status
+    return Response({"detail": "Mot de passe défini.", "status": student_status})

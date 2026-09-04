@@ -10,6 +10,7 @@ import pytest
 from django.db import connection, transaction
 
 from apps.accounts.models import UserRole
+from apps.core.rls import bypass_rls
 from apps.establishments.models import Cohort, Establishment, EstablishmentType, LicenseType
 
 pytestmark = [pytest.mark.postgresql_only, pytest.mark.rls]
@@ -26,27 +27,35 @@ def _set_gucs(cursor, *, user_id: str = "", tenant_id: str = "", actor_role: str
 
 
 def _make_establishment(*, uai: str) -> Establishment:
-    return Establishment.objects.create(
-        name=f"Lycée {uai}",
-        type=EstablishmentType.LYCEE,
-        city="Paris",
-        uai=uai,
-        contact_name="Karim",
-        contact_email=f"{uai}@ex.test",
-        license_start="2026-09-01",
-        license_end="2027-08-31",
-        license_type=LicenseType.PILOTE_GRATUIT,
-    )
+    # Code-review fix (2026-09): this file's own test setup was never
+    # wrapped in `bypass_rls` — on a real NOSUPERUSER/NOBYPASSRLS Postgres
+    # role, `establishments_isolation_modify` (path_admin/bypass only)
+    # refuses the plain INSERT with `InsufficientPrivilege`, so every test
+    # in this file failed at setup, proving nothing about isolation. Pattern
+    # copied from `apps/family/tests/test_rls_isolation.py`.
+    with bypass_rls(reason="test_setup.create_establishment"):
+        return Establishment.objects.create(
+            name=f"Lycée {uai}",
+            type=EstablishmentType.LYCEE,
+            city="Paris",
+            uai=uai,
+            contact_name="Karim",
+            contact_email=f"{uai}@ex.test",
+            license_start="2026-09-01",
+            license_end="2027-08-31",
+            license_type=LicenseType.PILOTE_GRATUIT,
+        )
 
 
 def _make_cohort(*, establishment: Establishment, name: str) -> Cohort:
-    return Cohort.objects.create(
-        establishment=establishment,
-        name=name,
-        school_year="2025-2026",
-        tenant_id=establishment.id,
-        user_id="usr_test_setup",
-    )
+    with bypass_rls(reason="test_setup.create_cohort"):
+        return Cohort.objects.create(
+            establishment=establishment,
+            name=name,
+            school_year="2025-2026",
+            tenant_id=establishment.id,
+            user_id="usr_test_setup",
+        )
 
 
 @pytest.mark.django_db(transaction=True)

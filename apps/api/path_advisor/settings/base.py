@@ -164,9 +164,15 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Story 6.5 code-review fix (2026-09) — `apps.accounts.backends` subclasses
+# both stock backends to wrap `get_user()` in `bypass_rls()`. See that
+# module's docstring: without it, `TenantSessionMiddleware`'s own GUC write
+# depends on `request.user`, which depends on this exact SELECT succeeding
+# under RLS first — a chicken-egg that 401s every authenticated session
+# request on real Postgres.
 AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-    "allauth.account.auth_backends.AuthenticationBackend",
+    "apps.accounts.backends.TenantAwareModelBackend",
+    "apps.accounts.backends.TenantAwareAllauthBackend",
 ]
 
 # --- allauth (Story 1.3) ---

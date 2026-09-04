@@ -28,6 +28,20 @@ export const ROUTE_ALLOWED_ROLES: Record<string, ReadonlyArray<UserRole>> = {
   // Generic authenticated areas — any role
   "/parametres": ["student", "parent", "counselor", "school_admin", "path_admin", "support"],
   "/onboarding": ["student"],
+  // Story 8.8 — student home dashboard.
+  "/accueil": ["student"],
+  // Code-review fix (Story 8.8, 2026-09) — these route trees have existed
+  // since Epic 3/4/5 and are live pages under `(authenticated)/`, but were
+  // NEVER added to this matrix. `assertAllowedRole`'s fail-closed default
+  // (below) silently sent every authenticated user to `/auth/forbidden` on
+  // all of them — including the Stripe return URL `/premium/success`. This
+  // was only discovered because Story 8.8 made `/accueil` (whose every
+  // outbound link targets one of these) the new student landing page.
+  "/mes-metiers": ["student"],
+  "/mes-paris": ["student"],
+  "/metiers": ["student", "parent"],
+  "/schools": ["student", "parent"],
+  "/premium": ["student", "parent"],
   // Story 6.2 — parent dashboard area (métiers explorés / mes paris / coûts)
   "/parent": ["parent"],
   // Future staff areas (declared early so the matrix is exhaustive)

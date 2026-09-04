@@ -82,7 +82,14 @@ function CopyButton({ text, metiersName, disabled }: CopyButtonProps) {
     <span className="relative inline-flex flex-col items-end gap-1">
       <button
         type="button"
-        onClick={() => copy(text)}
+        onClick={(e) => {
+          // Code-review fix (Story 8.8): every call site wraps this card in
+          // a `<Link>` (MetiersList, parent-dashboard, /accueil) — without
+          // this, clicking "copier" both copies AND navigates away.
+          e.stopPropagation();
+          e.preventDefault();
+          copy(text);
+        }}
         disabled={disabled}
         aria-label={`Copier la phrase défendable pour ${metiersName}`}
         className={cn(

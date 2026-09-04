@@ -46,7 +46,25 @@ def _admin_client() -> APIClient:
     # `apps.audit.tests.factories.PathAdminUserFactory`.
     admin = _uf(role=UserRole.PATH_ADMIN, is_superuser=True, is_staff=True)
     client = APIClient()
-    client.force_authenticate(user=admin)
+    # Code-review fix (2026-09): `force_authenticate` only overrides the
+    # DRF-wrapped `Request.user` (set inside APIView.dispatch, after Django's
+    # own middleware chain has already run). `TenantSessionMiddleware` reads
+    # the raw Django `HttpRequest.user` (session-based, from
+    # AuthenticationMiddleware) to set the Postgres RLS GUCs — with
+    # `force_authenticate` it always sees AnonymousUser, so every write this
+    # client makes is silently denied by RLS on a real Postgres role. This is
+    # the first admin-WRITE endpoint in the repo to actually hit this (every
+    # prior IsPathAdmin view was read-only). `force_login` sets a real
+    # session, so AuthenticationMiddleware resolves `request.user` correctly
+    # for every downstream middleware, exactly like a real browser session.
+    #  itself triggers the `user_logged_in` signal
+    # (`update_last_login`, a write to `users`) OUTSIDE any HTTP
+    # request/middleware cycle — no GUC is set yet at that point, so the
+    # write needs its own narrow bypass. Every subsequent `client.post/get`
+    # goes through the real middleware chain with the now-real session,
+    # which sets the GUCs correctly for the actual test assertions.
+    with bypass_rls(reason="test_setup.force_login_update_last_login"):
+        client.force_login(admin)
     return client
 
 

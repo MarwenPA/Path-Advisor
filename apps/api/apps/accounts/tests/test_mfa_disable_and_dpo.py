@@ -58,7 +58,7 @@ def authed_client():
     def _make(role=UserRole.STUDENT, email="b2c@example.test"):
         user = _make_enrolled_user(email=email, role=role)
         client = APIClient()
-        client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+        client.force_login(user, backend="apps.accounts.backends.TenantAwareModelBackend")
         return client, user
 
     return _make

@@ -43,11 +43,11 @@ beforeEach(() => {
 });
 
 describe("Home page", () => {
-  it("redirects an authenticated student to their recommendations (reuses getPostLoginPath)", async () => {
+  it("redirects an authenticated student to their home dashboard (reuses getPostLoginPath)", async () => {
     fetchCurrentUserMock.mockResolvedValue({ role: "student", status: "active" });
 
-    await expect(Home()).rejects.toThrow("NEXT_REDIRECT:/mes-metiers");
-    expect(redirectMock).toHaveBeenCalledWith("/mes-metiers");
+    await expect(Home()).rejects.toThrow("NEXT_REDIRECT:/accueil");
+    expect(redirectMock).toHaveBeenCalledWith("/accueil");
   });
 
   it("redirects an authenticated parent to the parent dashboard, same role-based path as post-login", async () => {

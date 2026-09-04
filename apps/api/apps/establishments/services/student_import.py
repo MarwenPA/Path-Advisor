@@ -20,10 +20,12 @@ import io
 from dataclasses import dataclass
 from datetime import date, datetime
 
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from apps.accounts.models import User, UserStatus
+from apps.accounts.models import User, UserRole, UserStatus
 from apps.accounts.services.parental_consent import create_parental_consent_request
+from apps.accounts.services.parental_consent_email import send_request_to_parent
 from apps.establishments.models import Cohort, StudentImportInvitation
 from apps.establishments.services.student_import_invitation import generate_token
 
@@ -102,24 +104,54 @@ def import_row(*, cohort: Cohort, row: dict) -> ImportRowResult:
 
     status = UserStatus.PENDING_PARENTAL_CONSENT if is_minor else UserStatus.EMAIL_UNVERIFIED
 
-    user = User.objects.create(
-        email=User.objects.normalize_email(email).lower(),
-        role="student",
-        birth_date=birth_date,
-        status=status,
-        tenant_id=cohort.tenant_id,
-    )
-    user.set_unusable_password()
-    user.save(update_fields=["password"])
+    try:
+        # Code-review fix (2026-09): the User/consent/invitation writes used
+        # to be three independent autocommit statements — if the 2nd or 3rd
+        # failed, the User row from the 1st stayed committed with no
+        # invitation and no way to activate it (an orphaned account only
+        # fixable by manual SQL). One atomic block per row makes each row
+        # genuinely all-or-nothing, on top of the per-row try/except the
+        # Celery task already has for isolating rows from each other.
+        with transaction.atomic():
+            user = User.objects.create(
+                email=User.objects.normalize_email(email).lower(),
+                role=UserRole.STUDENT,
+                birth_date=birth_date,
+                status=status,
+                tenant_id=cohort.tenant_id,
+            )
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+
+            consent = None
+            if is_minor:
+                # Reuse the existing service TEL QUEL — no consent logic duplicated here.
+                consent = create_parental_consent_request(student=user, parent_email=parent_email)
+
+            invitation = StudentImportInvitation.objects.create(
+                cohort=cohort,
+                user=user,
+                token=generate_token(),
+            )
+    except IntegrityError:
+        # Code-review fix (2026-09): the `.exists()` check above + this
+        # `create()` is a TOCTOU race — two concurrent imports (or a
+        # double-click retry) targeting the same email both pass the check.
+        # The loser must resolve to the same typed `email_deja_utilise`
+        # skip the story promises, not bubble up as an opaque
+        # `erreur_inattendue:IntegrityError` in the job's error report.
+        return ImportRowResult(skipped=True, reason="email_deja_utilise")
 
     if is_minor:
-        # Reuse the existing service TEL QUEL — no consent logic duplicated here.
-        create_parental_consent_request(student=user, parent_email=parent_email)
-
-    invitation = StudentImportInvitation.objects.create(
-        cohort=cohort,
-        user=user,
-        token=generate_token(),
-    )
+        # Code-review fix (2026-09): `create_parental_consent_request` alone
+        # only writes the `ParentalConsent` row — the ONLY other caller in
+        # the repo (`accounts/signals.py`, the B2C under-15 signup path)
+        # always follows it with `send_request_to_parent(consent)`. Without
+        # it, the parent never receives the consent link and the student
+        # stays in `pending_parental_consent` forever (no reminder sweep
+        # covers CSV-imported minors — see Story 6.5 §6 Out of Scope).
+        # Dispatched after the atomic block commits, same reasoning as
+        # `signals.py`: an SMTP failure must not roll back the consent row.
+        send_request_to_parent(consent)
 
     return ImportRowResult(skipped=False, user=user, invitation=invitation)
