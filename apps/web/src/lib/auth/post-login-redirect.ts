@@ -27,8 +27,10 @@ import type { UserRole, UserStatus } from "@/lib/api/auth";
 export const MVP_FALLBACK_PATH = "/parametres/confidentialite";
 
 const ROLE_TO_PATH: Record<UserRole, string> = {
-  // Epic 3 — recommendation list, ships as the student's real home.
-  student: "/mes-metiers",
+  // Story 8.8 — modular home (recommendations + progress + mes-paris), the
+  // student's real home. `/mes-metiers` (Epic 3) is not removed — the
+  // "Voir tous mes métiers" module link still points to it.
+  student: "/accueil",
   // Epic 6 (Story 6.2) — parent dashboard (métiers explorés / mes paris / coûts).
   parent: "/parent",
   counselor: MVP_FALLBACK_PATH, // Epic 6 — B2B counselor dashboard placeholder.

@@ -86,6 +86,13 @@ def bypass_rls(*, reason: str, metadata: dict[str, Any] | None = None) -> Iterat
     2. `apps.accounts.views.parental_consent_decide` — parent authenticated
        by URL token, must UPDATE `parental_consents` (anonymous request).
     3. `apps.accounts.views.parental_consent_status` — same, read-only.
+    4. `apps.accounts.backends.TenantAwareModelBackend.get_user` /
+       `TenantAwareAllauthBackend.get_user` — Story 6.5 code-review fix:
+       session-user resolution itself must read `users` before
+       `TenantSessionMiddleware` has anything to set the GUC from (see that
+       module's docstring for the full chicken-egg explanation).
+    5. `apps.establishments.views` public accept/status endpoints
+       (Story 6.5) — anonymous, token-authenticated flows, same shape as #2/#3.
 
     `reason` is mandatory and persisted in the audit row so DPO can grep.
     """

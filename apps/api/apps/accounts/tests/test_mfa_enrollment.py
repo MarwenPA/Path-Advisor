@@ -330,7 +330,7 @@ def authed_client_factory():
         user = UserFactory(email=email, role=_UserRole.STUDENT)
         EmailAddress.objects.create(user=user, email=user.email, primary=True, verified=True)
         client = APIClient()
-        client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+        client.force_login(user, backend="apps.accounts.backends.TenantAwareModelBackend")
         return client, user
 
     return _make

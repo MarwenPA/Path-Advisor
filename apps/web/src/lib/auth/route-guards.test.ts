@@ -30,6 +30,38 @@ describe("assertAllowedRole", () => {
     expect(assertAllowedRole("/onboarding/step1", "counselor")).toBe("forbidden");
   });
 
+  it("allows /accueil only for student (Story 8.8)", () => {
+    expect(assertAllowedRole("/accueil", "student")).toBe("allow");
+    for (const role of ["parent", "counselor", "school_admin", "path_admin", "support"] as const) {
+      expect(assertAllowedRole("/accueil", role)).toBe("forbidden");
+    }
+  });
+
+  it("allows /mes-metiers, /mes-paris for student only (code-review fix, Story 8.8)", () => {
+    // These route trees existed since Epic 3/4 but had no matrix entry —
+    // every authenticated user was silently redirected to /auth/forbidden.
+    for (const path of ["/mes-metiers", "/mes-paris"]) {
+      expect(assertAllowedRole(path, "student")).toBe("allow");
+      for (const role of [
+        "parent",
+        "counselor",
+        "school_admin",
+        "path_admin",
+        "support",
+      ] as const) {
+        expect(assertAllowedRole(path, role)).toBe("forbidden");
+      }
+    }
+  });
+
+  it("allows /metiers, /schools, /premium for student + parent (code-review fix, Story 8.8)", () => {
+    for (const path of ["/metiers/some-slug", "/schools/some-slug", "/premium/success"]) {
+      expect(assertAllowedRole(path, "student")).toBe("allow");
+      expect(assertAllowedRole(path, "parent")).toBe("allow");
+      expect(assertAllowedRole(path, "counselor")).toBe("forbidden");
+    }
+  });
+
   it("allows /admin/* only for path_admin", () => {
     expect(assertAllowedRole("/admin/users", "path_admin")).toBe("allow");
     expect(assertAllowedRole("/admin/users", "support")).toBe("forbidden");

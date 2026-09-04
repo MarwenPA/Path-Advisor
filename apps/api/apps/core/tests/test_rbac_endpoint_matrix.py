@@ -43,7 +43,7 @@ def _authed_client(role: UserRole | None) -> APIClient:
     client = APIClient(REMOTE_ADDR="127.0.0.1")
     if role is not None:
         user = _make_user(role, email=f"rbac-{role.value}@example.test")
-        client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+        client.force_login(user, backend="apps.accounts.backends.TenantAwareModelBackend")
     return client
 
 

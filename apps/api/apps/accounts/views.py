@@ -1438,7 +1438,7 @@ def mfa_enroll_confirm_view(request: Request) -> Response:
     # `backend=` since `login()` cannot disambiguate. ModelBackend is the right
     # choice because the user was just authenticated by dj-rest-auth's
     # serializer (which delegates to `authenticate()` → ModelBackend).
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    django_login(request, user, backend="apps.accounts.backends.TenantAwareModelBackend")
 
     return Response(
         {
@@ -1575,7 +1575,7 @@ def mfa_challenge_view(request: Request) -> Response:
     # `backend=` since `login()` cannot disambiguate. ModelBackend is the right
     # choice because the user was just authenticated by dj-rest-auth's
     # serializer (which delegates to `authenticate()` → ModelBackend).
-    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    django_login(request, user, backend="apps.accounts.backends.TenantAwareModelBackend")
     return Response(_mfa_user_response(user))
 
 

@@ -65,7 +65,7 @@ Permettre l'acquisition organique : Sarah trouve Path-Advisor via Google sur une
 
 ## Epic 8 : Continuité Temporelle & Notifications
 
-Servir le moat différenciant vs LLMs grand public : l'utilisateur revient à J+30 et voit "ce qui a bougé" (réponse école, nouvelles formations, calendrier Parcoursup) via un écran `DeltaRecap` style Spotify Wrapped léger et des notifications email calées sans urgence fabriquée.
+Servir le moat différenciant vs LLMs grand public : l'utilisateur revient à J+30 et voit "ce qui a bougé" (réponse école, nouvelles formations, calendrier Parcoursup) via un écran `DeltaRecap` style Spotify Wrapped léger et des notifications email calées sans urgence fabriquée. Inclut le dashboard d'accueil modulaire (Story 8.8) qui sert de "dashboard normal" derrière le `DeltaRecap`.
 
 **FRs couverts** : FR47
 **NFRs principaux** : NFR-I2 email Mailpit local + Postmark prod, NFR-R4 dégradation gracieuse email

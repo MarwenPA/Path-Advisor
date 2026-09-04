@@ -129,7 +129,7 @@ development_status:
   6-2-vue-parent-metiers-parcours-couts: done
   6-3-frontieres-confidentialite-parent: ready-for-dev
   6-4-paiement-premium-par-parent: blocked-on-epic-5
-  6-5-onboarding-b2b-cohorte: ready-for-dev
+  6-5-onboarding-b2b-cohorte: review
   6-6-dashboard-cohorte-conseillere: backlog
   6-7-consentement-conseillere-vue-profil: backlog
   6-8-vue-profil-eleve-conseillere: backlog
@@ -151,7 +151,9 @@ development_status:
   epic-7-retrospective: optional
 
   # Epic 8 — Continuité temporelle & Notifications
-  epic-8: backlog
+  # 8-8 lancée en avance (hors ordre) à la demande utilisateur — ne dépend
+  # d'aucune autre story 8.x (pas de dépendance sur email/notifications).
+  epic-8: in-progress
   8-1-email-transactionnel-abstraction: backlog
   8-2-engine-notifications-templates: backlog
   8-3-notifications-calendrier-parcoursup: backlog
@@ -159,6 +161,7 @@ development_status:
   8-5-notification-nouvelle-ecole-pertinente: backlog
   8-6-composant-delta-recap: backlog
   8-7-composant-calendar-notification: backlog
+  8-8-dashboard-accueil-eleve: review
   epic-8-retrospective: optional
 
   # Epic 9 — Back-office, Administration & Modération

@@ -162,3 +162,37 @@ So that le pattern "calendrier sans urgence" soit cohérent (UX-DR17 + UX-DR28).
 **When** je l'utilise dans email (Story 8.3) et dans `DeltaRecap` (Story 8.6)
 **Then** le même composant alimente les deux contextes
 **And** seul le rendering layer change (HTML email vs React app)
+
+## Story 8.8 : Dashboard d'accueil élève — page modulaire post-connexion
+
+As a élève,
+I want atterrir après connexion sur une page d'accueil qui rassemble en un coup d'œil mes métiers recommandés, mes parcours sauvegardés et ce qu'il me reste à compléter,
+So that je sache immédiatement où j'en suis et quoi faire ensuite, plutôt que de tomber sur une simple liste de recommandations sans contexte (FR47 — complète le "dashboard normal" référencé mais jamais spécifié par la Story 8.6).
+
+**Contexte** : aujourd'hui, la home post-connexion élève est directement `/mes-metiers` (Epic 3 — liste de recommandations brute). La Story 8.6 (`DeltaRecap`) suppose l'existence d'un "dashboard normal" vers lequel son bouton "Tout vu, continuer" redirige — cette story crée ce dashboard, qui devient la nouvelle home élève (`getPostLoginPath` — `apps/web/src/lib/auth/post-login-redirect.ts` — pointe désormais ici pour `role=student`, plus vers `/mes-metiers` directement).
+
+**Acceptance Criteria :**
+
+**Given** je suis un élève authentifié et je me connecte
+**When** j'arrive sur ma home (nouvelle route, ex. `/accueil` ou racine authentifiée)
+**Then** je vois une page composée de plusieurs modules distincts, pas une liste unique :
+- **Module "Tes métiers"** : les 3 recommandations vocationnelles au score le plus élevé (variant compact de `ScoreVocationnel`, Story 3.11), avec lien "Voir tous mes métiers" vers `/mes-metiers`
+- **Module "Ta progression"** : score de complétude du profil (Story 2.7) + liste des étapes non terminées avec CTA direct pour les reprendre : onboarding passions/valeurs (Story 2.1) si non fait, niveau/filière (Story 2.2) si non fait, import ou saisie bulletins (Story 2.3/2.4) si `mode_degrade` (Story 2.5)
+- **Module "Tes paris"** : les parcours sauvegardés (Story 4.8 `mes-paris`) les plus récents (3 max), avec lien "Voir tous mes paris"
+- **État vide par module** : un module sans contenu (ex. aucun pari sauvegardé) affiche un texte d'invitation court + CTA, jamais une section vide silencieuse ni une erreur
+
+**Given** un élève dont le profil est fraîchement créé (aucune recommandation, aucun pari, onboarding non terminé)
+**When** il consulte sa home
+**Then** le module "Ta progression" domine visuellement la page (c'est la seule chose actionnable) — pas de mise en avant artificielle de modules vides
+
+**Given** la Story 8.6 (`DeltaRecap`)
+**When** un élève revient avec un delta à afficher
+**Then** le `DeltaRecap` s'affiche en interstitiel PLEIN ÉCRAN au-dessus de cette home (comme déjà spécifié en 8.6) ; "Tout vu, continuer" démonte l'interstitiel et révèle cette page dessous — cette story ne modifie pas 8.6, elle lui donne enfin une cible réelle
+
+**Given** la densité mobile-first (persona élève = mobile primaire, cf. UX spec)
+**When** je consulte la home sur mobile
+**Then** les modules s'empilent verticalement dans l'ordre : Progression (si incomplet) → Métiers → Paris ; sur desktop, layout 2 colonnes (Métiers + Paris côte à côte, Progression en bandeau supérieur)
+
+**Given** l'accessibilité RGAA AA
+**When** un lecteur d'écran navigue la page
+**Then** chaque module est une `<section>` avec un titre de niveau cohérent (`h2`) et un `aria-label` explicite, l'ordre de tabulation suit l'ordre visuel

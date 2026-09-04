@@ -11,7 +11,8 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import ParentalConsent, UserRole, UserStatus
 from apps.accounts.tests.factories import UserFactory
-from apps.core.rls import bypass_rls
+from apps.core import request_context
+from apps.core.rls import bypass_rls, with_system_actor
 from apps.establishments.models import (
     Cohort,
     CohortImportJob,
@@ -33,21 +34,58 @@ def _uf(**kwargs):
 def _admin_client():
     admin = _uf(role=UserRole.PATH_ADMIN, is_superuser=True, is_staff=True)
     client = APIClient()
-    client.force_authenticate(user=admin)
+    # Code-review fix (2026-09): `force_authenticate` only overrides the
+    # DRF-wrapped `Request.user` (set inside APIView.dispatch, after Django's
+    # own middleware chain has already run). `TenantSessionMiddleware` reads
+    # the raw Django `HttpRequest.user` (session-based, from
+    # AuthenticationMiddleware) to set the Postgres RLS GUCs — with
+    # `force_authenticate` it always sees AnonymousUser, so every write this
+    # client makes is silently denied by RLS on a real Postgres role. This is
+    # the first admin-WRITE endpoint in the repo to actually hit this (every
+    # prior IsPathAdmin view was read-only). `force_login` sets a real
+    # session, so AuthenticationMiddleware resolves `request.user` correctly
+    # for every downstream middleware, exactly like a real browser session.
+    #  itself triggers the `user_logged_in` signal
+    # (`update_last_login`, a write to `users`) OUTSIDE any HTTP
+    # request/middleware cycle — no GUC is set yet at that point, so the
+    # write needs its own narrow bypass. Every subsequent `client.post/get`
+    # goes through the real middleware chain with the now-real session,
+    # which sets the GUCs correctly for the actual test assertions.
+    with bypass_rls(reason="test_setup.force_login_update_last_login"):
+        client.force_login(admin)
     client._admin = admin
     return client
 
 
 def _make_cohort(admin_user) -> Cohort:
+    # Code-review fix (2026-09): two INDEPENDENT mechanisms both need
+    # satisfying here, on every backend — see the identical note in
+    # test_student_import_invitation.py's `_make_cohort`:
+    # 1. `TenantScopedModel.save()` (apps/core/models.py) is a Python-level
+    #    guard that fails loud unless `request_context.get_actor_id()`
+    #    returns something — runs on SQLite too, unrelated to RLS.
+    # 2. `cohorts` is RLS-protected on Postgres — the actual INSERT needs
+    #    `app.bypass_rls`/`app.actor_role` set as a Postgres session GUC,
+    #    which only `with_system_actor`/`bypass_rls` do.
     with bypass_rls(reason="test_setup.create_establishment"):
         establishment = EstablishmentFactory()
-    from apps.core import request_context
-
     request_context.set_actor(admin_user)
     try:
-        return create_cohort(establishment=establishment, name="Terminale", school_year="2025-2026")
+        with with_system_actor(reason="test_setup.create_cohort"):
+            return create_cohort(
+                establishment=establishment, name="Terminale", school_year="2025-2026"
+            )
     finally:
         request_context.clear()
+
+
+def _import_row(*, cohort, row):
+    # Code-review fix (2026-09): same reasoning — `import_row` writes `users`
+    # + `student_import_invitations` (+ `parental_consents` for minors), all
+    # RLS-protected in production this only ever runs inside a
+    # `with_system_actor`-wrapped Celery task.
+    with with_system_actor(reason="test_setup.import_row"):
+        return import_row(cohort=cohort, row=row)
 
 
 def _import_csv_url(cohort_id) -> str:
@@ -85,7 +123,7 @@ def test_import_row_majeur_creates_active_pending_invitation(settings):
     admin = _uf(role=UserRole.PATH_ADMIN, is_superuser=True)
     cohort = _make_cohort(admin)
 
-    result = import_row(
+    result = _import_row(
         cohort=cohort,
         row={
             "nom": "Martin",
@@ -100,7 +138,8 @@ def test_import_row_majeur_creates_active_pending_invitation(settings):
     assert result.user.status == UserStatus.EMAIL_UNVERIFIED
     assert result.user.tenant_id == cohort.tenant_id
     assert result.user.has_usable_password() is False
-    assert StudentImportInvitation.objects.filter(user=result.user).exists()
+    with bypass_rls(reason="test_assert.read_invitation"):
+        assert StudentImportInvitation.objects.filter(user=result.user).exists()
 
 
 def test_import_row_mineur_with_parent_email_triggers_parental_consent():
@@ -108,7 +147,7 @@ def test_import_row_mineur_with_parent_email_triggers_parental_consent():
     cohort = _make_cohort(admin)
     minor_birthdate = "2015-01-01"  # well under 15
 
-    result = import_row(
+    result = _import_row(
         cohort=cohort,
         row={
             "nom": "Petit",
@@ -121,18 +160,19 @@ def test_import_row_mineur_with_parent_email_triggers_parental_consent():
 
     assert result.skipped is False
     assert result.user.status == UserStatus.PENDING_PARENTAL_CONSENT
-    assert ParentalConsent.objects.filter(
-        student=result.user, parent_email="parent@ex.test"
-    ).exists()
-    # Both minor and major students get their own invitation email (AC3).
-    assert StudentImportInvitation.objects.filter(user=result.user).exists()
+    with bypass_rls(reason="test_assert.read_invitation"):
+        assert ParentalConsent.objects.filter(
+            student=result.user, parent_email="parent@ex.test"
+        ).exists()
+        # Both minor and major students get their own invitation email (AC3).
+        assert StudentImportInvitation.objects.filter(user=result.user).exists()
 
 
 def test_import_row_mineur_without_parent_email_is_skipped():
     admin = _uf(role=UserRole.PATH_ADMIN, is_superuser=True)
     cohort = _make_cohort(admin)
 
-    result = import_row(
+    result = _import_row(
         cohort=cohort,
         row={
             "nom": "Petit",
@@ -152,7 +192,7 @@ def test_import_row_duplicate_email_is_skipped():
     cohort = _make_cohort(admin)
     _uf(email="existing@ex.test")
 
-    result = import_row(
+    result = _import_row(
         cohort=cohort,
         row={
             "nom": "X",
@@ -171,7 +211,7 @@ def test_import_row_missing_email_is_skipped():
     admin = _uf(role=UserRole.PATH_ADMIN, is_superuser=True)
     cohort = _make_cohort(admin)
 
-    result = import_row(
+    result = _import_row(
         cohort=cohort,
         row={
             "nom": "X",
@@ -230,7 +270,8 @@ def test_upload_csv_creates_job_and_processes_rows_synchronously_in_tests():
     assert response.status_code == 202, response.content
     job_id = response.json()["job_id"]
 
-    job = CohortImportJob.objects.get(id=job_id)
+    with bypass_rls(reason="test_assert.read_job"):
+        job = CohortImportJob.objects.get(id=job_id)
     assert job.status == CohortImportJobStatus.COMPLETED
     assert job.total_rows == 3
     assert job.imported_count == 2
