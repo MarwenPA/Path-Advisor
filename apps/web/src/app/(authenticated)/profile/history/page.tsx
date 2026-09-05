@@ -5,6 +5,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { apiFetch } from "@/lib/api/client";
 
 interface HistoryEntry {
   id: string;
@@ -13,10 +14,18 @@ interface HistoryEntry {
   created_at: string;
 }
 
+/**
+ * Code-review fix (2026-09): same wrong-host bug as `use-student-profile.ts`
+ * / `use-maturity-level.ts` — a bare `fetch("/api/v1/...")` resolves against
+ * the Next.js dev server, not the Django API, and 404s every time. Fixed
+ * proactively here (found while moving this page under `(authenticated)/`
+ * for the "profil accessible depuis l'accueil, retour possible" story) —
+ * same class of bug, same file family, would have hit the very next click.
+ */
 async function fetchHistory({ pageParam = 1 }: { pageParam?: number }) {
-  const res = await fetch(`/api/v1/students/me/profile/history?page=${pageParam}`);
-  if (!res.ok) throw new Error("Failed to fetch history");
-  return res.json() as Promise<{ results: HistoryEntry[]; next: string | null }>;
+  return apiFetch<{ results: HistoryEntry[]; next: string | null }>(
+    `/api/v1/students/me/profile/history?page=${pageParam}`,
+  );
 }
 
 const REASON_LABELS: Record<string, string> = {
@@ -41,18 +50,14 @@ export default function ProfileHistoryPage() {
 
   return (
     <main>
-      <div className="flex items-center gap-4 p-4 border-b">
+      <div className="flex items-center gap-4 border-b p-4">
         <Link href="/profile" className="text-sm">
           ← Mon profil
         </Link>
         <h1 className="text-xl font-semibold">Historique</h1>
       </div>
 
-      <section
-        role="region"
-        aria-label="Historique des changements de profil"
-        className="p-4"
-      >
+      <section role="region" aria-label="Historique des changements de profil" className="p-4">
         {isLoading && <p className="text-muted-foreground">Chargement…</p>}
 
         {!isLoading && entries.length === 0 && (
@@ -62,7 +67,7 @@ export default function ProfileHistoryPage() {
         <ol className="space-y-4">
           {entries.map((entry) => (
             <li key={entry.id}>
-              <Card className="p-4 space-y-2">
+              <Card className="space-y-2 p-4">
                 <p className="text-sm font-medium">
                   {REASON_LABELS[entry.archived_reason] ?? entry.archived_reason}
                 </p>
@@ -72,10 +77,7 @@ export default function ProfileHistoryPage() {
                     year: "numeric",
                   })}
                 </p>
-                <Link
-                  href={`/profile/history/${entry.id}`}
-                  className="text-xs underline"
-                >
+                <Link href={`/profile/history/${entry.id}`} className="text-xs underline">
                   Revoir l&apos;ancien profil
                 </Link>
               </Card>

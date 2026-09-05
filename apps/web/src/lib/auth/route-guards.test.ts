@@ -37,6 +37,24 @@ describe("assertAllowedRole", () => {
     }
   });
 
+  it("allows /profile, /profile/history for student only (Story 1.15 follow-up)", () => {
+    // /profile used to live in the (auth) route group with NO guard at all
+    // until moved under (authenticated)/ — reachable from the nav now, so
+    // it must also be role-gated like every other student page.
+    for (const path of ["/profile", "/profile/history"]) {
+      expect(assertAllowedRole(path, "student")).toBe("allow");
+      for (const role of [
+        "parent",
+        "counselor",
+        "school_admin",
+        "path_admin",
+        "support",
+      ] as const) {
+        expect(assertAllowedRole(path, role)).toBe("forbidden");
+      }
+    }
+  });
+
   it("allows /mes-metiers, /mes-paris for student only (code-review fix, Story 8.8)", () => {
     // These route trees existed since Epic 3/4 but had no matrix entry —
     // every authenticated user was silently redirected to /auth/forbidden.

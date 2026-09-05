@@ -1,23 +1,21 @@
-import type { Metadata } from "next";
-
-export const metadata: Metadata = {
-  title: "Bienvenue | Path-Advisor",
-};
+import { redirect } from "next/navigation";
 
 /**
- * Placeholder onboarding page — Story 1.3 (decision §9 #2: Server Component minimal).
- * Story 2.1 will replace this with the real multi-step Zustand-backed flow.
+ * `/onboarding` — Story 1.3 shipped this as a static "coming soon"
+ * placeholder pending the real flow (Story 2.1). That flow shipped
+ * (`/onboarding/step-1` → `step-2` → `step-3`, each a real, working page —
+ * `step-1`'s own docstring already assumes it's "the entry point"), but this
+ * index page was never updated to match: every route that lands here
+ * (`(public)/auth/verify-email/page.tsx`'s post-verification redirect,
+ * anyone navigating to `/onboarding` directly) hit the stale placeholder
+ * and got told the feature "arrive avec Story 2.1" — permanently, since
+ * nothing else ever redirected onward.
+ *
+ * Code-review fix (2026-09): redirect straight to the real entry point.
+ * `step-1` itself already handles the "already completed step 1" case
+ * (redirects onward to `step-2`), so this is the correct single entry
+ * point for both a fresh signup and someone returning mid-flow.
  */
 export default function OnboardingPage() {
-  return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 bg-bg px-4 py-12 text-center">
-      <h1 className="text-h1 font-semibold text-text md:text-h1-desktop">
-        Bienvenue sur Path-Advisor
-      </h1>
-      <p className="max-w-md text-body text-text-muted">
-        Ton email est vérifié. L’onboarding (passions, intérêts, bulletins…) arrive avec Story 2.1
-        (Epic 2). Reviens vite !
-      </p>
-    </main>
-  );
+  redirect("/onboarding/step-1");
 }

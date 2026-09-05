@@ -43,7 +43,7 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1 — Foundation : Auth multi-rôle, RBAC, Conformité RGPD, Infra technique
-  epic-1: done
+  epic-1: done  # reopened+reclosed 2026-09-04: UX-DR31 navigation multi-rôle (1-15), review-fixed
   1-1-initialisation-projet: done
   1-2-design-system-tokens: done
   1-3-inscription-eleve-15-ans-rgpd: done
@@ -58,6 +58,7 @@ development_status:
   1-12-suppression-compte-rgpd: done
   1-13-journal-audit-acces: done
   1-14-composant-consent-dialog: done
+  1-15-navigation-globale-multi-role: done
   epic-1-retrospective: optional
 
   # Epic 2 — Profil élève & Onboarding
