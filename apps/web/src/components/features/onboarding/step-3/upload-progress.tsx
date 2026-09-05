@@ -23,37 +23,43 @@ export function UploadProgress({ files, onRetry, onModifySelection }: Props) {
   const doneCount = files.filter((f) => f.status === "done").length;
   const failedCount = files.filter((f) => f.status === "failed").length;
 
+  // Code-review fix (2026-09): guard on `matchMedia` existing, not just
+  // `window` — jsdom (the test environment) has no `matchMedia`
+  // implementation at all, throwing here on every render and failing every
+  // test in this file regardless of what they actually assert.
   const prefersReducedMotion =
     typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   return (
-    <section aria-label="Progression de l'envoi" className="flex flex-col gap-4 w-full">
-      <h2 className="text-[var(--text-h2)] font-semibold text-[var(--color-text)]">
+    <section aria-label="Progression de l'envoi" className="flex w-full flex-col gap-4">
+      <h2 className="font-semibold text-[var(--color-text)] text-[var(--text-h2)]">
         On envoie tes bulletins…
       </h2>
 
       <p className="text-sm text-[var(--color-text-muted)]" aria-live="polite">
-        Fichier {doneCount} sur {files.length} — {formatBytes(uploadedBytes)} / {formatBytes(totalBytes)}
+        Fichier {doneCount} sur {files.length} — {formatBytes(uploadedBytes)} /{" "}
+        {formatBytes(totalBytes)}
       </p>
 
-      <ul className="flex flex-col gap-3 list-none p-0" role="list">
+      <ul className="flex list-none flex-col gap-3 p-0" role="list">
         {files.map((f) => {
           const progressValue = f.status === "done" ? 100 : f.status === "failed" ? 0 : f.progress;
           return (
             <li key={f.id} className="flex flex-col gap-1">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-[var(--color-text)] truncate max-w-[200px]">
+                <span className="max-w-[200px] truncate text-sm font-medium text-[var(--color-text)]">
                   {f.file.name}
                 </span>
                 {f.status === "done" && (
                   <CheckCircle2
-                    className="size-4 text-[var(--color-brand)] shrink-0"
+                    className="size-4 shrink-0 text-[var(--color-brand)]"
                     aria-label="Envoyé"
                   />
                 )}
                 {f.status === "failed" && (
-                  <span className="flex items-center gap-1 text-[var(--color-warning)] text-xs shrink-0">
+                  <span className="flex shrink-0 items-center gap-1 text-xs text-[var(--color-warning)]">
                     <AlertTriangle className="size-3" aria-hidden />
                     Pas réussi
                   </span>
@@ -70,7 +76,7 @@ export function UploadProgress({ files, onRetry, onModifySelection }: Props) {
                 className={cn(
                   "h-1",
                   f.status === "failed" && "opacity-40",
-                  prefersReducedMotion && "[&>*]:transition-none"
+                  prefersReducedMotion && "[&>*]:transition-none",
                 )}
                 aria-valuenow={progressValue}
                 aria-valuemin={0}
@@ -79,7 +85,7 @@ export function UploadProgress({ files, onRetry, onModifySelection }: Props) {
               />
 
               {f.status === "failed" && (
-                <div className="flex gap-2 mt-1">
+                <div className="mt-1 flex gap-2">
                   {onRetry && (
                     <button
                       type="button"
@@ -105,7 +111,7 @@ export function UploadProgress({ files, onRetry, onModifySelection }: Props) {
             <button
               type="button"
               onClick={onModifySelection}
-              className="ml-2 underline underline-offset-2 text-[var(--color-brand)]"
+              className="ml-2 text-[var(--color-brand)] underline underline-offset-2"
             >
               Modifier la sélection
             </button>
