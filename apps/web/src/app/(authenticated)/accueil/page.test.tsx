@@ -74,7 +74,7 @@ beforeEach(() => {
 });
 
 describe("AccueilPage", () => {
-  it("renders 3 sections in order: progression, métiers, paris", async () => {
+  it("renders 4 sections in 2 rows: (progression, paris) then (métiers, écoles)", async () => {
     fetchMesParisMock.mockResolvedValue([makeSchool()]);
 
     render(await AccueilPage());
@@ -82,8 +82,9 @@ describe("AccueilPage", () => {
     const headings = screen.getAllByRole("heading", { level: 2 });
     expect(headings.map((h) => h.textContent)).toEqual([
       "Ta progression",
-      "Tes métiers",
       "Tes paris",
+      "Tes métiers",
+      "Tes écoles",
     ]);
     expect(screen.getByTestId("progression-module")).toBeInTheDocument();
   });
@@ -100,7 +101,7 @@ describe("AccueilPage", () => {
     expect(screen.queryByTestId("accueil-metiers-list")).not.toBeInTheDocument();
   });
 
-  it("Tes paris always shows a link to the full schools catalog, regardless of favorites", async () => {
+  it("Tes écoles always shows a link to the full schools catalog", async () => {
     fetchMesParisMock.mockResolvedValue([]);
 
     render(await AccueilPage());
