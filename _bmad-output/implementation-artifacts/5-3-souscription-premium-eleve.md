@@ -1,7 +1,7 @@
 # Story 5.3: Souscription premium par l'élève
 
 **Epic:** 5 — Premium B2C & Biface Early Outreach
-**Status:** ready-for-dev
+**Status:** done
 **Sprint:** 9 (Premium foundations)
 **Story Key:** `5-3-souscription-premium-eleve`
 **Estimation:** M
@@ -62,8 +62,6 @@
 - [Source: apps/api/apps/family/services/emails.py] — email pattern to mirror
 - [Source: apps/web/src/components/ui/consent-dialog.tsx] — reuse as-is
 
-**Status:** review
-
 ## Dev Agent Record
 ### Agent Model Used
 claude-fable-5
@@ -85,3 +83,4 @@ claude-fable-5
 |------|--------|
 | 2026-09-02 | Story 5.3 drafted. |
 | 2026-09-02 | Story 5.3 implemented — checkout entry page, success page, cancel-at-period-end (distinct provider method + field + sync), settings abonnement page with ConsentDialog, confirmation email. 14 new tests. Status → review. |
+| 2026-09-05 | Story closed out (session live) — code was already merged to `main` (frontmatter status was stale) but had zero frontend test coverage on the 3 pages/2 components. Verified backend: 51/51 tests on real Postgres (was only run on SQLite before), `ruff`/`assert_rbac_declared` clean. Added 11 frontend tests (`premium/page.test.tsx`, `parametres/abonnement/page.test.tsx`, `premium-checkout-button.test.tsx`, `cancel-subscription-button.test.tsx`) — caught nothing broken in the components themselves, but hit a `findByRole("alert")` flakiness in the test harness (jsdom/RTL quirk, already known and avoided elsewhere via `findByText`, see `revoke-access-button.test.tsx`'s 5xx case — same fix applied). Deferred finding logged in `deferred-work.md`: `text-text-error` is used across ~10 components repo-wide (including this story's own 2) but the Tailwind token was never defined — cosmetic, out of scope to fix here. 772 frontend tests passed (12 pre-existing unrelated failures), smoke test Docker (`/premium`, `/parametres/abonnement` → 200). Status → `done`. |
