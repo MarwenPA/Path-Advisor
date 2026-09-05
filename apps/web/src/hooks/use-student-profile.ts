@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { apiFetch, readCsrfCookie } from "@/lib/api/client";
+
 export type BulletinsStatus = "pending" | "postponed" | "partial" | "completed";
 
 export interface StudentProfile {
@@ -21,9 +23,16 @@ export interface StudentProfile {
 const PROFILE_QUERY_KEY = ["student-profile"] as const;
 
 async function fetchStudentProfile(): Promise<StudentProfile> {
-  const res = await fetch("/api/v1/students/me/profile");
-  if (!res.ok) throw new Error("Failed to fetch student profile");
-  return res.json();
+  // Code-review fix (2026-09): this used to be a bare `fetch("/api/v1/...")`
+  // — a relative path from a Client Component resolves against the Next.js
+  // dev server (localhost:3000), which has no such route, not the Django
+  // API (localhost:8000). Every request 404'd against Next itself and
+  // `/profile` was stuck on "Chargement…" forever (the page only checks
+  // `isLoading || !profile`, never the query's error state). `apiFetch`
+  // is the one place in the codebase that knows the real API base URL
+  // (`NEXT_PUBLIC_API_URL`) and forwards credentials — same rule every
+  // other API module in `lib/api/*` already follows (see client.ts docstring).
+  return apiFetch<StudentProfile>("/api/v1/students/me/profile");
 }
 
 export function useStudentProfile() {
@@ -33,10 +42,13 @@ export function useStudentProfile() {
   });
 }
 
-async function postPostpone(): Promise<Pick<StudentProfile, "bulletins_status" | "bulletins_postponed_at">> {
-  const res = await fetch("/api/v1/students/me/bulletins/postpone", { method: "POST" });
-  if (!res.ok) throw new Error("Failed to postpone bulletins");
-  return res.json();
+async function postPostpone(): Promise<
+  Pick<StudentProfile, "bulletins_status" | "bulletins_postponed_at">
+> {
+  return apiFetch("/api/v1/students/me/bulletins/postpone", {
+    method: "POST",
+    csrfToken: readCsrfCookie() ?? undefined,
+  });
 }
 
 export function usePostponeBulletins() {
@@ -49,10 +61,13 @@ export function usePostponeBulletins() {
   });
 }
 
-async function postBannerDismiss(): Promise<Pick<StudentProfile, "bulletins_postponed_banner_dismissed_until">> {
-  const res = await fetch("/api/v1/students/me/bulletins/banner/dismiss", { method: "POST" });
-  if (!res.ok) throw new Error("Failed to dismiss banner");
-  return res.json();
+async function postBannerDismiss(): Promise<
+  Pick<StudentProfile, "bulletins_postponed_banner_dismissed_until">
+> {
+  return apiFetch("/api/v1/students/me/bulletins/banner/dismiss", {
+    method: "POST",
+    csrfToken: readCsrfCookie() ?? undefined,
+  });
 }
 
 export function useDismissBulletinsBanner() {
