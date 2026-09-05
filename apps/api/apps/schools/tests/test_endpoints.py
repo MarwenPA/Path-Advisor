@@ -15,32 +15,42 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole, UserStatus
+from apps.core.rls import bypass_rls
 from apps.schools.models import Formation, School
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+#
+# Code-review fix (2026-09) — this file isn't `postgresql_only` (it runs on
+# the SQLite fast lane by default) but IS also run against real Postgres in
+# CI's RLS-parity job; its fixtures were never wrapped in `bypass_rls()` —
+# `User.objects.create_user()` writes to the RLS-protected `users` table
+# with no GUC set at fixture time. Same fix already applied to
+# `apps/professions/tests/test_endpoints.py`.
 
 
 @pytest.fixture
 def student_user(db):
-    return User.objects.create_user(
-        email="eleve@test.local",
-        password="Strong1!pass",
-        role=UserRole.STUDENT,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    with bypass_rls(reason="test_setup.create_schools_user"):
+        return User.objects.create_user(
+            email="eleve@test.local",
+            password="Strong1!pass",
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 @pytest.fixture
 def admin_user(db):
-    return User.objects.create_user(
-        email="admin@test.local",
-        password="Strong1!pass",
-        role=UserRole.PATH_ADMIN,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-        is_superuser=True,
-    )
+    with bypass_rls(reason="test_setup.create_schools_user"):
+        return User.objects.create_user(
+            email="admin@test.local",
+            password="Strong1!pass",
+            role=UserRole.PATH_ADMIN,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+            is_superuser=True,
+        )
 
 
 @pytest.fixture
@@ -213,6 +223,35 @@ class TestAdminFormationList:
         url = reverse("schools:admin-formation-list")
         response = student_client.get(url)
         assert response.status_code == 403
+
+
+# ── Public school catalog (list) endpoint ─────────────────────────────────────
+
+
+class TestPublicSchoolList:
+    @pytest.mark.django_db
+    def test_student_can_access_public_list(self, student_client, school):
+        url = reverse("schools:school-list")
+        response = student_client.get(url)
+        assert response.status_code == 200
+        assert response.data["results"][0]["slug"] == school.slug
+
+    @pytest.mark.django_db
+    def test_public_list_excludes_detail_only_fields(self, student_client, school):
+        """Catalog rows must NOT carry formations/admission_stat (detail-only,
+        N+1/user-specific — see SchoolCatalogSerializer docstring)."""
+        url = reverse("schools:school-list")
+        response = student_client.get(url)
+        row = response.data["results"][0]
+        assert "formations" not in row
+        assert "admission_stat" not in row
+
+    @pytest.mark.django_db
+    def test_unauthenticated_cannot_access_public_list(self, school):
+        client = APIClient()
+        url = reverse("schools:school-list")
+        response = client.get(url)
+        assert response.status_code in (401, 403)
 
 
 # ── Public school detail endpoint ─────────────────────────────────────────────

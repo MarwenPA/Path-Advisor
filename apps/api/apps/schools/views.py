@@ -37,6 +37,7 @@ from apps.schools.serializers import (
     FormationAdminSerializer,
     ParcoursSerializer,
     SchoolAdminSerializer,
+    SchoolCatalogSerializer,
     SchoolDetailSerializer,
 )
 from apps.schools.services import AdmissionPredictionService
@@ -63,6 +64,19 @@ class AdminFormationViewSet(ReadOnlyModelViewSet):
     permission_classes: ClassVar = [IsPathAdmin]
     queryset = Formation.objects.select_related("school").order_by("name")
     serializer_class = FormationAdminSerializer
+    pagination_class = _SchoolPagination
+
+
+class SchoolListView(ListAPIView):
+    """GET /api/v1/schools/ — full catalog, paginated (mirrors Story 3.13's
+    profession catalog). `/accueil`'s "Tes paris" module links here so a
+    student/parent can browse the whole schools referential, not just their
+    own favorites (`/mes-paris`, unchanged).
+    """
+
+    permission_classes: ClassVar = [IsAuthenticated]
+    queryset = School.objects.order_by("name")
+    serializer_class = SchoolCatalogSerializer
     pagination_class = _SchoolPagination
 
 

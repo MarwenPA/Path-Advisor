@@ -11,6 +11,7 @@ from apps.schools.views import (
     ParcoursListView,
     SchoolDetailView,
     SchoolFavoriteView,
+    SchoolListView,
 )
 
 app_name = "schools"
@@ -21,6 +22,7 @@ admin_router.register("formations", AdminFormationViewSet, basename="admin-forma
 
 urlpatterns = [
     path("admin/", include(admin_router.urls)),
+    path("schools/", SchoolListView.as_view(), name="school-list"),
     path("schools/<slug:slug>/", SchoolDetailView.as_view(), name="school-detail"),
     path(
         "schools/<slug:slug>/admission-stat/",

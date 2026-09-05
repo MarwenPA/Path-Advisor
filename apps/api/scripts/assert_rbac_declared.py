@@ -141,6 +141,7 @@ _ISAUTHENTICATED_ONLY_WHITELIST: set[str] = {
     "me-profile-history-snapshot",
     "me-bulletins-manual",
     "me-bulletins-manual-detail",
+    "school-list",
     "school-detail",
     "school-admission-stat",
     "school-favorite",
