@@ -12,12 +12,15 @@ import hashlib
 import secrets
 
 from django.contrib.auth.password_validation import validate_password
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.accounts.models import User, UserRole, UserStatus
 from apps.audit.decorators import audit_action
-from apps.establishments.exceptions import InvitationNotFoundOrExpired
+from apps.establishments.exceptions import (
+    CounselorEmailAlreadyRegistered,
+    InvitationNotFoundOrExpired,
+)
 from apps.establishments.models import CounselorInvitation, CounselorInvitationStatus, Establishment
 
 _TOKEN_BYTES = 32
@@ -90,23 +93,38 @@ def accept_invitation(*, invitation: CounselorInvitation, password: str) -> User
 
     validate_password(password)
 
-    with transaction.atomic():
-        # Re-check under lock to avoid a double-accept race creating two accounts.
-        locked = CounselorInvitation.objects.select_for_update().get(pk=invitation.pk)
-        if locked.status != CounselorInvitationStatus.PENDING or locked.is_expired:
-            raise InvitationNotFoundOrExpired()
+    # Code-review fix (2026-09, closing out Story 6.5) — fast-path check
+    # before the atomic block: same person invited twice, or the email
+    # already used by a student/parent account. Doesn't fully close the
+    # TOCTOU race (two concurrent accepts of the SAME invitation) — the
+    # `IntegrityError` catch below is the actual race-safe guard.
+    if User.objects.filter(email__iexact=invitation.email).exists():
+        raise CounselorEmailAlreadyRegistered()
 
-        counselor = User.objects.create_user(
-            email=locked.email,
-            password=password,
-            role=UserRole.COUNSELOR,
-            status=UserStatus.ACTIVE,
-            email_verified_at=now,
-            tenant_id=locked.establishment_id,
-        )
+    try:
+        with transaction.atomic():
+            # Re-check under lock to avoid a double-accept race creating two accounts.
+            locked = CounselorInvitation.objects.select_for_update().get(pk=invitation.pk)
+            if locked.status != CounselorInvitationStatus.PENDING or locked.is_expired:
+                raise InvitationNotFoundOrExpired()
 
-        locked.status = CounselorInvitationStatus.ACCEPTED
-        locked.accepted_at = now
-        locked.save(update_fields=["status", "accepted_at"])
+            counselor = User.objects.create_user(
+                email=locked.email,
+                password=password,
+                role=UserRole.COUNSELOR,
+                status=UserStatus.ACTIVE,
+                email_verified_at=now,
+                tenant_id=locked.establishment_id,
+            )
+
+            locked.status = CounselorInvitationStatus.ACCEPTED
+            locked.accepted_at = now
+            locked.save(update_fields=["status", "accepted_at"])
+    except IntegrityError as exc:
+        # Code-review fix (2026-09): the pre-check above is TOCTOU-racy —
+        # two concurrent accepts of invitations sharing the same email (or
+        # a signup landing on the same email mid-flight) both pass it. The
+        # loser must resolve to the same typed 409, not an opaque 500.
+        raise CounselorEmailAlreadyRegistered() from exc
 
     return counselor

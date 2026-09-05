@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { StudentInvitationForm } from "@/components/features/establishments/student-invitation-form";
+import { fetchStudentInvitationStatus } from "@/lib/api/establishments";
 import type { StudentInvitationPublicStatus } from "@/lib/api/establishments";
 
 export const metadata: Metadata = {
@@ -10,15 +11,15 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+// Code-review fix (2026-09-05, closing out Story 6.5) — same wrong-host bug
+// as the counselor invitation page: this used to read the never-set
+// `process.env.API_BASE_URL` and silently fall back to
+// `http://localhost:8000`, unreachable from inside the `web` container.
+// Routed through `fetchStudentInvitationStatus` (`apiFetch`, correct host
+// resolution for both server and browser).
 async function fetchStatus(token: string): Promise<StudentInvitationPublicStatus | null> {
-  const apiBase = process.env.API_BASE_URL ?? "http://localhost:8000";
   try {
-    const res = await fetch(`${apiBase}/api/v1/students/invitation/${encodeURIComponent(token)}/`, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as StudentInvitationPublicStatus;
+    return await fetchStudentInvitationStatus(token);
   } catch {
     return null;
   }
