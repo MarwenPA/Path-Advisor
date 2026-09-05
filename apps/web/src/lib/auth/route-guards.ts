@@ -39,6 +39,12 @@ export const ROUTE_ALLOWED_ROLES: Record<string, ReadonlyArray<UserRole>> = {
   // outbound link targets one of these) the new student landing page.
   "/mes-metiers": ["student"],
   "/mes-paris": ["student"],
+  // Story 1.15 follow-up (2026-09) — `/profile` (+ `/profile/history`) lived
+  // in the `(auth)` route group with NO layout/guard at all until moved
+  // under `(authenticated)/` so it gets the sidebar/mobile nav + this guard.
+  // Student-only: it's the passions/niveau/bulletins editor, backed by
+  // `apps/students` endpoints that are student-scoped.
+  "/profile": ["student"],
   "/metiers": ["student", "parent"],
   "/schools": ["student", "parent"],
   "/premium": ["student", "parent"],

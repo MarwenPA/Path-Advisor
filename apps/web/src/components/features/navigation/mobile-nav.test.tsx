@@ -27,6 +27,7 @@ describe("MobileNav", () => {
     expect(screen.getByRole("link", { name: /mes métiers/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /mes paris/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /premium/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mon profil/i })).toBeInTheDocument();
     // No page-title header for the tab-bar shape.
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
   });

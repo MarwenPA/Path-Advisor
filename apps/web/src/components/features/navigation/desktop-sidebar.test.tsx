@@ -26,6 +26,7 @@ describe("DesktopSidebar", () => {
     expect(screen.getByRole("link", { name: /mes métiers/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /mes paris/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /premium/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mon profil/i })).toBeInTheDocument();
   });
 
   it("applies the active-item styling classes, not just aria-current", () => {

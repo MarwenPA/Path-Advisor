@@ -16,7 +16,7 @@
  * Every new page that ships adds its own entry here — never the reverse.
  */
 
-import { Briefcase, GraduationCap, Home, Sparkles, type LucideIcon } from "lucide-react";
+import { Briefcase, GraduationCap, Home, Sparkles, User, type LucideIcon } from "lucide-react";
 
 import type { UserRole } from "@/lib/api/auth";
 
@@ -34,6 +34,10 @@ export const NAV_ITEMS: Record<UserRole, NavItem[]> = {
     { href: "/mes-metiers", label: "Mes métiers", icon: Briefcase },
     { href: "/mes-paris", label: "Mes paris", icon: GraduationCap },
     { href: "/premium", label: "Premium", icon: Sparkles },
+    // Story 1.15 follow-up (2026-09) — `/profile` just moved under
+    // `(authenticated)/`; this is the 5th and last item the "5 onglets max"
+    // rule (UX design doc, Navigation Patterns) allows on the mobile tab bar.
+    { href: "/profile", label: "Mon profil", icon: User },
   ],
   parent: [{ href: "/parent", label: "Tableau de bord", icon: Home }],
   // `/cohorte` is already declared in `ROUTE_ALLOWED_ROLES` (guard-ready) but
