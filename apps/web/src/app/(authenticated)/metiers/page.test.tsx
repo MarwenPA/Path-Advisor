@@ -73,6 +73,25 @@ describe("MetiersCataloguePage", () => {
     expect(screen.getByText("Infirmier·ère SSR")).toBeInTheDocument();
   });
 
+  it("renders a sector icon badge next to each card, falling back for an unknown sector", async () => {
+    fetchProfessionsMock.mockResolvedValue({
+      count: 2,
+      next: null,
+      previous: null,
+      results: [
+        makeCatalogItem({ sector: "santé" }),
+        makeCatalogItem({ id: "prof_02", slug: "autre-metier", sector: "secteur-inconnu" }),
+      ],
+    });
+
+    const { container } = render(await MetiersCataloguePage());
+
+    // One badge per card — svg icons are aria-hidden, so assert by count
+    // of the badge wrapper rather than an accessible name.
+    const badges = container.querySelectorAll('[aria-hidden="true"] > svg');
+    expect(badges).toHaveLength(2);
+  });
+
   it("shows the total count of professions", async () => {
     fetchProfessionsMock.mockResolvedValue({
       count: 2,

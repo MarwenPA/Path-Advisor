@@ -1,19 +1,17 @@
 /**
  * `/accueil` — student home dashboard, Story 8.8.
  *
- * Server Component composing 3 already-shipped bricks:
- *   1. "Ta progression" — `ProfileMaturityIndicator` variant="dashboard-card"
- *      (client, via `ProgressionModule` — TanStack Query owns its own
- *      loading/error state, see §4.2).
- *   2. "Tes métiers" — a single link to the full catalog (Story 3.13
- *      follow-up, 2026-09-05: dropped the score-card examples entirely per
- *      explicit request — "juste un bouton ... et pas d'exemple". No
- *      `fetchRecommendations()` call needed anymore for this module.
- *   3. "Tes paris" — top-3 `fetchMesParis()` as `FicheEcole` variant="card",
- *      plus (2026-09-05, "rajoute un bloc avec mes écoles et la liste des
- *      écoles") a persistent link to the full schools catalog (`/schools`),
- *      mirroring "Tes métiers"'s catalog link — always visible, not
- *      conditional on having favorites.
+ * Layout restructured 2026-09-05 (explicit request — "l'accueil est pas
+ * terrible, Tes paris devrait être dans une section avec Ton profil, et
+ * Tes métiers/Tes écoles dans deux sections harmonieuses") into 2 rows:
+ *   Row 1 — "personal" pair: `ProgressionModule` ("Ta progression") +
+ *     `MesParisModule` (favorited schools, `fetchMesParis()`).
+ *   Row 2 — "explore the referential" pair, harmonised (same Card shape,
+ *     same copy pattern — short description + single primary link, no
+ *     data fetch needed): `MetiersModule` (→ `/metiers`) + `EcolesModule`
+ *     (→ `/schools`). The schools-catalog link used to live bolted onto
+ *     "Tes paris" — split out into its own module for symmetry with
+ *     "Tes métiers".
  *
  * `Promise.allSettled` (never `Promise.all`, see §4.4) fetches mes-paris in
  * parallel with anything else this page ever needs so one failing endpoint
@@ -37,29 +35,65 @@ function topMesParis(schools: unknown): School[] {
   return (schools as School[]).slice(0, MAX_ITEMS);
 }
 
-function MetiersModule() {
+/** Shared shape for the two "explore the referential" cards (Row 2) — kept
+ * as one component so `MetiersModule`/`EcolesModule` can never drift apart
+ * visually (harmonized per explicit request). */
+function ExploreModule({
+  headingId,
+  title,
+  description,
+  href,
+  linkLabel,
+}: {
+  headingId: string;
+  title: string;
+  description: string;
+  href: string;
+  linkLabel: string;
+}) {
   return (
-    <section aria-labelledby="accueil-metiers-title" className="h-full">
+    <section aria-labelledby={headingId} className="h-full">
       <Card className="flex h-full flex-col">
         <CardHeader>
-          <h2 id="accueil-metiers-title" className="text-xl font-semibold text-foreground">
-            Tes métiers
+          <h2 id={headingId} className="text-xl font-semibold text-foreground">
+            {title}
           </h2>
         </CardHeader>
         <CardContent className="flex flex-1 flex-col justify-between gap-4">
-          <p className="text-muted-foreground">
-            Découvre tous les métiers du référentiel, avec description, quotidien type et
-            perspectives d&apos;évolution.
-          </p>
+          <p className="text-muted-foreground">{description}</p>
           <Link
-            href="/metiers"
+            href={href}
             className="inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
-            Voir la liste des métiers
+            {linkLabel}
           </Link>
         </CardContent>
       </Card>
     </section>
+  );
+}
+
+function MetiersModule() {
+  return (
+    <ExploreModule
+      headingId="accueil-metiers-title"
+      title="Tes métiers"
+      description="Découvre tous les métiers du référentiel, avec description, quotidien type et perspectives d'évolution."
+      href="/metiers"
+      linkLabel="Voir la liste des métiers"
+    />
+  );
+}
+
+function EcolesModule() {
+  return (
+    <ExploreModule
+      headingId="accueil-ecoles-title"
+      title="Tes écoles"
+      description="Explore tous les établissements du référentiel : type, ville, sélectivité."
+      href="/schools"
+      linkLabel="Voir la liste des établissements"
+    />
   );
 }
 
@@ -103,15 +137,6 @@ function MesParisModule({ schools }: { schools: School[] }) {
               </Link>
             </>
           )}
-          <p className="mt-4 text-muted-foreground">
-            Explore tous les établissements du référentiel : type, ville, sélectivité.
-          </p>
-          <Link
-            href="/schools"
-            className="mt-2 inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            Voir la liste des établissements
-          </Link>
         </CardContent>
       </Card>
     </section>
@@ -129,11 +154,14 @@ export default async function AccueilPage() {
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
       <h1 className="text-2xl font-bold">Accueil</h1>
 
-      <ProgressionModule />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ProgressionModule />
+        <MesParisModule schools={schools} />
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <MetiersModule />
-        <MesParisModule schools={schools} />
+        <EcolesModule />
       </div>
     </main>
   );
