@@ -16,7 +16,6 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,13 +29,38 @@ import { SkipDialog } from "./skip-dialog-step2";
 import { ConsentDialog } from "@/components/ui/consent-dialog";
 import { useOnboardingStep2 } from "@/hooks/use-onboarding-step-2";
 import { expectedSpecCount, type NiveauId } from "@/lib/onboarding/levels";
+import { fetchCurrentUser } from "@/lib/api/auth";
 
 type ViewState = "editing" | "recap";
 
 export function OnboardingStep2() {
   const router = useRouter();
-  const { data: session } = useSession();
-  const userId = session?.user?.id;
+  // Code-review fix (2026-09): this used to import `useSession` from
+  // `next-auth/react` — a package this app has NEVER depended on (it uses
+  // Django session-cookie auth via `apiFetch`/`fetchCurrentUser`, not
+  // NextAuth). The import couldn't resolve, so `/onboarding/step-2` 500'd
+  // outright. Same fetch-current-user-on-mount pattern already used by
+  // `limited-mode-banner.tsx` and `accueil/ProgressionModule.tsx` (no
+  // shared hook exists yet for this in the repo — kept consistent with
+  // those rather than introducing one here).
+  const [userId, setUserId] = React.useState<string | null | undefined>(undefined);
+  React.useEffect(() => {
+    let cancelled = false;
+    fetchCurrentUser()
+      .then((user) => {
+        if (!cancelled) setUserId(user.id);
+      })
+      .catch(() => {
+        // The (authenticated) layout already guarantees a logged-in user
+        // reaches this page — a failure here just means `userId` stays
+        // undefined and `useOnboardingStep2` stays disabled (its `enabled:
+        // !!userId` guard), same degrade-safe behavior as before.
+        if (!cancelled) setUserId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const {
     snapshot,
@@ -221,10 +245,7 @@ export function OnboardingStep2() {
 
             {/* Branch — rendered inline, no page change */}
             {branch === "college" && (
-              <Branche3eme
-                value={draft.intended_track}
-                onChange={setIntendedTrack}
-              />
+              <Branche3eme value={draft.intended_track} onChange={setIntendedTrack} />
             )}
 
             {branch === "lycee" && draft.level && (
@@ -265,9 +286,7 @@ export function OnboardingStep2() {
               >
                 Continuer
               </Button>
-              {continueHelper && (
-                <p className="text-body-sm text-text-muted">{continueHelper}</p>
-              )}
+              {continueHelper && <p className="text-body-sm text-text-muted">{continueHelper}</p>}
             </>
           ) : (
             <>
@@ -280,7 +299,9 @@ export function OnboardingStep2() {
                 {isSubmitting ? "Enregistrement…" : "Continuer vers les bulletins"}
               </Button>
               {commitError && (
-                <p role="alert" className="text-body-sm text-danger">{commitError}</p>
+                <p role="alert" className="text-body-sm text-danger">
+                  {commitError}
+                </p>
               )}
             </>
           )}
