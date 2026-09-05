@@ -35,17 +35,21 @@ function topMesParis(schools: unknown): School[] {
 
 function MetiersModule() {
   return (
-    <section aria-labelledby="accueil-metiers-title">
-      <Card>
+    <section aria-labelledby="accueil-metiers-title" className="h-full">
+      <Card className="flex h-full flex-col">
         <CardHeader>
           <h2 id="accueil-metiers-title" className="text-xl font-semibold text-foreground">
             Tes métiers
           </h2>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-1 flex-col justify-between gap-4">
+          <p className="text-muted-foreground">
+            Découvre tous les métiers du référentiel, avec description, quotidien type et
+            perspectives d&apos;évolution.
+          </p>
           <Link
             href="/metiers"
-            className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Voir la liste des métiers
           </Link>
@@ -57,14 +61,14 @@ function MetiersModule() {
 
 function MesParisModule({ schools }: { schools: School[] }) {
   return (
-    <section aria-labelledby="accueil-mesparis-title">
-      <Card>
+    <section aria-labelledby="accueil-mesparis-title" className="h-full">
+      <Card className="flex h-full flex-col">
         <CardHeader>
           <h2 id="accueil-mesparis-title" className="text-xl font-semibold text-foreground">
             Tes paris
           </h2>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1">
           {schools.length === 0 ? (
             <div className="space-y-4">
               <p className="text-muted-foreground">
