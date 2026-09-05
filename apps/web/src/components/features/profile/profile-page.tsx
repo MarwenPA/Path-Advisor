@@ -5,7 +5,11 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ProfileMaturityIndicator } from "@/components/features/profile/profile-maturity-indicator";
+import {
+  ProfileMaturityIndicator,
+  type MaturityNextAction,
+} from "@/components/features/profile/profile-maturity-indicator";
+import { useMaturityLevel } from "@/hooks/use-maturity-level";
 import { useStudentProfile } from "@/hooks/use-student-profile";
 
 import { EditBulletinsSheet } from "./edit-bulletins-sheet";
@@ -23,14 +27,23 @@ const LEVEL_LABELS: Record<string, string> = {
   postbac: "Post-bac",
 };
 
+/** Which edit sheet each `next_actions[].icon` should open when clicked. */
+const ICON_TO_SHEET: Record<MaturityNextAction["icon"], OpenSheet> = {
+  bulletins: "bulletins",
+  level: "level",
+  specialites: "level",
+  passions: "passions",
+};
+
 export function ProfilePage() {
   const { data: profile, isLoading } = useStudentProfile();
+  const { data: maturity } = useMaturityLevel(profile?.id);
   const [openSheet, setOpenSheet] = useState<OpenSheet>(null);
 
   if (isLoading || !profile) {
     return (
       <main aria-labelledby="profile-title" className="p-4">
-        <h1 id="profile-title" className="text-2xl font-bold mb-6">
+        <h1 id="profile-title" className="mb-6 text-2xl font-bold">
           Mon profil
         </h1>
         <p className="text-muted-foreground">Chargement…</p>
@@ -40,25 +53,43 @@ export function ProfilePage() {
 
   const passionCount = profile.passions?.length ?? 0;
   const valeurCount = profile.valeurs?.length ?? 0;
-  const levelLabel = profile.level ? (LEVEL_LABELS[profile.level] ?? profile.level) : "Non renseigné";
+  const levelLabel = profile.level
+    ? (LEVEL_LABELS[profile.level] ?? profile.level)
+    : "Non renseigné";
 
   function handleSaved() {
     setOpenSheet(null);
   }
 
   return (
-    <main aria-labelledby="profile-title" className="p-4 max-w-2xl mx-auto">
-      <h1 id="profile-title" className="text-2xl font-bold mb-6">
+    <main aria-labelledby="profile-title" className="mx-auto max-w-2xl p-4">
+      <h1 id="profile-title" className="mb-6 text-2xl font-bold">
         Mon profil
       </h1>
 
-      <ProfileMaturityIndicator />
+      {/* Code-review fix (2026-09): this was called with zero props while
+          `level`/`nextActions` are required — crashed the whole page
+          (`nextActions is not iterable`) the moment `/profile` first got
+          past its (also broken, see `use-student-profile.ts`) loading
+          state. Now sourced from `useMaturityLevel` like `ProgressionModule`
+          on `/accueil`, and skipped entirely while that data isn't loaded
+          yet — never rendered with missing props. */}
+      {maturity ? (
+        <ProfileMaturityIndicator
+          variant="profile-header"
+          level={maturity.level}
+          nextActions={maturity.next_actions.map((action) => ({
+            ...action,
+            onClick: () => setOpenSheet(ICON_TO_SHEET[action.icon]),
+          }))}
+        />
+      ) : null}
 
-      <div className="space-y-4 mt-6">
+      <div className="mt-6 space-y-4">
         {/* Section 1 — Passions & valeurs */}
         <section aria-labelledby="section-passions-title">
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <h2 id="section-passions-title" className="text-lg font-semibold">
                 Passions, intérêts et valeurs
               </h2>
@@ -80,7 +111,7 @@ export function ProfilePage() {
         {/* Section 2 — Niveau scolaire */}
         <section aria-labelledby="section-level-title">
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <h2 id="section-level-title" className="text-lg font-semibold">
                 Niveau scolaire, filière et spécialités
               </h2>
@@ -95,9 +126,7 @@ export function ProfilePage() {
             </div>
             <p className="text-sm text-muted-foreground">{levelLabel}</p>
             {!!profile.specialites?.length && (
-              <p className="text-sm text-muted-foreground">
-                {profile.specialites.join(" · ")}
-              </p>
+              <p className="text-sm text-muted-foreground">{profile.specialites.join(" · ")}</p>
             )}
           </Card>
         </section>
@@ -105,7 +134,7 @@ export function ProfilePage() {
         {/* Section 3 — Bulletins */}
         <section aria-labelledby="section-bulletins-title">
           <Card className="p-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="mb-2 flex items-center justify-between">
               <h2 id="section-bulletins-title" className="text-lg font-semibold">
                 Bulletins
               </h2>
@@ -118,9 +147,7 @@ export function ProfilePage() {
                 Modifier
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground capitalize">
-              {profile.bulletins_status}
-            </p>
+            <p className="text-sm capitalize text-muted-foreground">{profile.bulletins_status}</p>
           </Card>
         </section>
       </div>

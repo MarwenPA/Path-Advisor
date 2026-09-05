@@ -29,6 +29,18 @@ vi.mock("@/components/features/profile/profile-maturity-indicator", () => ({
   ProfileMaturityIndicator: () => <div data-testid="maturity-indicator" />,
 }));
 
+vi.mock("@/hooks/use-maturity-level", () => ({
+  useMaturityLevel: () => ({
+    data: {
+      level: "enriched",
+      next_actions: [],
+      computed_at: "2026-05-01T10:00:00Z",
+    },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
