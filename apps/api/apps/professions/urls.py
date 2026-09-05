@@ -8,6 +8,7 @@ from apps.professions.views import (
     ProfessionReportAdminListView,
     ProfessionReportCreateView,
     PublicProfessionDetailView,
+    PublicProfessionListView,
 )
 
 app_name = "professions"
@@ -24,6 +25,7 @@ urlpatterns = [
         "admin/professions/<slug:slug>/", AdminProfessionDetailView.as_view(), name="admin-detail"
     ),
     # Student-facing public endpoints
+    path("professions/", PublicProfessionListView.as_view(), name="public-list"),
     path("professions/<slug:slug>/", PublicProfessionDetailView.as_view(), name="public-detail"),
     path(
         "professions/<slug:slug>/reports/",

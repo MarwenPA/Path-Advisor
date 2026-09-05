@@ -180,6 +180,18 @@ describe("AccueilPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("Story 3.13 — shows a link to the full catalog when there are no recommendations", async () => {
+    fetchRecommendationsMock.mockResolvedValue(makeRecoResponse([]));
+    fetchMesParisMock.mockResolvedValue([]);
+
+    render(await AccueilPage());
+
+    expect(screen.getByRole("link", { name: /voir la liste des métiers/i })).toHaveAttribute(
+      "href",
+      "/metiers",
+    );
+  });
+
   it("shows the mes-paris empty state (reusing /mes-paris page copy) when there are no favorites", async () => {
     fetchRecommendationsMock.mockResolvedValue(makeRecoResponse([makeProfession()]));
     fetchMesParisMock.mockResolvedValue([]);
