@@ -854,3 +854,8 @@ _(à remplir)_
 - [x] [Review][Decision] #27 LOW — level_ref_version now server-stamped from CURRENT_REF on commit
 - [x] [Review][Decision] #28 LOW — AC10: aria-live announcer now includes branch option count (BRANCH_OPTION_COUNT map)
 - [x] [Review][Decision] #29 LOW — AC4: bac pro single-mandatory spec kept as capped chip (chips UX equivalent, noted in story)
+
+### Post-review bug fixes (2026-09-05) — session live
+
+- **Résout #25 ci-dessus** ("LevelForm refactor deferred") : `/profile`'s `EditLevelSheet` (Story 2.6) était un stub read-only qui ne sauvegardait rien. Rebranché sur les mêmes composants contrôlés que `/onboarding/step-2` (`NiveauPicker`/`Branche3eme`/`BrancheLycee`/`BranchePostbac`) et le même endpoint `patchOnboardingStep2({..., commit: true})` — une seule ligne de données pour éditer après coup et pour l'onboarding initial.
+- **Bug bloquant trouvé et corrigé** : `onboarding-step-2.tsx` importait `useSession` depuis `next-auth/react` — un package qui n'a **jamais** été une dépendance du projet (auth par cookie de session Django, `fetchCurrentUser`/`apiFetch`, comme partout ailleurs). Import irrésolvable → `/onboarding/step-2` plantait avec `Module not found` dès qu'on essayait d'avancer depuis step-1. Remplacé par le pattern `fetchCurrentUser()` + `useEffect`/`useState` déjà utilisé par `limited-mode-banner.tsx`/`ProgressionModule`.
