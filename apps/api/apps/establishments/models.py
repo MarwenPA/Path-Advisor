@@ -119,6 +119,17 @@ class Cohort(TenantScopedModel):
         indexes = [
             models.Index(fields=["establishment", "school_year"]),
         ]
+        constraints = [
+            # Code-review fix (2026-09, closing out Story 6.5) — nothing
+            # stopped a double-submit (or two admins) from creating two
+            # identically-named cohorts for the same establishment/year;
+            # CSV imports and counselor invitations would then silently
+            # attach to whichever one the caller happened to reference.
+            models.UniqueConstraint(
+                fields=["establishment", "name", "school_year"],
+                name="unique_cohort_per_establishment_name_year",
+            ),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - debug helper
         return f"Cohort({self.id}, {self.name})"

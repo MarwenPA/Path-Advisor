@@ -70,6 +70,21 @@ def test_creates_cohort_with_tenant_id_from_establishment():
     assert cohort.establishment_id == establishment.id
 
 
+def test_duplicate_cohort_name_returns_409_not_500():
+    """Code-review fix (2026-09) — migration 0004's uniqueness constraint on
+    (establishment, name, school_year); used to be a raw IntegrityError."""
+    with bypass_rls(reason="test_setup.create_establishment"):
+        establishment = EstablishmentFactory()
+    client = _admin_client()
+    payload = {"name": "Terminale 2025-2026", "school_year": "2025-2026"}
+
+    first = client.post(_cohorts_url(establishment.id), payload, format="json")
+    assert first.status_code == 201, first.content
+
+    second = client.post(_cohorts_url(establishment.id), payload, format="json")
+    assert second.status_code == 409, second.content
+
+
 def test_unknown_establishment_returns_404():
     import uuid
 

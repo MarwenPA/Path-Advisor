@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CounselorInvitationForm } from "@/components/features/establishments/counselor-invitation-form";
+import { fetchCounselorInvitationStatus } from "@/lib/api/establishments";
 import type { CounselorInvitationPublicStatus } from "@/lib/api/establishments";
 
 export const metadata: Metadata = {
@@ -11,15 +12,24 @@ export const metadata: Metadata = {
 // Story 6.1 §T6 pattern — always render fresh, token state can change between clicks.
 export const dynamic = "force-dynamic";
 
+/**
+ * Code-review fix (2026-09-05, closing out Story 6.5): this used to be a
+ * bare `fetch()` reading `process.env.API_BASE_URL` — a variable that is
+ * never actually set anywhere (docker-compose sets `API_URL_SERVER` for
+ * server-side calls, `NEXT_PUBLIC_API_URL` for the browser — see
+ * `lib/api/client.ts`). It silently fell back to the hardcoded
+ * `http://localhost:8000`, which is unreachable from inside the `web`
+ * container in Docker (that's the container's own loopback, not the `api`
+ * service) — every visit to `/auth/invitation-conseillere/{token}` would
+ * `catch` the fetch failure and render "Ce lien n'est plus valide" even
+ * for a genuinely valid, pending invitation. Routed through the existing
+ * `fetchCounselorInvitationStatus` (uses `apiFetch`, which resolves the
+ * correct host for both server and browser contexts) instead of
+ * duplicating fetch logic with the wrong host.
+ */
 async function fetchStatus(token: string): Promise<CounselorInvitationPublicStatus | null> {
-  const apiBase = process.env.API_BASE_URL ?? "http://localhost:8000";
   try {
-    const res = await fetch(
-      `${apiBase}/api/v1/auth/counselor-invitation/${encodeURIComponent(token)}/`,
-      { cache: "no-store", headers: { Accept: "application/json" } },
-    );
-    if (!res.ok) return null;
-    return (await res.json()) as CounselorInvitationPublicStatus;
+    return await fetchCounselorInvitationStatus(token);
   } catch {
     return null;
   }

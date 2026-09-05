@@ -109,6 +109,20 @@ def test_accept_creates_counselor_account_locked_to_invitation_email():
     assert "sessionid" not in client.cookies or not client.session.get("_auth_user_id")
 
 
+def test_accept_email_already_registered_returns_409_not_500():
+    """Code-review fix (2026-09) — used to raise a raw IntegrityError -> 500."""
+    establishment = _establishment()
+    _uf(email="deja-inscrit@etablissement.test")
+    invitation = _invitation(establishment=establishment, email="deja-inscrit@etablissement.test")
+    client = APIClient()
+
+    response = client.post(
+        _accept_url(invitation.token), {"password": "Path-Advisor-2026!"}, format="json"
+    )
+
+    assert response.status_code == 409, response.content
+
+
 def test_accept_ignores_body_supplied_email_field():
     """§4.4 anti-pattern guard — no `email` field even accepted by the serializer,
     the account is created from `invitation.email` exclusively."""
