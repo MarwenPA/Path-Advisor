@@ -310,3 +310,8 @@ Pass 1 BMad 3-layer adversarial review. 4 H + 14 M flagged for patch in this PR.
 - `apps/web/src/app/page.test.tsx` mocke tout le module `next/navigation` au lieu de ne mocker que `redirect` — piège pour un futur usage de `useRouter`/`usePathname` dans ce fichier.
 - Pas de `robots`/`alternates.canonical` dans les métadonnées de la homepage — scope Story 7.4 (sitemap/robots).
 - Lien footer "Mentions légales & RGPD" potentiellement dupliqué à l'identique sur plusieurs pages sans différenciation pour lecteurs d'écran — pattern pré-existant dans l'app.
+
+## Deferred from: session live (2026-09-05) — demandes explicites de l'utilisateur pour "un autre temps"
+
+- **Liste/catalogue des établissements** (`/schools`) — même trou que le référentiel métiers avant la Story 3.13 : seul `/schools/[slug]` (fiche détail, Epic 4) existe, aucun endpoint de liste public côté `apps/schools`, aucune page `/schools/page.tsx` côté front. L'utilisateur a explicitement demandé de reporter ça "à un autre moment" en même temps qu'il demandait le catalogue métiers (Story 3.13) — non traité ici. Prochaine étape si repris : vérifier si `apps/schools` a déjà un modèle de données assez riche pour un catalogue (comme `Profession` l'était), sinon ça dépend des données Parcoursup open-data déjà utilisées par Epic 4.
+- **Scraping / extension du référentiel métiers au-delà des 52 curés** (Story 3.2) — Story 3.13 (catalogue) affiche les 52 métiers existants tels quels ; l'utilisateur a explicitement mentionné qu'une story séparée de scraping serait nécessaire pour aller au-delà. Pas encore créée.

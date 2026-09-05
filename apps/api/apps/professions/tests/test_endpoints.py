@@ -15,32 +15,42 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole, UserStatus
+from apps.core.rls import bypass_rls
 from apps.professions.models import Profession
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
+#
+# Code-review fix (2026-09) — this whole file is `postgresql_only` (runs
+# against real Postgres, never SQLite) but its own fixtures were never
+# wrapped in `bypass_rls()`: `User.objects.create_user()` writes to the
+# RLS-protected `users` table with no GUC set at fixture time (no request,
+# no actor) — denied outright by a real NOSUPERUSER/NOBYPASSRLS role.
+# Every test in this file errored at setup before this fix, proving nothing.
 
 
 @pytest.fixture
 def student_user(db):
-    return User.objects.create_user(
-        email="eleve@test.local",
-        password="Strong1!pass",
-        role=UserRole.STUDENT,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    with bypass_rls(reason="test_setup.create_professions_user"):
+        return User.objects.create_user(
+            email="eleve@test.local",
+            password="Strong1!pass",
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 @pytest.fixture
 def admin_user(db):
-    return User.objects.create_user(
-        email="admin@test.local",
-        password="Strong1!pass",
-        role=UserRole.PATH_ADMIN,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-        is_superuser=True,
-    )
+    with bypass_rls(reason="test_setup.create_professions_user"):
+        return User.objects.create_user(
+            email="admin@test.local",
+            password="Strong1!pass",
+            role=UserRole.PATH_ADMIN,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+            is_superuser=True,
+        )
 
 
 @pytest.fixture
@@ -163,6 +173,63 @@ class TestAdminProfessionDetail:
     def test_student_cannot_access_admin_detail(self, student_client, profession):
         url = reverse("professions:admin-detail", kwargs={"slug": profession.slug})
         response = student_client.get(url)
+        assert response.status_code == 403
+
+
+# ── Public student catalog (list) endpoint — Story 3.13 ─────────────────────
+
+
+class TestPublicProfessionList:
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_student_can_access_public_list(self, student_client, profession):
+        url = reverse("professions:public-list")
+        response = student_client.get(url)
+        assert response.status_code == 200
+        assert response.data["results"][0]["slug"] == profession.slug
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_public_list_excludes_heavy_detail_fields(self, student_client, profession):
+        """Story 3.13 §2 — catalog rows must NOT carry the detail-only fields
+        (payload weight for a list of 50+ cards)."""
+        url = reverse("professions:public-list")
+        response = student_client.get(url)
+        row = response.data["results"][0]
+        for field in ("daily_routine", "requirements_json", "prospects_text", "signals_json"):
+            assert field not in row
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_public_list_excludes_inactive_professions(self, student_client, profession):
+        Profession.objects.create(
+            slug="metier-inactif",
+            name="Métier inactif",
+            description="x" * 20,
+            daily_routine="x" * 20,
+            prospects_text="x",
+            is_active=False,
+        )
+        url = reverse("professions:public-list")
+        response = student_client.get(url)
+        slugs = [row["slug"] for row in response.data["results"]]
+        assert "metier-inactif" not in slugs
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_unauthenticated_cannot_access_public_list(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-list")
+        response = client.get(url)
+        assert response.status_code == 401
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_admin_cannot_access_public_list(self, admin_client, profession):
+        """`IsStudent` is role-exact — path_admin uses the dedicated admin
+        list endpoint instead (`TestAdminProfessionList`)."""
+        url = reverse("professions:public-list")
+        response = admin_client.get(url)
         assert response.status_code == 403
 
 

@@ -21,6 +21,7 @@ from apps.core.permissions import IsAuthenticatedAndActive, IsPathAdmin, IsStude
 from apps.professions.models import Profession, ProfessionReport
 from apps.professions.serializers import (
     ProfessionAdminSerializer,
+    ProfessionCatalogSerializer,
     ProfessionPublicSerializer,
     ProfessionReportAdminSerializer,
     ProfessionReportCreateSerializer,
@@ -116,6 +117,27 @@ class AdminProfessionDetailView(APIView):
 
         serializer = ProfessionAdminSerializer(profession)
         return Response(serializer.data)
+
+
+class PublicProfessionListView(APIView):
+    """GET /api/v1/professions/ — full catalog, paginated (Story 3.13).
+
+    AC-repli: `/accueil`'s "Tes métiers" module links here when the student
+    has no scored recommendations yet, so they can browse the whole
+    referential rather than see an empty module. Same permission shape as
+    the existing detail endpoint (student-only, no anonymous access — this
+    is not the SEO-facing public catalog Epic 7 covers, just an
+    authenticated repli).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsStudent]
+
+    def get(self, request: Request) -> Response:
+        qs = Profession.objects.filter(is_active=True).order_by("name")
+        paginator = _ProfessionPagination()
+        page = paginator.paginate_queryset(qs, request, view=self)
+        serializer = ProfessionCatalogSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class PublicProfessionDetailView(APIView):

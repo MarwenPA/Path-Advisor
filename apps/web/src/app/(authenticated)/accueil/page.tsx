@@ -69,9 +69,20 @@ function MetiersModule({ professions }: { professions: ScoredProfession[] }) {
         </CardHeader>
         <CardContent>
           {professions.length === 0 ? (
-            <p className="text-body text-muted-foreground">
-              Tes recommandations arrivent dès que ton profil est prêt.
-            </p>
+            <div className="space-y-4">
+              <p className="text-body text-muted-foreground">
+                Tes recommandations arrivent dès que ton profil est prêt.
+              </p>
+              {/* Story 3.13 — repli : en attendant un profil assez rempli pour
+                  des recos scorées, l'élève peut quand même parcourir tout
+                  le référentiel plutôt que de rester devant un module vide. */}
+              <Link
+                href="/metiers"
+                className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Voir la liste des métiers
+              </Link>
+            </div>
           ) : (
             <>
               <ul className="flex flex-col gap-4" data-testid="accueil-metiers-list">

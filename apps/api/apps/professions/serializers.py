@@ -30,6 +30,28 @@ class ProfessionPublicSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ProfessionCatalogSerializer(serializers.ModelSerializer):
+    """Lightweight fields for the catalog LIST view — Story 3.13.
+
+    Deliberately excludes `daily_routine`/`requirements_json`/
+    `prospects_text`/`signals_json`: unnecessary payload weight for a list
+    of 50+ cards, and already served in full by `ProfessionPublicSerializer`
+    on the existing detail endpoint (`/metiers/{slug}`, unchanged).
+    """
+
+    class Meta:
+        model = Profession
+        fields = [
+            "id",
+            "slug",
+            "name",
+            "description",
+            "sector",
+            "median_salary_eur",
+        ]
+        read_only_fields = fields
+
+
 class ProfessionReportCreateSerializer(serializers.ModelSerializer):
     """Validates the student report payload — Story 3.8 AC4."""
 
