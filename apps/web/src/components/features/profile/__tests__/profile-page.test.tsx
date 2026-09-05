@@ -4,6 +4,12 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import { ProfilePage } from "../profile-page";
 
+// EditBulletinsSheet (rendered by ProfilePage, even while closed — Radix
+// Sheet keeps its children mounted) calls `useRouter()` unconditionally.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+}));
+
 vi.mock("@/hooks/use-student-profile", () => ({
   useStudentProfile: () => ({
     data: {
