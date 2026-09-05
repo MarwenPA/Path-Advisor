@@ -37,7 +37,7 @@ describe("ProgressionModule", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("renders the progress card with its own labelled section when level is not complete", async () => {
+  it("renders the maturity indicator when level is not complete", async () => {
     fetchCurrentUserMock.mockResolvedValue({ id: "u1", email: "a@test.local", role: "student" });
     fetchMock.mockResolvedValue({
       ok: true,
@@ -50,16 +50,17 @@ describe("ProgressionModule", () => {
 
     render(<ProgressionModule />, { wrapper });
 
+    // Code-review fix (2026-09-05, "mets le bloc Tes paris dans Ta
+    // progression"): this component no longer owns a heading/section of
+    // its own — it's nested inside page.tsx's "Ta progression" Card now.
+    // `MaturityDashboardCard`'s own `aria-label` on its root div is the
+    // stable contract to assert on.
     await waitFor(() => {
-      expect(screen.getByRole("heading", { level: 2, name: "Ta progression" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Niveau de profil : Profil de base")).toBeInTheDocument();
     });
-    const section = screen
-      .getByRole("heading", { level: 2, name: "Ta progression" })
-      .closest("section");
-    expect(section).toHaveAttribute("aria-labelledby", "accueil-progression-title");
   });
 
-  it("renders nothing (no empty landmark) once level is complete — AC2", async () => {
+  it("renders nothing once level is complete — AC2", async () => {
     fetchCurrentUserMock.mockResolvedValue({ id: "u1", email: "a@test.local", role: "student" });
     fetchMock.mockResolvedValue({
       ok: true,
@@ -73,12 +74,9 @@ describe("ProgressionModule", () => {
     const { container } = render(<ProgressionModule />, { wrapper });
 
     // ProfileMaturityIndicator variant="dashboard-card" returns null for
-    // "complete" — assert no section/heading ever appears, not just
-    // "eventually equals something".
+    // "complete" — assert nothing ever renders, not just "eventually
+    // equals something".
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(
-      screen.queryByRole("heading", { level: 2, name: "Ta progression" }),
-    ).not.toBeInTheDocument();
     expect(container).toBeEmptyDOMElement();
   });
 

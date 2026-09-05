@@ -22,16 +22,11 @@ vi.mock("@/lib/api/mes-paris", () => ({
 }));
 
 vi.mock("./ProgressionModule", () => ({
-  // Mirrors the real component's post-code-review shape: it now owns its
-  // own <section>/<h2> (so an empty landmark is never rendered when it
-  // returns null — see ProgressionModule.tsx).
-  ProgressionModule: () => (
-    <section aria-labelledby="accueil-progression-title" data-testid="progression-module">
-      <h2 id="accueil-progression-title" className="sr-only">
-        Ta progression
-      </h2>
-    </section>
-  ),
+  // Mirrors the real component's shape post "mets le bloc Tes paris dans
+  // Ta progression" (2026-09-05): it's nested inside page.tsx's own "Ta
+  // progression" Card/heading now, so it renders bare content only — no
+  // section/heading of its own (see ProgressionModule.tsx).
+  ProgressionModule: () => <div data-testid="progression-module" />,
 }));
 
 vi.mock("@/components/schools/FicheEcole", () => ({
@@ -74,18 +69,17 @@ beforeEach(() => {
 });
 
 describe("AccueilPage", () => {
-  it("renders 4 sections in 2 rows: (progression, paris) then (métiers, écoles)", async () => {
+  it("renders Ta progression (with Tes paris nested as a subsection) then Tes métiers/Tes écoles", async () => {
     fetchMesParisMock.mockResolvedValue([makeSchool()]);
 
     render(await AccueilPage());
 
-    const headings = screen.getAllByRole("heading", { level: 2 });
-    expect(headings.map((h) => h.textContent)).toEqual([
-      "Ta progression",
-      "Tes paris",
-      "Tes métiers",
-      "Tes écoles",
-    ]);
+    const h2s = screen.getAllByRole("heading", { level: 2 });
+    expect(h2s.map((h) => h.textContent)).toEqual(["Ta progression", "Tes métiers", "Tes écoles"]);
+    // "Tes paris" — code-review fix (2026-09-05, "mets le bloc Tes paris
+    // dans Ta progression"): no longer its own sibling card/h2, nested as
+    // an h3 subsection inside the "Ta progression" card.
+    expect(screen.getByRole("heading", { level: 3, name: "Tes paris" })).toBeInTheDocument();
     expect(screen.getByTestId("progression-module")).toBeInTheDocument();
   });
 
