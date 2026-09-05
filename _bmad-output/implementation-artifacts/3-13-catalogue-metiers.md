@@ -53,4 +53,10 @@
 - Smoke test Docker : `seed_professions` exécuté en local (52 métiers actifs, dépasse les "30 d'exemple" demandés) ; `/metiers` → 200, affiche les 52 cartes ; `/accueil` → 200.
 - **Non vérifiable en live** : le bouton "Voir la liste des métiers" sur `/accueil` ne s'affiche que si `professions.length === 0` — dans cet environnement, le service IA renvoie toujours au moins une recommandation à faible confiance même pour un profil totalement vide (testé avec un compte neuf dédié), donc cette branche ne se déclenche jamais en pratique ici. Couvert et confirmé fonctionnel par le test unitaire dédié (`page.test.tsx`, reco mockée à `[]`).
 
-**Reporté explicitement par l'utilisateur** (noté dans `deferred-work.md`) : liste/catalogue des établissements (même trou que les métiers, `/schools` n'a que le detail) ; scraping/extension du référentiel au-delà des 52 métiers seedés.
+**Reporté explicitement par l'utilisateur** (noté dans `deferred-work.md`) : liste/catalogue des établissements (**traité depuis**, voir Story 4.14) ; scraping/extension du référentiel au-delà des 52 métiers seedés.
+
+## 6. Post-review follow-up (2026-09-05) — icône par secteur
+
+Demande explicite : "tu saurais rajouter une image à côté de chaque métier ?" Le modèle `Profession` n'a aucun champ image (le scraping/enrichissement du référentiel reste une story future distincte, cf. §4). En attendant de vraies photos, chaque carte du catalogue affiche désormais un badge coloré avec une icône `lucide-react` par secteur (13 secteurs mappés + repli neutre) plutôt qu'un bloc de texte nu — pas d'asset externe, aucun risque d'image cassée. Voir `apps/web/src/app/(authenticated)/metiers/page.tsx` (`SECTOR_VISUALS`) et Story 8.8 §11 pour le contexte plus large des itérations `/accueil` de la même session.
+
+Test ajouté : `metiers/page.test.tsx` — un badge par carte, y compris repli pour un secteur inconnu. Vérifié : 761 passed (12 pré-existants sans rapport), tsc/eslint clean, smoke test Docker (52 badges rendus).

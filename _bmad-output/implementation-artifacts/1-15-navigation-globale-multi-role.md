@@ -183,6 +183,8 @@ Lire `_bmad-output/planning-artifacts/ux-design-specification.md`, section "Navi
 
 ## 7. Review Findings
 
+**Bug bloquant découvert en session live, sans rapport avec le contenu de la nav elle-même** : cette version de Next.js (16.2.x) a renommé la convention `middleware.ts`/`middleware()` en `proxy.ts`/`proxy()`, ET exige que ce fichier vive **au même niveau que `app/`** (donc `apps/web/src/proxy.ts`, pas `apps/web/proxy.ts` à la racine du package, même si `app/` est dans `src/`). Sans ça, le header `x-pathname` que `(authenticated)/layout.tsx` lit pour son guard de rôle n'était jamais injecté → fallback silencieux sur `/`, qui ne correspond à aucune règle de `ROUTE_ALLOWED_ROLES` → **403 systématique sur toute page authentifiée**, y compris juste après un login réussi. Un agent concurrent avait déjà créé `apps/web/proxy.ts` (bon nom, mauvais emplacement) lors d'un merge antérieur — corrigé ici en le déplaçant vers `apps/web/src/proxy.ts` et en supprimant l'ancien `middleware.ts` mort. Confirmé par instrumentation (log ajouté puis retiré) : zéro invocation tant que le fichier était au mauvais endroit, invoqué à chaque requête une fois déplacé.
+
 Revue adversariale menée par un second agent (2026-09-04) sur les 9 fichiers de la story. 7 findings réels remontés, tous corrigés et re-vérifiés (tests + lint + tsc + smoke test Docker) :
 
 | # | Sévérité | Constat | Fix |

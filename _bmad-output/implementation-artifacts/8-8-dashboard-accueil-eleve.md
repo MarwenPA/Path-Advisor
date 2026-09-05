@@ -1,7 +1,7 @@
 # Story 8.8: Dashboard d'accueil élève — page modulaire post-connexion
 
 **Epic:** 8 — Continuité Temporelle & Notifications
-**Status:** review
+**Status:** done
 **Sprint:** Epic 8
 **Story Key:** `8-8-dashboard-accueil-eleve`
 **Estimation:** M (medium) — cette story **compose** presque exclusivement des briques déjà livrées (`ScoreVocationnel` compact, `ProfileMaturityIndicator` variant `dashboard-card`, favoris `/mes-paris`) sur une page neuve. Aucun nouveau modèle backend, aucun nouvel endpoint d'écriture. Le seul vrai risque est le câblage transverse (route guard, redirect post-login) qui touche des fichiers partagés par tous les rôles.
@@ -245,9 +245,26 @@ Revue multi-agent (correctness + route-guards sécurité) sur le diff non commit
 
 ---
 
+## 11. Post-review layout iterations (2026-09-05) — session live
+
+Après le passage en `review` (§10), une série d'allers-retours utilisateur en session live a fait évoluer `/accueil` sensiblement au-delà du scope initial de la story, sans jamais changer sa mission (donner un vrai contenu à la home élève). Récapitulatif dans l'ordre chronologique, chacun vérifié (tsc/eslint/vitest + smoke test Docker) et mergé séparément sur `main` :
+
+1. **Bug bloquant découvert en live, non lié au contenu de la page** : Next.js 16 a renommé `middleware.ts` → `proxy.ts`/`proxy()`, ET exige que ce fichier vive au même niveau que `app/` (donc `src/proxy.ts`, pas à la racine du package). Sans ce fix, `x-pathname` n'était jamais injecté → le guard de rôle de `(authenticated)/layout.tsx` retombait systématiquement sur `/` → 403 sur **toute** page authentifiée, y compris `/accueil` juste après un login réussi. Corrigé dans le même commit que la Story 1.15 (navigation globale) — voir ce fichier pour le détail.
+2. **"Tes métiers" simplifié** — sur demande explicite ("juste un bouton ... et pas d'exemple"), les cartes d'exemple de recommandations ont été retirées : le module montre désormais uniquement un lien "Voir la liste des métiers" → `/metiers` (nouveau catalogue, Story 3.13), qu'il y ait ou non des recommandations scorées. Plus besoin de `fetchRecommendations()` sur cette page pour ce module.
+3. **"Tes écoles" ajouté** (miroir de "Tes métiers", Story 4.14) — lien persistant "Voir la liste des établissements" → `/schools` (nouveau catalogue).
+4. **Restructuration en 2 rangées harmonieuses**, puis **fusion finale** : "Tes paris" (favoris) a été imbriqué DANS la carte "Ta progression" (sous-section `<h3>`, plus une carte sœur) ; "Tes métiers" et "Tes écoles" partagent un composant `<ExploreModule>` commun pour rester visuellement identiques. `ProgressionModule.tsx` a perdu son propre `<Card>`/`<section>`/titre — il ne rend plus que le contenu (`ProfileMaturityIndicator` ou `null`), la page étant désormais seule propriétaire du titre "Ta progression".
+5. Texte descriptif court ajouté sous chaque lien de catalogue + hauteur des cartes harmonisée (`h-full flex flex-col`).
+
+**Fichiers additionnels touchés depuis §8** : `ProgressionModule.tsx`/`.test.tsx` (restructurés 2×), `page.tsx`/`page.test.tsx` (restructurés 4×), plus tout le périmètre des Stories 1.15 (nav), 3.13 (catalogue métiers) et 4.14 (catalogue établissements) qui interagissent avec cette page sans en faire formellement partie.
+
+**Vérification finale** : 761 passed (12 échecs pré-existants sans rapport, aucun nouveau), `tsc`/`eslint` clean, smoke tests Docker à chaque étape.
+
+---
+
 ## 9. Change Log
 
 | Date | Author | Change |
 |---|---|---|
 | 2026-09-04 | sm (claude-sonnet-5) | Story créée à la demande utilisateur (hors backlog epic initial) — ajoutée à Epic 8 comme Story 8.8, qui donne enfin un contenu réel au « dashboard normal » référencé mais jamais spécifié par la Story 8.6 (`DeltaRecap`). 8 ACs, 5 tasks. Composition quasi-exclusive de briques existantes (`ScoreVocationnel` compact, `ProfileMaturityIndicator` variant `dashboard-card`, `/mes-paris`) — aucun nouveau backend. Point d'attention documenté : `route-guards.ts` pourrait avoir un trou de couverture pré-existant sur les routes élève actuelles, à vérifier sans corriger (hors scope). Status → `ready-for-dev`. |
 | 2026-09-04 | dev (claude-sonnet-5) | Implémentation complète T1-T5 : nouvelle page `/accueil` (Server Component, `Promise.allSettled`, 3 sections avec dégradation indépendante), client `mes-paris.ts`, câblage `post-login-redirect.ts`/`route-guards.ts`. Confirmé (sans corriger, hors scope) le trou de couverture pré-existant de `route-guards.ts` sur `/mes-metiers` et consorts. Tests : `accueil/page.test.tsx` (8 cas : 3 modules, 3 empty states, AC5 profil neuf, 2 cas de dégradation indépendante), mise à jour `route-guards.test.ts` et `app/page.test.tsx`. `npx vitest run` vert (708 passés, 5 échecs pré-existants sans rapport), `npm run lint` et `npx tsc --noEmit` clean sur les fichiers de la story. Status → `review`. |
+| 2026-09-05 | dev (claude-sonnet-5) | Session live : 5 itérations de layout sur `/accueil` (§11) suite à des demandes utilisateur successives — fix `proxy.ts` Next 16 (bloquant, sans rapport avec le contenu), simplification "Tes métiers", ajout "Tes écoles", restructuration 2 rangées puis fusion "Tes paris" dans "Ta progression". Chacune vérifiée et mergée séparément. Status → `done`. |
