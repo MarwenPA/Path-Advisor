@@ -113,6 +113,27 @@ class AdmissionStatSerializer(serializers.ModelSerializer):
         return (timezone.now() - stat.updated_at).total_seconds() < 86400
 
 
+class SchoolCatalogSerializer(serializers.ModelSerializer):
+    """Lightweight fields for the catalog LIST view — mirrors
+    `ProfessionCatalogSerializer` (Story 3.13): no `formations`/
+    `admission_stat` (per-school N+1 / user-specific — detail-only,
+    unchanged on `/schools/{slug}`), just enough for a card grid.
+    """
+
+    class Meta:
+        model = School
+        fields = (
+            "id",
+            "slug",
+            "name",
+            "type",
+            "city",
+            "region",
+            "selectivity_index",
+        )
+        read_only_fields = fields
+
+
 class SchoolDetailSerializer(serializers.ModelSerializer):
     """Full school representation for authenticated users — includes formations list.
 

@@ -100,6 +100,17 @@ describe("AccueilPage", () => {
     expect(screen.queryByTestId("accueil-metiers-list")).not.toBeInTheDocument();
   });
 
+  it("Tes paris always shows a link to the full schools catalog, regardless of favorites", async () => {
+    fetchMesParisMock.mockResolvedValue([]);
+
+    render(await AccueilPage());
+
+    expect(screen.getByRole("link", { name: /voir la liste des établissements/i })).toHaveAttribute(
+      "href",
+      "/schools",
+    );
+  });
+
   it("shows the top-3 mes-paris schools with a link to /mes-paris", async () => {
     fetchMesParisMock.mockResolvedValue([
       makeSchool({ id: "s1", name: "École A" }),

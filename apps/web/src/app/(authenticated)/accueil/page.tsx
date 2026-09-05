@@ -9,7 +9,11 @@
  *      follow-up, 2026-09-05: dropped the score-card examples entirely per
  *      explicit request — "juste un bouton ... et pas d'exemple". No
  *      `fetchRecommendations()` call needed anymore for this module.
- *   3. "Tes paris" — top-3 `fetchMesParis()` as `FicheEcole` variant="card".
+ *   3. "Tes paris" — top-3 `fetchMesParis()` as `FicheEcole` variant="card",
+ *      plus (2026-09-05, "rajoute un bloc avec mes écoles et la liste des
+ *      écoles") a persistent link to the full schools catalog (`/schools`),
+ *      mirroring "Tes métiers"'s catalog link — always visible, not
+ *      conditional on having favorites.
  *
  * `Promise.allSettled` (never `Promise.all`, see §4.4) fetches mes-paris in
  * parallel with anything else this page ever needs so one failing endpoint
@@ -99,6 +103,15 @@ function MesParisModule({ schools }: { schools: School[] }) {
               </Link>
             </>
           )}
+          <p className="mt-4 text-muted-foreground">
+            Explore tous les établissements du référentiel : type, ville, sélectivité.
+          </p>
+          <Link
+            href="/schools"
+            className="mt-2 inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Voir la liste des établissements
+          </Link>
         </CardContent>
       </Card>
     </section>

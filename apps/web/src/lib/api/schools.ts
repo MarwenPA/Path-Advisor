@@ -67,3 +67,30 @@ export async function fetchAdmissionStat(schoolSlug: string): Promise<AdmissionS
     body: { school_slug: schoolSlug },
   });
 }
+
+/**
+ * Lightweight catalog row — mirrors the backend's `SchoolCatalogSerializer`
+ * (deliberately narrower than `School`, the full detail type above — no
+ * `formations`/`admission_stat` for a list of 70+ cards).
+ */
+export interface SchoolCatalogItem {
+  id: string;
+  slug: string;
+  name: string;
+  type: string;
+  city: string;
+  region: string;
+  selectivity_index: number;
+}
+
+export interface PaginatedSchools {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: SchoolCatalogItem[];
+}
+
+/** `GET /api/v1/schools/` — full schools catalog. */
+export async function fetchSchools(page = 1): Promise<PaginatedSchools> {
+  return apiFetch<PaginatedSchools>(`/api/v1/schools/?page=${page}`);
+}
