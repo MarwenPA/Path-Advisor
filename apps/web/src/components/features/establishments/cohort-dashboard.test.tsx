@@ -60,4 +60,17 @@ describe("CohortDashboard", () => {
 
     expect(pushMock).toHaveBeenCalledWith("/cohorte/eleves/usr_2");
   });
+
+  it("shows a desktop-optimized advisory message (Story 6.10 AC — mobile)", () => {
+    render(<CohortDashboard dashboard={DASHBOARD} />);
+
+    expect(screen.getByText(/optimisée pour desktop/i)).toBeInTheDocument();
+  });
+
+  it("announces KPIs with value + context for screen readers (Story 6.10 AC — RGAA)", () => {
+    render(<CohortDashboard dashboard={DASHBOARD} />);
+
+    expect(screen.getByLabelText("Élèves cohorte : 2")).toBeInTheDocument();
+    expect(screen.getByLabelText("Taux de complétion profil : 50%")).toBeInTheDocument();
+  });
 });

@@ -66,16 +66,30 @@ export function CohortDashboard({ dashboard }: { dashboard: CohortDashboardData 
 
   return (
     <div className="grid grid-cols-2 gap-4">
+      <p className="col-span-2 rounded-lg border border-border bg-card p-3 text-body-sm text-text-subtle lg:hidden">
+        Cette interface est optimisée pour desktop. Tu peux la consulter ici mais l&apos;efficacité
+        y est sur grand écran.
+      </p>
+
       <div className="col-span-2 grid grid-cols-3 gap-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div
+          className="rounded-lg border border-border bg-card p-4"
+          aria-label={`Élèves cohorte : ${dashboard.kpis.nb_eleves}`}
+        >
           <p className="text-caption text-text-subtle">Élèves cohorte</p>
           <p className="text-h2 font-bold text-text">{dashboard.kpis.nb_eleves}</p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div
+          className="rounded-lg border border-border bg-card p-4"
+          aria-label={`Taux de complétion profil : ${dashboard.kpis.taux_completion_profil}%`}
+        >
           <p className="text-caption text-text-subtle">Taux de complétion profil</p>
           <p className="text-h2 font-bold text-text">{dashboard.kpis.taux_completion_profil}%</p>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div
+          className="rounded-lg border border-border bg-card p-4"
+          aria-label={`Élèves en mode dégradé : ${dashboard.kpis.nb_eleves_mode_degrade}`}
+        >
           <p className="text-caption text-text-subtle">Élèves en mode dégradé</p>
           <p className="text-h2 font-bold text-text">{dashboard.kpis.nb_eleves_mode_degrade}</p>
         </div>
@@ -93,7 +107,11 @@ export function CohortDashboard({ dashboard }: { dashboard: CohortDashboardData 
                   <span>{m.name}</span>
                   <span className="font-medium">{m.count}</span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-muted">
+                <div
+                  className="h-2 w-full rounded-full bg-muted"
+                  role="img"
+                  aria-label={`${m.name} : ${m.count} élève(s)`}
+                >
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${(100 * m.count) / maxMetier}%` }}
@@ -119,7 +137,11 @@ export function CohortDashboard({ dashboard }: { dashboard: CohortDashboardData 
                     {f.count} ({Math.round((100 * f.count) / totalFiliere)}%)
                   </span>
                 </div>
-                <div className="h-2 w-full rounded-full bg-muted">
+                <div
+                  className="h-2 w-full rounded-full bg-muted"
+                  role="img"
+                  aria-label={`${f.filiere} : ${f.count} élève(s), ${Math.round((100 * f.count) / totalFiliere)}%`}
+                >
                   <div
                     className="h-full rounded-full bg-secondary"
                     style={{ width: `${(100 * f.count) / maxFiliere}%` }}
