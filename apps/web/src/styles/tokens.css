@@ -28,7 +28,7 @@
   --color-bg-3: 36 20% 90%; /* #EBE7E1                          */
   --color-text: 0 0% 10%; /* #1A1A1A — 16.8:1 vs bg (AAA)     */
   --color-text-muted: 60 3% 39%; /* #666660 — 5.6:1 vs bg (AA)       */
-  --color-text-subtle: 60 3% 54%; /* #8C8C86                          */
+  --color-text-subtle: 60 3% 43%; /* #71716A — 4.7:1 vs bg (AA)       */
   --color-border: 38 11% 86%; /* #E0DDD8                          */
   --color-border-strong: 38 9% 77%; /* #C9C5BE                          */
   --color-semantic-audacieux: 21 62% 41%; /* #A85428 — "pari audacieux"       */
