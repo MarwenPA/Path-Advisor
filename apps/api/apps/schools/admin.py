@@ -6,7 +6,7 @@ from typing import ClassVar
 
 from django.contrib import admin
 
-from apps.schools.models import FavoriteSchool, Formation, School
+from apps.schools.models import FavoriteSchool, Formation, School, SchoolStaff
 
 
 class FormationInline(admin.TabularInline):
@@ -55,3 +55,16 @@ class FavoriteSchoolAdmin(admin.ModelAdmin):
     search_fields: ClassVar = ("user__email", "school__name", "school__slug")
     readonly_fields: ClassVar = ("id", "created_at")
     autocomplete_fields: ClassVar = ("school",)
+
+
+@admin.register(SchoolStaff)
+class SchoolStaffAdmin(admin.ModelAdmin):
+    """Story 5.6 — the only way to link a `SCHOOL_ADMIN` account to its
+    school today: a Path-Advisor team member creates this row here when
+    onboarding a partner school. No self-serve invitation flow (§2 scope
+    decision)."""
+
+    list_display: ClassVar = ("user", "school", "created_at")
+    search_fields: ClassVar = ("user__email", "school__name", "school__slug")
+    readonly_fields: ClassVar = ("id", "created_at", "updated_at")
+    autocomplete_fields: ClassVar = ("user", "school")

@@ -1,0 +1,10 @@
+Salut,
+
+{{ school.name }} n'a pas répondu à ton envoi anticipé dans les 7 jours. Ta
+statistique d'admission pour cette école reste inchangée — ce n'est pas un
+signal négatif, beaucoup d'écoles ne répondent tout simplement pas dans ce
+délai.
+
+Tu peux continuer à explorer d'autres écoles depuis ton espace.
+
+L'équipe Path-Advisor
