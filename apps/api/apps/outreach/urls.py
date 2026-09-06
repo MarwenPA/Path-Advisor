@@ -1,8 +1,9 @@
-"""URL patterns for early-outreach requests — Stories 5.4 + 5.5 + 5.6 + 5.7."""
+"""URL patterns for early-outreach requests — Stories 5.4 + 5.5 + 5.6 + 5.7 + 5.9."""
 
 from django.urls import path
 
 from apps.outreach.views import (
+    EarlyOutreachDetailView,
     EarlyOutreachListView,
     EarlyOutreachResubmitView,
     EcoleOutreachDetailView,
@@ -19,6 +20,11 @@ app_name = "outreach"
 urlpatterns = [
     path("outreach/requests/", EarlyOutreachListView.as_view(), name="request-list"),
     path("outreach/quota/", OutreachQuotaView.as_view(), name="quota"),
+    path(
+        "outreach/requests/<str:outreach_id>/",
+        EarlyOutreachDetailView.as_view(),
+        name="request-detail",
+    ),
     path(
         "outreach/requests/<str:outreach_id>/resubmit/",
         EarlyOutreachResubmitView.as_view(),

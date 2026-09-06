@@ -65,12 +65,14 @@ class EarlyOutreachResubmitSerializer(serializers.Serializer):
 
 
 class EarlyOutreachListSerializer(serializers.ModelSerializer):
-    """AC4 — flat list for `/mes-envois` (Story 5.9 will enrich). Includes
-    `rejection_reason` (Story 5.5) so the front can show why + offer the
-    resubmit action without a second call. Story 5.7 adds `response` —
-    `null` until the school answers."""
+    """AC4 — flat list for `/mes-envois` (Story 5.9 groups it client-side by
+    status/action). Includes `rejection_reason` (Story 5.5) so the front
+    can show why + offer the resubmit action without a second call.
+    Story 5.7 adds `response` — `null` until the school answers. Story 5.9
+    adds `school_slug` — the "lien vers la fiche école" AC."""
 
     school_name = serializers.CharField(source="school.name", read_only=True)
+    school_slug = serializers.CharField(source="school.slug", read_only=True)
     profession_name = serializers.CharField(source="profession.name", read_only=True)
     response = serializers.SerializerMethodField()
 
@@ -79,6 +81,7 @@ class EarlyOutreachListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "school_name",
+            "school_slug",
             "profession_name",
             "status",
             "rejection_reason",
@@ -237,3 +240,14 @@ class InterviewAlternativeSerializer(serializers.Serializer):
     """Story 5.7 — student can't make any proposed slot, suggests one."""
 
     note = serializers.CharField(max_length=2000, allow_blank=False)
+
+
+class EarlyOutreachStudentDetailSerializer(EarlyOutreachListSerializer):
+    """Story 5.9 AC — fiche détail sur `/mes-envois/{id}`: same fields as
+    the list row + the motivation the student sent (not shown in the flat
+    list — one extra field the student doesn't need to re-read every
+    time)."""
+
+    class Meta(EarlyOutreachListSerializer.Meta):
+        fields = [*EarlyOutreachListSerializer.Meta.fields, "motivation_text"]
+        read_only_fields = fields

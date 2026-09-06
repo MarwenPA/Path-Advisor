@@ -399,3 +399,41 @@ class TestResubmitEarlyOutreach:
         )
 
         assert response.status_code == 404
+
+
+# ── Story 5.9 — student-facing detail view ──────────────────────────────────
+
+
+class TestEarlyOutreachDetailView:
+    def test_shows_motivation_and_school_slug(
+        self, premium_client, premium_student, school, profession
+    ):
+        with bypass_rls(reason="test_setup.create_outreach"):
+            outreach = EarlyOutreachRequest.objects.create(
+                student=premium_student,
+                school=school,
+                profession=profession,
+                motivation_text="Ma motivation.",
+            )
+
+        response = premium_client.get(
+            reverse("outreach:request-detail", kwargs={"outreach_id": outreach.id})
+        )
+
+        assert response.status_code == 200, response.content
+        body = response.json()
+        assert body["motivation_text"] == "Ma motivation."
+        assert body["school_slug"] == school.slug
+
+    def test_another_students_request_returns_404(self, premium_client, school, profession):
+        other_student = _uf(email="autre-eleve-3@test.local")
+        with bypass_rls(reason="test_setup.create_outreach"):
+            outreach = EarlyOutreachRequest.objects.create(
+                student=other_student, school=school, profession=profession
+            )
+
+        response = premium_client.get(
+            reverse("outreach:request-detail", kwargs={"outreach_id": outreach.id})
+        )
+
+        assert response.status_code == 404

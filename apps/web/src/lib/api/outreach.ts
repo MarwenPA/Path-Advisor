@@ -1,5 +1,5 @@
 /**
- * API client for early-outreach requests — Stories 5.4 + 5.5 + 5.7.
+ * API client for early-outreach requests — Stories 5.4 + 5.5 + 5.7 + 5.9.
  */
 import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
@@ -24,17 +24,25 @@ export interface OutreachResponse {
   proposed_slots: string[];
   accepted_slot: string;
   alternative_note: string;
+  /** Story 5.8 — the exact point delta already applied to the student's
+   * AdmissionStat for this school (+15/+7/-15). */
+  stat_delta: number;
   created_at: string;
 }
 
 export interface EarlyOutreachRequestItem {
   id: string;
   school_name: string;
+  school_slug: string;
   profession_name: string;
   status: EarlyOutreachRequestStatusValue;
   rejection_reason: string;
   response: OutreachResponse | null;
   created_at: string;
+}
+
+export interface EarlyOutreachRequestDetail extends EarlyOutreachRequestItem {
+  motivation_text: string;
 }
 
 export interface PaginatedOutreachRequests {
@@ -52,6 +60,15 @@ export async function fetchOutreachQuota(): Promise<OutreachQuota> {
 /** AC4 — student-scoped list for `/mes-envois`. */
 export async function fetchOutreachRequests(): Promise<PaginatedOutreachRequests> {
   return apiFetch<PaginatedOutreachRequests>("/api/v1/outreach/requests/");
+}
+
+/** Story 5.9 AC — fiche détail for `/mes-envois/{id}` (adds motivation_text). */
+export async function fetchOutreachRequestDetail(
+  outreachId: string,
+): Promise<EarlyOutreachRequestDetail> {
+  return apiFetch<EarlyOutreachRequestDetail>(
+    `/api/v1/outreach/requests/${encodeURIComponent(outreachId)}/`,
+  );
 }
 
 /** AC2/AC5 — create. `parcours` is resolved server-side, never sent from here. */
