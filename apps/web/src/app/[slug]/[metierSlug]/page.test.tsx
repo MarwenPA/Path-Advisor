@@ -21,6 +21,10 @@ vi.mock("next/navigation", () => ({
 
 import { ApiError } from "@/lib/api/client";
 
+// Story 7.7 — see `@/test/next-intl-server-mock` for why this is needed
+// under Vitest (real Next.js needs no such mock).
+vi.mock("next-intl/server", () => import("@/test/next-intl-server-mock"));
+
 import QuelBacPourMetierPage from "./page";
 
 const PROFESSION = {

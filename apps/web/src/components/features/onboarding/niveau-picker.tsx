@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -26,9 +27,18 @@ type NiveauPickerProps = {
 };
 
 export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProps) {
+  // Story 7.7 — the aria-live announcement (JSX literal strings) is
+  // migrated to i18n. `item.label`/`item.description` below still come
+  // from `LEVELS` (`@/lib/onboarding/levels.ts`, a shared data module used
+  // across several onboarding components) — i18n-izing that data module
+  // is out of scope for this story's representative-flow migration (see
+  // `docs/i18n-conventions.md` "Dette assumée"), flagged rather than
+  // silently left hardcoded.
+  const t = useTranslations("onboarding.niveauPicker");
+
   return (
     <fieldset className="flex flex-col gap-4">
-      <legend className="sr-only">Niveau scolaire</legend>
+      <legend className="sr-only">{t("legend")}</legend>
       <RadioGroup
         value={value ?? ""}
         onValueChange={(v) => {
@@ -38,11 +48,11 @@ export function NiveauPicker({ value, onChange, announcerRef }: NiveauPickerProp
             const item = LEVELS.find((l) => l.id === v);
             if (item) {
               const count = BRANCH_OPTION_COUNT[item.id as NiveauId];
-              const countHint =
-                count !== undefined
-                  ? ` ${count} option${count > 1 ? "s" : ""} disponible${count > 1 ? "s" : ""}.`
-                  : "";
-              announcerRef.current.textContent = `${item.label} sélectionné.${countHint} Les options correspondantes s'affichent maintenant.`;
+              const countHint = count !== undefined ? t("announceOptionCount", { count }) : "";
+              announcerRef.current.textContent = t("announceSelected", {
+                label: item.label,
+                countHint,
+              });
             } else {
               announcerRef.current.textContent = "";
             }

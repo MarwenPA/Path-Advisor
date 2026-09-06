@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
+import messages from "../../../../../messages/fr.json";
 import { EditPassionsSheet } from "../edit-passions-sheet";
 import { EditLevelSheet } from "../edit-level-sheet";
 import { EditBulletinsSheet } from "../edit-bulletins-sheet";
@@ -27,7 +29,15 @@ vi.mock("@/lib/api/onboarding", async () => {
 
 function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+  // Story 7.7 — NextIntlClientProvider added: EditLevelSheet renders
+  // NiveauPicker, which now calls useTranslations.
+  return (
+    <QueryClientProvider client={qc}>
+      <NextIntlClientProvider locale="fr" messages={messages}>
+        {children}
+      </NextIntlClientProvider>
+    </QueryClientProvider>
+  );
 }
 
 const mockProfile = {

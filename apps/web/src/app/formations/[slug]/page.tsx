@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -27,9 +28,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // an empty string produces no `<meta name="description">` tag at all
     // (confirmed via a real Lighthouse SEO audit, not a hypothetical),
     // so fall back to a generic sentence rather than emitting nothing.
+    const t = await getTranslations("formationPage");
     const description = school.description
       ? school.description.slice(0, 155)
-      : `${school.name} — ${school.city}. Découvre les formations, débouchés et modalités d'admission sur Path Advisor.`;
+      : t("descriptionFallback", { name: school.name, city: school.city });
     return {
       title,
       description,
@@ -42,7 +44,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       twitter: { card: "summary_large_image", title, description },
     };
   } catch {
-    return { title: "École — Path Advisor" };
+    const t = await getTranslations("formationPage");
+    return { title: t("metaTitleFallback") };
   }
 }
 
@@ -52,6 +55,7 @@ export default async function PublicFormationPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const t = await getTranslations("formationPage");
 
   let school;
   try {
@@ -84,7 +88,7 @@ export default async function PublicFormationPage({
       {!!school.metiers_cibles?.length && (
         <section aria-labelledby="metiers-cibles-title" className="mt-6">
           <h2 id="metiers-cibles-title" className="mb-2 text-h3 font-semibold text-text">
-            Métiers auxquels cette formation mène
+            {t("targetMetiersTitle")}
           </h2>
           <ul className="flex flex-wrap gap-2">
             {school.metiers_cibles.map((m) => (
@@ -104,7 +108,7 @@ export default async function PublicFormationPage({
       {!!school.similar_schools?.length && (
         <section aria-labelledby="similar-schools-title" className="mt-6">
           <h2 id="similar-schools-title" className="mb-2 text-h3 font-semibold text-text">
-            Écoles similaires
+            {t("similarSchoolsTitle")}
           </h2>
           <ul className="flex flex-col gap-1">
             {school.similar_schools.map((s) => (
@@ -127,17 +131,16 @@ export default async function PublicFormationPage({
         className="mt-8 rounded-lg border border-border bg-card p-6 text-center"
       >
         <h2 id="signup-cta-title" className="mb-2 text-h3 font-semibold text-text">
-          Découvre tes vraies chances d&apos;admission
+          {t("signupCtaTitle")}
         </h2>
         <p className="mb-4 text-body-sm text-text-muted">
-          Crée ton compte gratuit pour voir ta probabilité d&apos;admission personnalisée à{" "}
-          {school.name}.
+          {t("signupCtaBody", { name: school.name })}
         </p>
         <Link
           href="/auth/signup"
           className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-body-sm font-medium text-primary-foreground hover:opacity-90"
         >
-          Crée ton compte pour voir ta proba d&apos;admission personnalisée
+          {t("signupCta")}
         </Link>
       </section>
     </main>

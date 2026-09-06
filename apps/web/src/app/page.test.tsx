@@ -5,11 +5,17 @@
  * `(authenticated)/layout.tsx` guard pattern this page reuses.
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+
+import { renderWithIntl } from "@/test/render-with-intl";
 
 import { ApiError } from "@/lib/api/client";
 
-import Home from "./page";
+// Story 7.7 — see `@/test/next-intl-server-mock` for why this is needed
+// under Vitest (real Next.js needs no such mock).
+vi.mock("next-intl/server", () => import("@/test/next-intl-server-mock"));
+
+import Home, { generateMetadata } from "./page";
 
 const fetchCurrentUserMock = vi.fn();
 vi.mock("@/lib/api/auth", async () => {
@@ -71,7 +77,7 @@ describe("Home page", () => {
   it("renders the public landing page for an anonymous visitor (401)", async () => {
     fetchCurrentUserMock.mockRejectedValue(new ApiError(401, "unauthenticated"));
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /créer un compte/i })).toBeInTheDocument();
@@ -81,7 +87,7 @@ describe("Home page", () => {
   it("renders the public landing page for a 403 response", async () => {
     fetchCurrentUserMock.mockRejectedValue(new ApiError(403, "forbidden"));
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
@@ -89,7 +95,7 @@ describe("Home page", () => {
   it("still renders the landing page on an unexpected API error (never 500s the front door)", async () => {
     fetchCurrentUserMock.mockRejectedValue(new ApiError(500, "boom"));
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
@@ -101,7 +107,7 @@ describe("Home page", () => {
       new DOMException("The operation timed out.", "TimeoutError"),
     );
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
@@ -111,7 +117,7 @@ describe("Home page", () => {
     // (code-review P1 regression test).
     fetchCurrentUserMock.mockResolvedValue(null);
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });
@@ -119,7 +125,7 @@ describe("Home page", () => {
   it("exposes a footer link to the legal RGPD page", async () => {
     fetchCurrentUserMock.mockRejectedValue(new ApiError(401, "unauthenticated"));
 
-    render(await Home());
+    renderWithIntl(await Home());
 
     expect(screen.getByRole("link", { name: /mentions légales/i })).toHaveAttribute(
       "href",
@@ -130,7 +136,7 @@ describe("Home page", () => {
 
 describe("Home page metadata (Story 7.5 AC — OG + Twitter Card)", () => {
   it("exposes og:url/type and a Twitter summary_large_image card", async () => {
-    const { metadata } = await import("./page");
+    const metadata = await generateMetadata();
     // Next's `Metadata["openGraph"]`/`["twitter"]` types are unions of many
     // subtypes (Website/Article/...) that don't individually guarantee
     // `type`/`card` — loosen to a plain record for this assertion only.
