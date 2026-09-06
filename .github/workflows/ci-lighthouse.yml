@@ -30,7 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16
+        # Plain `postgres:16` lacks the `vector` extension `core.0001_init_
+        # extensions` requires (pgvector, for embeddings) — must match the
+        # image `infra/docker-compose.yml` actually uses.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: path_advisor
           POSTGRES_PASSWORD: path_advisor_local_dev
