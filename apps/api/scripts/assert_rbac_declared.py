@@ -100,6 +100,11 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     "student-invitation-accept": (
         "Public password-set endpoint for student-import-invitation token — Story 6.5"
     ),
+    # --- Anonymous SEO fiche métier — the whole point of Story 7.1 is
+    #     Google/Bing (and logged-out visitors) getting a fully-rendered
+    #     page ; narrower `ProfessionPublicSeoSerializer` excludes internal
+    #     scoring-engine fields.
+    "public-seo-detail": "Anonymous SEO fiche métier — Story 7.1",
 }
 
 

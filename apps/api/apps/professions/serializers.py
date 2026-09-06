@@ -30,6 +30,35 @@ class ProfessionPublicSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ProfessionPublicSeoSerializer(serializers.ModelSerializer):
+    """Fields exposed to ANONYMOUS visitors — Story 7.1 (SEO SSR fiches
+    métier). Includes `signals_json` — despite the name, these are
+    descriptive keyword tags ("quelles passions/valeurs correspondent à ce
+    métier"), not a scoring secret, and `<FicheMetier>`'s "Signaux" tab +
+    hero chips unconditionally read this field — omitting it would break
+    rendering, not just hide internals. Excludes only `id`/`is_active`
+    (internal PK/flag, never rendered — confirmed via a repo-wide grep for
+    `profession.id` in the professions component tree, zero hits).
+    """
+
+    class Meta:
+        model = Profession
+        fields = [
+            "slug",
+            "name",
+            "description",
+            "daily_routine",
+            "requirements_json",
+            "prospects_text",
+            "median_salary_eur",
+            "salary_range_json",
+            "signals_json",
+            "level_compatibility",
+            "sector",
+        ]
+        read_only_fields = fields
+
+
 class ProfessionCatalogSerializer(serializers.ModelSerializer):
     """Lightweight fields for the catalog LIST view — Story 3.13.
 

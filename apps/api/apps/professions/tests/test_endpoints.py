@@ -316,3 +316,81 @@ class TestPublicProfessionDetail:
             action="profession_viewed",
             subject_id=str(profession.pk),
         ).exists(), "No profession_viewed audit log entry found"
+
+
+# ── Anonymous SEO detail endpoint — Story 7.1 ────────────────────────────────
+
+
+class TestPublicSeoProfessionDetail:
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_anonymous_can_access_seo_detail(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        response = client.get(url)
+        assert response.status_code == 200
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_seo_detail_includes_signals_json(self, profession):
+        """§2 scope decision: signals_json IS included — <FicheMetier>'s
+        "Signaux" tab reads it unconditionally, it's descriptive keyword
+        content, not a scoring secret."""
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        response = client.get(url)
+        assert "signals_json" in response.json()
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_seo_detail_excludes_internal_id(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        response = client.get(url)
+        data = response.json()
+        assert "id" not in data
+        assert "is_active" not in data
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_seo_detail_has_expected_public_fields(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        response = client.get(url)
+        data = response.json()
+        for field in (
+            "slug",
+            "name",
+            "description",
+            "daily_routine",
+            "requirements_json",
+            "prospects_text",
+            "median_salary_eur",
+            "signals_json",
+            "level_compatibility",
+            "sector",
+        ):
+            assert field in data, f"SEO detail missing field '{field}'"
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_seo_detail_unknown_slug_returns_404(self):
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": "metier-inexistant"})
+        response = client.get(url)
+        assert response.status_code == 404
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_seo_detail_emits_anonymous_audit_log(self, profession):
+        from apps.audit.models import AuditLog
+
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        client.get(url)
+
+        log = AuditLog.objects.get(
+            action="profession_viewed_anonymous",
+            subject_id=str(profession.pk),
+        )
+        assert log.actor_id is None
