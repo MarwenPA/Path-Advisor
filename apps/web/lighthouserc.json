@@ -1,0 +1,30 @@
+{
+  "ci": {
+    "collect": {
+      "numberOfRuns": 1,
+      "settings": {
+        "onlyCategories": ["performance", "seo"],
+        "throttlingMethod": "simulate"
+      },
+      "url": [
+        "http://localhost:3000/",
+        "http://localhost:3000/metiers/technicien-aeronautique",
+        "http://localhost:3000/formations/lycee-pro-saint-exupery-marseille",
+        "http://localhost:3000/devenir-technicien-aeronautique",
+        "http://localhost:3000/3eme/quel-bac-pour-technicien-aeronautique"
+      ]
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.8 }],
+        "categories:seo": ["error", { "minScore": 0.95 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-blocking-time": ["error", { "maxNumericValue": 200 }]
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
