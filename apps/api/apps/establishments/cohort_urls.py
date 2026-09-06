@@ -29,4 +29,20 @@ urlpatterns = [
         counselor_views.student_decide_consent,
         name="student-decide-consent",
     ),
+    # Story 6.8 — counselor individual profile view
+    path(
+        "students/<str:student_id>/profile/",
+        counselor_views.counselor_student_profile,
+        name="counselor-student-profile",
+    ),
+    path(
+        "students/<str:student_id>/notes/",
+        counselor_views.counselor_student_notes,
+        name="counselor-student-notes",
+    ),
+    path(
+        "students/<str:student_id>/interview-sheet.pdf/",
+        counselor_views.counselor_interview_sheet_pdf,
+        name="counselor-interview-sheet-pdf",
+    ),
 ]

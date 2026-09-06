@@ -330,3 +330,35 @@ class CounselorConsent(models.Model):
         if self.status != CounselorConsentStatus.REFUSED or self.decided_at is None:
             return False
         return timezone.now() < self.decided_at + timedelta(days=_CONSENT_COOLDOWN_DAYS)
+
+
+def _default_counselor_note_id() -> str:
+    return generate_id("cnn")
+
+
+class CounselorNote(models.Model):
+    """Story 6.8 AC — a counselor's private interview-prep notes on a
+    student. "Visible uniquement par moi, attachées à mon compte
+    conseiller, pas à l'élève" — no student-facing read path exists
+    anywhere for this model; only the authoring counselor's own views
+    (Story 6.8's profile/export endpoints) ever query it, always filtered
+    by `counselor=request.user`.
+
+    Same "plain FK, no RLS" choice as `CounselorConsent` — see that
+    model's docstring."""
+
+    id = models.CharField(
+        primary_key=True, max_length=32, default=_default_counselor_note_id, editable=False
+    )
+    counselor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="student_notes")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "counselor_notes"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover - debug helper
+        return f"CounselorNote({self.id}, {self.counselor_id} -> {self.student_id})"
