@@ -36,6 +36,7 @@ from apps.outreach.serializers import (
     EarlyOutreachListSerializer,
     EarlyOutreachRespondSerializer,
     EarlyOutreachResubmitSerializer,
+    EarlyOutreachStudentDetailSerializer,
     EcoleOutreachDetailSerializer,
     EcoleOutreachListSerializer,
     InterviewAcceptSerializer,
@@ -113,6 +114,24 @@ class EarlyOutreachListView(APIView):
         page = paginator.paginate_queryset(qs, request, view=self)
         serializer = EarlyOutreachListSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+class EarlyOutreachDetailView(APIView):
+    """GET /api/v1/outreach/requests/{id}/ — Story 5.9 AC (fiche détail).
+
+    Scoped to `student=request.user` — 404 (not 403) for someone else's
+    request, same convention as every other student-facing outreach view.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsStudent]
+
+    def get(self, request: Request, outreach_id: str) -> Response:
+        outreach = get_object_or_404(
+            EarlyOutreachRequest.objects.select_related("school", "profession", "response"),
+            id=outreach_id,
+            student=request.user,
+        )
+        return Response(EarlyOutreachStudentDetailSerializer(outreach).data)
 
 
 class OutreachQuotaView(APIView):

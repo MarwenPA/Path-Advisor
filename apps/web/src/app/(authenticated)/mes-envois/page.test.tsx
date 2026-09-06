@@ -107,6 +107,7 @@ describe("MesEnvoisPage", () => {
             proposed_slots: ["2026-10-01T10:00:00Z"],
             accepted_slot: "",
             alternative_note: "",
+            stat_delta: 7,
             created_at: "2026-09-10T00:00:00Z",
           },
           created_at: "2026-09-10T00:00:00Z",
@@ -116,7 +117,63 @@ describe("MesEnvoisPage", () => {
 
     render(await MesEnvoisPage());
 
-    expect(screen.getByText(/demande d'entretien/i)).toBeInTheDocument();
+    expect(screen.getByText(/entretiens demandés/i)).toBeInTheDocument();
     expect(screen.getByTestId("interview-form")).toHaveTextContent("2026-10-01T10:00:00Z");
+    expect(screen.getByText("+7 pts")).toBeInTheDocument();
+  });
+
+  it("groups a positive response under Réponses positives", async () => {
+    fetchOutreachRequestsMock.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: "reach_4",
+          school_name: "École Positive",
+          profession_name: "Infirmier·ère",
+          status: "responded",
+          rejection_reason: "",
+          response: {
+            action: "interested",
+            comment: "",
+            proposed_slots: [],
+            accepted_slot: "",
+            alternative_note: "",
+            stat_delta: 15,
+            created_at: "2026-09-10T00:00:00Z",
+          },
+          created_at: "2026-09-10T00:00:00Z",
+        },
+      ],
+    });
+
+    render(await MesEnvoisPage());
+
+    expect(screen.getByText(/réponses positives/i)).toBeInTheDocument();
+    expect(screen.getByText("+15 pts")).toBeInTheDocument();
+  });
+
+  it("groups an expired request under Expirés", async () => {
+    fetchOutreachRequestsMock.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: "reach_5",
+          school_name: "École Expirée",
+          profession_name: "Infirmier·ère",
+          status: "expired_7d",
+          rejection_reason: "",
+          response: null,
+          created_at: "2026-09-10T00:00:00Z",
+        },
+      ],
+    });
+
+    render(await MesEnvoisPage());
+
+    expect(screen.getByText(/^expirés/i)).toBeInTheDocument();
   });
 });
