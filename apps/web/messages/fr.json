@@ -1,0 +1,110 @@
+{
+  "common": {
+    "legalMentionsLink": "Mentions légales & RGPD"
+  },
+  "onboarding": {
+    "niveauPicker": {
+      "legend": "Niveau scolaire",
+      "announceSelected": "{label} sélectionné.{countHint} Les options correspondantes s'affichent maintenant.",
+      "announceOptionCount": " {count, plural, one {# option disponible} other {# options disponibles}}."
+    }
+  },
+  "homepage": {
+    "meta": {
+      "title": "Path-Advisor — Trouve ta voie, étape par étape",
+      "description": "Découvre les métiers qui te correspondent, comprends tes vraies chances d'admission et construis ton parcours d'orientation, du collège aux études supérieures."
+    },
+    "hero": {
+      "title": "Trouve ta voie, étape par étape.",
+      "subtitle": "Path-Advisor t'aide à découvrir les métiers qui te correspondent, à comprendre tes vraies chances d'admission et à construire ton parcours d'orientation — du collège aux études supérieures.",
+      "signupCta": "Créer un compte",
+      "loginCta": "Se connecter"
+    },
+    "howItWorks": {
+      "title": "Comment ça marche",
+      "steps": {
+        "profil": {
+          "title": "1. Construis ton profil",
+          "description": "Passions, niveau scolaire, bulletins — Path-Advisor apprend à te connaître."
+        },
+        "recommandations": {
+          "title": "2. Reçois des recommandations",
+          "description": "Des métiers qui te correspondent vraiment, expliqués et sourcés."
+        },
+        "parcours": {
+          "title": "3. Explore ton parcours",
+          "description": "Formations, écoles, chances d'admission réelles pour chaque métier."
+        },
+        "suivi": {
+          "title": "4. Suis ton évolution",
+          "description": "Ton profil et tes recommandations évoluent avec toi, année après année."
+        }
+      }
+    },
+    "ahaMoments": {
+      "title": "Ce qui change tout",
+      "recommandation": {
+        "title": "Découvre les métiers faits pour toi",
+        "description": "Notre moteur de recommandation croise tes passions, ton niveau et tes résultats pour te proposer des métiers pertinents — avec les signaux expliqués en clair, jamais une boîte noire."
+      },
+      "parcours": {
+        "title": "Vois tes vraies chances d'admission",
+        "description": "Pour chaque métier, un graphe de parcours te montre les formations possibles et une estimation personnalisée de tes chances d'admission dans chaque école."
+      }
+    },
+    "trust": {
+      "title": "Gratuit pour commencer, tes données t'appartiennent",
+      "descriptionBeforeLink": "Créer ton profil et découvrir tes premières recommandations est gratuit. Path-Advisor est conçu dans le respect du RGPD : tu gardes le contrôle sur tes données à tout moment.",
+      "privacyLink": "En savoir plus sur la confidentialité"
+    }
+  },
+  "metierPage": {
+    "backToList": "← Tous les métiers",
+    "myMetiersLink": "← Mes métiers",
+    "descriptionFallback": "Découvre le métier {name} sur Path Advisor : missions, débouchés, formations et parcours pour y accéder.",
+    "metaTitleFallback": "Fiche métier — Path Advisor",
+    "signupCtaTitle": "Découvre tes vraies chances",
+    "signupCtaBody": "Crée ton compte gratuit pour voir ton score de compatibilité personnalisé avec {name} et tes probabilités d'admission réelles.",
+    "signupCta": "Crée ton compte pour voir tes chances réelles"
+  },
+  "quelBacPourPage": {
+    "niveauLabels": {
+      "3eme": "3ème",
+      "terminale-generale": "Terminale Générale",
+      "terminale-technologique": "Terminale Technologique",
+      "terminale-pro": "Terminale Pro"
+    },
+    "metaTitleFallback": "Quel bac choisir — Path Advisor",
+    "metaTitle": "Quel bac pour devenir {name} depuis la {niveauLabel} ? — Path Advisor",
+    "metaDescription": "Quel bac choisir en {niveauLabel} pour devenir {name} ? Formations et lycées associés.",
+    "heading": "Quel bac pour devenir {name} depuis la {niveauLabel} ?",
+    "formationsTitleTroisieme": "Lycées professionnels associés",
+    "formationsTitleOther": "Formations accessibles depuis la {niveauLabel}",
+    "noFormationsYet": "Aucune formation référencée pour ce niveau pour l'instant.",
+    "faqTitle": "Questions fréquentes",
+    "signupCtaTitle": "Découvre ton parcours personnalisé",
+    "signupCtaBody": "Crée ton compte gratuit pour construire ton propre parcours vers {name}.",
+    "signupCta": "Créer mon compte gratuit"
+  },
+  "devenirMetierPage": {
+    "metaTitleUnmatched": "Path Advisor",
+    "metaTitle": "Devenir {name} : études, salaire, débouchés — Path Advisor",
+    "metaDescription": "Comment devenir {name} ? Études, salaire, quel bac choisir, débouchés. {excerpt}",
+    "metaTitleFallback": "Devenir — Path Advisor",
+    "heading": "Devenir {name}",
+    "bacsTitle": "Quels bacs / formations choisir ?",
+    "faqTitle": "Questions fréquentes",
+    "signupCtaTitle": "Découvre si ce métier te correspond",
+    "signupCtaBody": "Crée ton compte gratuit pour voir ton score de compatibilité avec {name} et tes chances réelles d'admission.",
+    "signupCta": "Créer mon compte gratuit"
+  },
+  "formationPage": {
+    "metaTitleFallback": "École — Path Advisor",
+    "descriptionFallback": "{name} — {city}. Découvre les formations, débouchés et modalités d'admission sur Path Advisor.",
+    "targetMetiersTitle": "Métiers auxquels cette formation mène",
+    "similarSchoolsTitle": "Écoles similaires",
+    "signupCtaTitle": "Découvre tes vraies chances d'admission",
+    "signupCtaBody": "Crée ton compte gratuit pour voir ta probabilité d'admission personnalisée à {name}.",
+    "signupCta": "Crée ton compte pour voir ta proba d'admission personnalisée"
+  }
+}

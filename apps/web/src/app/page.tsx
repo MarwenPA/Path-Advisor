@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect, unstable_rethrow } from "next/navigation";
 
@@ -12,30 +13,27 @@ import { SITE_ORIGIN } from "@/lib/seo/occupation-landing";
 
 import type { Metadata } from "next";
 
-const TITLE = "Path-Advisor — Trouve ta voie, étape par étape";
-const DESCRIPTION =
-  "Découvre les métiers qui te correspondent, comprends tes vraies chances d'admission et construis ton parcours d'orientation, du collège aux études supérieures.";
-
 // Story 7.5 AC — og:title/description/image/url/type + Twitter Card.
 // og:image comes from `app/opengraph-image.tsx` (Next.js file convention,
 // auto-wired into this page's `<head>`); Twitter falls back to the same
 // `og:image` per the Twitter Card spec when no dedicated `twitter:image`
 // is set — no separate `twitter-image.tsx` needed.
-export const metadata: Metadata = {
-  title: TITLE,
-  description: DESCRIPTION,
-  openGraph: {
-    title: TITLE,
-    description: DESCRIPTION,
-    url: SITE_ORIGIN,
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: TITLE,
-    description: DESCRIPTION,
-  },
-};
+//
+// Story 7.7 — title/description moved to `messages/fr.json#homepage.meta`
+// (converted from a static `metadata` export to `generateMetadata` since
+// `getTranslations` is async).
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("homepage.meta");
+  const title = t("title");
+  const description = t("description");
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, url: SITE_ORIGIN, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
+  };
+}
 
 /**
  * Public landing page — Story 7.8.
@@ -49,6 +47,8 @@ export const metadata: Metadata = {
  * the API doesn't.
  */
 export default async function Home() {
+  const tCommon = await getTranslations("common");
+
   try {
     const user = await fetchCurrentUser();
     redirect(getPostLoginPath(user.role, user.status));
@@ -83,7 +83,7 @@ export default async function Home() {
           href="/legal/rgpd"
           className="text-caption text-text-subtle underline underline-offset-4 hover:text-text"
         >
-          Mentions légales & RGPD
+          {tCommon("legalMentionsLink")}
         </Link>
       </footer>
     </main>

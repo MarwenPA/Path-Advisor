@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -40,11 +41,15 @@ function extractMetierSlug(slug: string): string | null {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const metier = extractMetierSlug(slug);
-  if (!metier) return { title: "Path Advisor" };
+  const t = await getTranslations("devenirMetierPage");
+  if (!metier) return { title: t("metaTitleUnmatched") };
   try {
     const profession = await fetchPublicProfession(metier);
-    const title = `Devenir ${profession.name} : études, salaire, débouchés — Path Advisor`;
-    const description = `Comment devenir ${profession.name} ? Études, salaire, quel bac choisir, débouchés. ${profession.description.slice(0, 100)}`;
+    const title = t("metaTitle", { name: profession.name });
+    const description = t("metaDescription", {
+      name: profession.name,
+      excerpt: profession.description.slice(0, 100),
+    });
     return {
       title,
       description,
@@ -57,7 +62,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       twitter: { card: "summary_large_image", title, description },
     };
   } catch {
-    return { title: "Devenir — Path Advisor" };
+    return { title: t("metaTitleFallback") };
   }
 }
 
@@ -68,6 +73,7 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
     notFound();
     return null;
   }
+  const t = await getTranslations("devenirMetierPage");
 
   let profession;
   try {
@@ -106,13 +112,15 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
         />
       )}
 
-      <h1 className="mb-2 text-2xl font-bold text-text">Devenir {profession.name}</h1>
+      <h1 className="mb-2 text-2xl font-bold text-text">
+        {t("heading", { name: profession.name })}
+      </h1>
       <p className="mb-6 text-body text-text-muted">{profession.description}</p>
 
       {byNiveau.size > 0 && (
         <section aria-labelledby="quels-bacs-title" className="mb-8">
           <h2 id="quels-bacs-title" className="mb-3 text-h3 font-semibold text-text">
-            Quels bacs / formations choisir ?
+            {t("bacsTitle")}
           </h2>
           <div className="flex flex-col gap-4">
             {[...byNiveau.entries()].map(([niveau, rows]) => (
@@ -146,7 +154,7 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
       {faq.length > 0 && (
         <section aria-labelledby="faq-title" className="mb-8">
           <h2 id="faq-title" className="mb-3 text-h3 font-semibold text-text">
-            Questions fréquentes
+            {t("faqTitle")}
           </h2>
           <dl className="flex flex-col gap-4">
             {faq.map((entry) => (
@@ -164,17 +172,16 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
         className="rounded-lg border border-border bg-card p-6 text-center"
       >
         <h2 id="signup-cta-title" className="mb-2 text-h3 font-semibold text-text">
-          Découvre si ce métier te correspond
+          {t("signupCtaTitle")}
         </h2>
         <p className="mb-4 text-body-sm text-text-muted">
-          Crée ton compte gratuit pour voir ton score de compatibilité avec {profession.name} et tes
-          chances réelles d&apos;admission.
+          {t("signupCtaBody", { name: profession.name })}
         </p>
         <Link
           href="/auth/signup"
           className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-body-sm font-medium text-primary-foreground hover:opacity-90"
         >
-          Créer mon compte gratuit
+          {t("signupCta")}
         </Link>
       </section>
     </main>

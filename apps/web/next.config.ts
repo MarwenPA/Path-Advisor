@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 /**
  * Next.js configuration.
@@ -18,4 +19,9 @@ const nextConfig: NextConfig = {
   /* config options here */
 };
 
-export default nextConfig;
+// Story 7.7 — points at `src/i18n/request.ts` (the default next-intl looks
+// for), which resolves the request-scoped `messages/fr.json`. No `[locale]`
+// route segment/middleware — single-locale MVP (see `src/i18n/config.ts`).
+const withNextIntl = createNextIntlPlugin();
+
+export default withNextIntl(nextConfig);

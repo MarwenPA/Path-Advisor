@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -42,14 +43,14 @@ function extractMetierSlug(metierSlug: string): string | null {
     : null;
 }
 
-const NIVEAU_SLUGS: Record<string, { apiValue: string; label: string }> = {
-  "3eme": { apiValue: "troisieme_bac_pro", label: "3ème" },
-  "terminale-generale": { apiValue: "terminale_generale", label: "Terminale Générale" },
-  "terminale-technologique": {
-    apiValue: "terminale_technologique",
-    label: "Terminale Technologique",
-  },
-  "terminale-pro": { apiValue: "terminale_pro", label: "Terminale Pro" },
+// Story 7.7 — niveau *labels* moved to `messages/fr.json#quelBacPourPage.niveauLabels`
+// (keyed by the same niveau slug); this map keeps only the non-translatable
+// backend enum mapping (`apiValue`, `Parcours.NiveauScolaire`).
+const NIVEAU_SLUGS: Record<string, { apiValue: string }> = {
+  "3eme": { apiValue: "troisieme_bac_pro" },
+  "terminale-generale": { apiValue: "terminale_generale" },
+  "terminale-technologique": { apiValue: "terminale_technologique" },
+  "terminale-pro": { apiValue: "terminale_pro" },
 };
 
 export async function generateMetadata({
@@ -60,11 +61,13 @@ export async function generateMetadata({
   const { slug: niveau, metierSlug } = await params;
   const niveauInfo = NIVEAU_SLUGS[niveau];
   const metier = extractMetierSlug(metierSlug);
-  if (!niveauInfo || !metier) return { title: "Quel bac choisir — Path Advisor" };
+  const t = await getTranslations("quelBacPourPage");
+  if (!niveauInfo || !metier) return { title: t("metaTitleFallback") };
   try {
     const profession = await fetchPublicProfession(metier);
-    const title = `Quel bac pour devenir ${profession.name} depuis la ${niveauInfo.label} ? — Path Advisor`;
-    const description = `Quel bac choisir en ${niveauInfo.label} pour devenir ${profession.name} ? Formations et lycées associés.`;
+    const niveauLabel = t(`niveauLabels.${niveau}`);
+    const title = t("metaTitle", { name: profession.name, niveauLabel });
+    const description = t("metaDescription", { name: profession.name, niveauLabel });
     return {
       title,
       description,
@@ -77,7 +80,7 @@ export async function generateMetadata({
       twitter: { card: "summary_large_image", title, description },
     };
   } catch {
-    return { title: "Quel bac choisir — Path Advisor" };
+    return { title: t("metaTitleFallback") };
   }
 }
 
@@ -93,6 +96,8 @@ export default async function QuelBacPourMetierPage({
     notFound();
     return null;
   }
+  const t = await getTranslations("quelBacPourPage");
+  const niveauLabel = t(`niveauLabels.${niveau}`);
 
   let profession;
   try {
@@ -126,20 +131,18 @@ export default async function QuelBacPourMetierPage({
       )}
 
       <h1 className="mb-2 text-2xl font-bold text-text">
-        Quel bac pour devenir {profession.name} depuis la {niveauInfo.label} ?
+        {t("heading", { name: profession.name, niveauLabel })}
       </h1>
       <p className="mb-6 text-body text-text-muted">{profession.description}</p>
 
       <section aria-labelledby="formations-title" className="mb-8">
         <h2 id="formations-title" className="mb-3 text-h3 font-semibold text-text">
           {niveau === "3eme"
-            ? "Lycées professionnels associés"
-            : `Formations accessibles depuis la ${niveauInfo.label}`}
+            ? t("formationsTitleTroisieme")
+            : t("formationsTitleOther", { niveauLabel })}
         </h2>
         {schoolsForNiveau.length === 0 ? (
-          <p className="text-body-sm text-text-muted">
-            Aucune formation référencée pour ce niveau pour l&apos;instant.
-          </p>
+          <p className="text-body-sm text-text-muted">{t("noFormationsYet")}</p>
         ) : (
           <ul className="flex flex-col gap-1">
             {schoolsForNiveau.map((p) => (
@@ -160,7 +163,7 @@ export default async function QuelBacPourMetierPage({
       {faq.length > 0 && (
         <section aria-labelledby="faq-title" className="mb-8">
           <h2 id="faq-title" className="mb-3 text-h3 font-semibold text-text">
-            Questions fréquentes
+            {t("faqTitle")}
           </h2>
           <dl className="flex flex-col gap-4">
             {faq.map((entry) => (
@@ -178,16 +181,16 @@ export default async function QuelBacPourMetierPage({
         className="rounded-lg border border-border bg-card p-6 text-center"
       >
         <h2 id="signup-cta-title" className="mb-2 text-h3 font-semibold text-text">
-          Découvre ton parcours personnalisé
+          {t("signupCtaTitle")}
         </h2>
         <p className="mb-4 text-body-sm text-text-muted">
-          Crée ton compte gratuit pour construire ton propre parcours vers {profession.name}.
+          {t("signupCtaBody", { name: profession.name })}
         </p>
         <Link
           href="/auth/signup"
           className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-body-sm font-medium text-primary-foreground hover:opacity-90"
         >
-          Créer mon compte gratuit
+          {t("signupCta")}
         </Link>
       </section>
     </main>

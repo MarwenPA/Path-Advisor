@@ -11,6 +11,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { isDraftComplete, type Step2Draft } from "@/hooks/use-onboarding-step-2";
+import { renderWithIntl } from "@/test/render-with-intl";
 import { NiveauPicker } from "./niveau-picker";
 import { Branche3eme } from "./branche-3eme";
 import { RecapCard } from "./recap-card";
@@ -203,7 +204,7 @@ describe("isDraftComplete", () => {
 
 describe("NiveauPicker", () => {
   it("renders all 5 niveau options", () => {
-    render(<NiveauPicker value={null} onChange={vi.fn()} />);
+    renderWithIntl(<NiveauPicker value={null} onChange={vi.fn()} />);
     expect(screen.getByText("3ème")).toBeInTheDocument();
     expect(screen.getByText("2nde")).toBeInTheDocument();
     expect(screen.getByText("1ère")).toBeInTheDocument();
@@ -213,7 +214,7 @@ describe("NiveauPicker", () => {
 
   it("calls onChange when a niveau is selected", async () => {
     const onChange = vi.fn();
-    render(<NiveauPicker value={null} onChange={onChange} />);
+    renderWithIntl(<NiveauPicker value={null} onChange={onChange} />);
     await userEvent.click(screen.getByText("Terminale"));
     expect(onChange).toHaveBeenCalledWith("lycee_terminale");
   });

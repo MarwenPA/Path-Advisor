@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -35,9 +36,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // `description` would otherwise produce no `<meta name="description">`
     // tag at all — defensive fallback even though no currently-seeded
     // profession has an empty description.
+    const t = await getTranslations("metierPage");
     const description = profession.description
       ? profession.description.slice(0, 155)
-      : `Découvre le métier ${profession.name} sur Path Advisor : missions, débouchés, formations et parcours pour y accéder.`;
+      : t("descriptionFallback", { name: profession.name });
     // Story 7.5 AC — og:image comes from the sibling `opengraph-image.tsx`
     // (Next.js file convention); Twitter falls back to it (see root
     // `page.tsx` for the rationale).
@@ -53,7 +55,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       twitter: { card: "summary_large_image", title, description },
     };
   } catch {
-    return { title: "Fiche métier — Path Advisor" };
+    const t = await getTranslations("metierPage");
+    return { title: t("metaTitleFallback") };
   }
 }
 
@@ -84,6 +87,7 @@ export default async function MetierDetailPage({
 }) {
   const { slug } = await params;
   const { score: scoreStr, confidence, signals: rawSignals } = await searchParams;
+  const t = await getTranslations("metierPage");
 
   let profession;
   try {
@@ -125,14 +129,14 @@ export default async function MetierDetailPage({
           href="/mes-metiers"
           className="hover:text-text-primary mb-4 flex items-center gap-1 text-body-sm text-text-muted"
         >
-          ← Mes métiers
+          {t("myMetiersLink")}
         </Link>
       ) : (
         <Link
           href="/metiers"
           className="hover:text-text-primary mb-4 flex items-center gap-1 text-body-sm text-text-muted"
         >
-          ← Tous les métiers
+          {t("backToList")}
         </Link>
       )}
 
@@ -150,17 +154,16 @@ export default async function MetierDetailPage({
           className="mt-8 rounded-lg border border-border bg-card p-6 text-center"
         >
           <h2 id="signup-cta-title" className="mb-2 text-h3 font-semibold text-text">
-            Découvre tes vraies chances
+            {t("signupCtaTitle")}
           </h2>
           <p className="mb-4 text-body-sm text-text-muted">
-            Crée ton compte gratuit pour voir ton score de compatibilité personnalisé avec{" "}
-            {profession.name} et tes probabilités d&apos;admission réelles.
+            {t("signupCtaBody", { name: profession.name })}
           </p>
           <Link
             href="/auth/signup"
             className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-body-sm font-medium text-primary-foreground hover:opacity-90"
           >
-            Crée ton compte pour voir tes chances réelles
+            {t("signupCta")}
           </Link>
         </section>
       )}
