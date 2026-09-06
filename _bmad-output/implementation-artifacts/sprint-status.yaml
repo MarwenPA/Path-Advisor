@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-09-06  # 7.7 (i18n foundation) merged (PR #95, CI verte) -> done; epic-7 -> done (8/8)
+last_updated: 2026-09-06  # review adversariale epic-7 -> 7.1-7.7 rouvertes, corrections en cours
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -142,14 +142,18 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7 — Découverte publique & SEO
-  epic-7: done  # 2026-09-06 : 8/8 stories done (7.7 i18n foundation clôt l'épic)
-  7-1-pages-ssr-fiches-metier: done
-  7-2-pages-ssr-fiches-formation-ecole: done
-  7-3-landing-pages-long-tail-seo: done
-  7-4-sitemap-robots-schema-org: done
-  7-5-open-graph-twitter-meta: done
-  7-6-core-web-vitals: done
-  7-7-i18n-foundation: done
+  # ROUVERTE le 2026-09-06 après review adversariale (5 agents) : défauts confirmés
+  # (écoles inactives exposées, pas de throttling, JSON-LD non échappé, images OG
+  # cassées en prod, revalidate inopérant, contenu faux sur les pages par niveau,
+  # gate CI qui ne bloque rien, ACs surévaluées en 7.6/7.7, RGAA AA non tenu).
+  epic-7: in-progress
+  7-1-pages-ssr-fiches-metier: in-progress  # rouverte : voir review 2026-09-06
+  7-2-pages-ssr-fiches-formation-ecole: in-progress  # rouverte : voir review 2026-09-06
+  7-3-landing-pages-long-tail-seo: in-progress  # rouverte : voir review 2026-09-06
+  7-4-sitemap-robots-schema-org: in-progress  # rouverte : voir review 2026-09-06
+  7-5-open-graph-twitter-meta: in-progress  # rouverte : voir review 2026-09-06
+  7-6-core-web-vitals: in-progress  # rouverte : voir review 2026-09-06
+  7-7-i18n-foundation: in-progress  # rouverte : voir review 2026-09-06
   7-8-page-accueil-publique-moderne: done
   epic-7-retrospective: optional
 
