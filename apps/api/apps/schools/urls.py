@@ -14,6 +14,7 @@ from apps.schools.views import (
     SchoolFavoriteView,
     SchoolListView,
     SchoolPublicSeoDetailView,
+    SchoolPublicSlugsView,
 )
 
 app_name = "schools"
@@ -26,6 +27,13 @@ urlpatterns = [
     path("admin/", include(admin_router.urls)),
     path("schools/", SchoolListView.as_view(), name="school-list"),
     path("schools/<slug:slug>/", SchoolDetailView.as_view(), name="school-detail"),
+    # Story 7.4 — sitemap slugs feed (AllowAny). MUST precede the
+    # <slug:slug> pattern below.
+    path(
+        "public/schools/slugs/",
+        SchoolPublicSlugsView.as_view(),
+        name="public-school-slugs",
+    ),
     # Story 7.2 — anonymous SEO fiche école/formation (AllowAny)
     path(
         "public/schools/<slug:slug>/",

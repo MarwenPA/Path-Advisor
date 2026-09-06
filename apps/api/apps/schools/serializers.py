@@ -113,6 +113,15 @@ class AdmissionStatSerializer(serializers.ModelSerializer):
         return (timezone.now() - stat.updated_at).total_seconds() < 86400
 
 
+class SchoolSlugSerializer(serializers.ModelSerializer):
+    """Minimal `{slug, updated_at}` rows for `/sitemap.xml` — Story 7.4."""
+
+    class Meta:
+        model = School
+        fields = ["slug", "updated_at"]
+        read_only_fields = fields
+
+
 class SchoolCatalogSerializer(serializers.ModelSerializer):
     """Lightweight fields for the catalog LIST view — mirrors
     `ProfessionCatalogSerializer` (Story 3.13): no `formations`/

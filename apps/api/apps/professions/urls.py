@@ -9,6 +9,7 @@ from apps.professions.views import (
     ProfessionReportCreateView,
     PublicProfessionDetailView,
     PublicProfessionListView,
+    PublicProfessionSlugsView,
     PublicSeoProfessionDetailView,
 )
 
@@ -28,6 +29,14 @@ urlpatterns = [
     # Student-facing public endpoints
     path("professions/", PublicProfessionListView.as_view(), name="public-list"),
     path("professions/<slug:slug>/", PublicProfessionDetailView.as_view(), name="public-detail"),
+    # Story 7.4 — sitemap slugs feed (AllowAny). MUST precede the
+    # <slug:slug> pattern below or Django would try to resolve "slugs" as
+    # a profession slug.
+    path(
+        "public/professions/slugs/",
+        PublicProfessionSlugsView.as_view(),
+        name="public-profession-slugs",
+    ),
     # Story 7.1 — anonymous SEO fiche métier (AllowAny)
     path(
         "public/professions/<slug:slug>/",

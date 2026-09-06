@@ -426,3 +426,25 @@ class TestSchoolPublicSeoDetail:
         data = response.json()
         similar_slugs = {s["slug"] for s in data["similar_schools"]}
         assert similar_slugs == {same_type.slug}
+
+
+# ── Sitemap slugs feed — Story 7.4 ───────────────────────────────────────────
+
+
+class TestSchoolPublicSlugs:
+    @pytest.mark.django_db
+    def test_anonymous_can_access_slugs(self, school):
+        client = APIClient()
+        url = reverse("schools:public-school-slugs")
+        response = client.get(url)
+        assert response.status_code == 200
+        slugs = [row["slug"] for row in response.json()]
+        assert school.slug in slugs
+
+    @pytest.mark.django_db
+    def test_slugs_only_has_slug_and_updated_at(self, school):
+        client = APIClient()
+        url = reverse("schools:public-school-slugs")
+        response = client.get(url)
+        row = response.json()[0]
+        assert set(row.keys()) == {"slug", "updated_at"}

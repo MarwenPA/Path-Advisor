@@ -59,6 +59,18 @@ class ProfessionPublicSeoSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class ProfessionSlugSerializer(serializers.ModelSerializer):
+    """Minimal `{slug, updated_at}` rows for `/sitemap.xml` — Story 7.4.
+    Deliberately not the full catalog serializer: a sitemap generator needs
+    nothing but the URL-building key + `lastmod`.
+    """
+
+    class Meta:
+        model = Profession
+        fields = ["slug", "updated_at"]
+        read_only_fields = fields
+
+
 class ProfessionCatalogSerializer(serializers.ModelSerializer):
     """Lightweight fields for the catalog LIST view — Story 3.13.
 

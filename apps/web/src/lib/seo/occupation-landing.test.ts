@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Profession } from "@/components/professions/types";
 
 import {
+  buildEducationalOrganizationJsonLd,
   buildFaqPageJsonLd,
   buildOccupationFaq,
   buildOccupationJsonLd,
@@ -74,5 +75,31 @@ describe("buildFaqPageJsonLd", () => {
     expect(jsonLd.mainEntity).toHaveLength(faq.length);
     expect(jsonLd.mainEntity[0].name).toBe(faq[0].question);
     expect(jsonLd.mainEntity[0].acceptedAnswer.text).toBe(faq[0].answer);
+  });
+});
+
+describe("buildEducationalOrganizationJsonLd", () => {
+  it("builds a valid Schema.org EducationalOrganization object", () => {
+    const jsonLd = buildEducationalOrganizationJsonLd(
+      {
+        name: "INSA Lyon",
+        description: "École d'ingénieurs.",
+        city: "Lyon",
+        official_url: "https://insa-lyon.fr",
+      },
+      "https://path-advisor.fr/formations/insa-lyon",
+    );
+    expect(jsonLd["@type"]).toBe("EducationalOrganization");
+    expect(jsonLd.name).toBe("INSA Lyon");
+    expect(jsonLd.address.addressLocality).toBe("Lyon");
+    expect(jsonLd.url).toBe("https://insa-lyon.fr");
+  });
+
+  it("falls back to the page URL when official_url is empty", () => {
+    const jsonLd = buildEducationalOrganizationJsonLd(
+      { name: "École Test", description: "Desc.", city: "Paris", official_url: "" },
+      "https://path-advisor.fr/formations/ecole-test",
+    );
+    expect(jsonLd.url).toBe("https://path-advisor.fr/formations/ecole-test");
   });
 });

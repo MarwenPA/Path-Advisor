@@ -19,6 +19,16 @@ export const fetchPublicProfession = cache(async (slug: string): Promise<Profess
   return apiFetch<Profession>(`/api/v1/public/professions/${slug}/`);
 });
 
+/** Story 7.4 — `{slug, updated_at}` rows for `app/sitemap.ts`. */
+export interface ProfessionSlugRow {
+  slug: string;
+  updated_at: string;
+}
+
+export async function fetchPublicProfessionSlugs(): Promise<ProfessionSlugRow[]> {
+  return apiFetch<ProfessionSlugRow[]>("/api/v1/public/professions/slugs/");
+}
+
 /**
  * Lightweight catalog row — Story 3.13. Mirrors the backend's
  * `ProfessionCatalogSerializer` (deliberately narrower than `Profession`,

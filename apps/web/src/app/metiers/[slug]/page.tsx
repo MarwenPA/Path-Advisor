@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicProfession } from "@/lib/api/professions";
 import type { SignalContributif } from "@/lib/api/recommendations";
+import { SITE_ORIGIN, buildOccupationJsonLd } from "@/lib/seo/occupation-landing";
 
 import { FicheMetierClient } from "./FicheMetierClient";
 
@@ -91,9 +92,16 @@ export default async function MetierDetailPage({
 
   const signalsContributifs = parseSignals(rawSignals);
   const arrivedFromAuthenticatedFlow = score !== undefined && Number.isFinite(score);
+  // Story 7.4 AC — Occupation JSON-LD on the canonical fiche métier
+  // (Google Rich Results Test target for "une fiche métier").
+  const occupationJsonLd = buildOccupationJsonLd(profession, `${SITE_ORIGIN}/metiers/${slug}`);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(occupationJsonLd) }}
+      />
       {arrivedFromAuthenticatedFlow ? (
         <Link
           href="/mes-metiers"
