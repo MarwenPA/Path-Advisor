@@ -47,6 +47,31 @@ vi.mock("next-intl/server", () => import("@/test/next-intl-server-mock"));
 
 `@/test/next-intl-server-mock` lit le vrai `messages/fr.json` (pas une fixture par test) — une clé renommée/supprimée fait échouer le test comme en production, au lieu de passer silencieusement contre un mock obsolète.
 
+## ⚠️ Docker : rebuild obligatoire après l'ajout de `next-intl`
+
+`infra/docker-compose.yml` monte `../apps/web:/app` **mais masque `node_modules` avec un volume anonyme** :
+
+```yaml
+volumes:
+  - ../apps/web:/app
+  - /app/node_modules   # ← volume anonyme : le node_modules de l'hôte n'est PAS visible
+  - /app/.next
+```
+
+Conséquence : un `npm install` fait sur l'hôte n'atteint jamais le conteneur. Un simple `make down && make dev` ne suffit pas — le conteneur continue de tourner avec son ancien `node_modules`.
+
+Symptôme concret rencontré sur cette story : le conteneur gardait un **next-intl 3.26.5** résiduel (scaffold initial) alors que l'hôte avait le **4.14.2** installé. Deux majeures d'écart, arborescence de plugin différente → l'alias `next-intl/config` n'était jamais posé et l'app levait `Couldn't find next-intl config file` (le module `next-intl/config` est un stub qui throw tant que le plugin ne l'a pas aliasé).
+
+Après tout changement de dépendance dans `apps/web/package.json` :
+
+```bash
+docker compose rm -sfv web && docker compose up -d --build web
+```
+
+(`-v` supprime les volumes anonymes du conteneur ; les données Postgres sont dans un volume **nommé**, elles ne sont pas touchées.)
+
+**Corollaire de vérification** : le conteneur lance `next dev` (**Turbopack**) alors que `npm run build` utilise `next build --webpack`. Le plugin next-intl configure ces deux chemins séparément (`turbopack.resolveAlias` vs alias webpack) — valider un build de production ne prouve donc PAS que le mode dev conteneurisé fonctionne. Tester les deux.
+
 ## Dette assumée (pages/flows non migrés dans cette story)
 
 Voir `_bmad-output/implementation-artifacts/7-7-i18n-foundation.md` §6 et sa liste de "Fichiers modifiés" pour le périmètre exact couvert par la Story 7.7 et ce qui reste hardcodé (espace authentifié hors le flow onboarding représentatif, back-office, emails/notifications).

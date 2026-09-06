@@ -1,6 +1,6 @@
 # Story 7.7 : i18n foundation (français MVP, préparation francophonie)
 
-**Status:** review
+**Status:** done
 
 ## 1. User Story
 
@@ -120,6 +120,7 @@ claude-sonnet-5
   - `@/lib/onboarding/levels.ts` (`LEVELS`, `TRACKS_3EME`, `FILIERES_LYCEE`, `POSTBAC_YEARS`) et modules de données similaires (`@/lib/onboarding/subjects-by-level.ts`, etc.) — labels/descriptions actuellement en dur dans des constantes de données partagées entre plusieurs composants, pas migrés.
   - Backend Django (`gettext`, `locale/`) — hors AC epic 7.7 (voir §3).
 - **T7 (vérifications CI)** — `npm run lint` (0 erreur, mêmes 25 warnings pré-existants), `npm run typecheck` (0 erreur, après un `rm -rf .next` pour purger un `.next/types/validator.ts` obsolète issu d'un état précédent), `npm run format:check` (propre), `npm test -- --run` → **922 passed, 0 failed** (+3 net vs. avant la story : nouveaux tests `generateMetadata` fallback + tests `NiveauPicker`/`EditLevelSheet` réutilisés tels quels), `npm run build` (production réelle) → succès, toutes les routes restent sans préfixe `/fr/` (confirmé par la liste de routes du build). Smoke test live (Django réel + build de prod réel sur les ports habituels) confirmant le contenu traduit réellement servi — pas seulement "le build passe".
+- **Bug post-merge trouvé au redémarrage Docker (par l'utilisateur, pas par moi)** : `Couldn't find next-intl config file` au lancement de la stack. Cause : `infra/docker-compose.yml` masque `node_modules` avec un volume anonyme, donc le `npm install next-intl` fait sur l'hôte n'atteint jamais le conteneur — celui-ci tournait avec un **next-intl 3.26.5** résiduel au lieu du **4.14.2**. Correctif : `docker compose rm -sfv web && docker compose up -d --build web` (documenté dans `docs/i18n-conventions.md`). **Trou de vérification de ma part** : j'avais validé `next build --webpack` + `next start` sur l'hôte, mais le conteneur lance `next dev` (**Turbopack**) — le plugin next-intl configure ces deux chemins séparément (`turbopack.resolveAlias` vs alias webpack), donc mon test ne couvrait pas le mode réellement utilisé en dev local. Même classe d'erreur que le bug de routing 7.3 et le bug de streaming 7.6 : le build qui passe ne prouve pas que le runtime marche.
 - **Piège Vitest découvert et documenté** : `next-intl/server` résout sa build `react-client` sous Vitest (pas de condition d'export `react-server` configurée dans `vitest.config.ts`) → `getTranslations` lève "not supported in Client Components" dans tout Server Component testé directement. Contourné via `vi.mock("next-intl/server", () => import("@/test/next-intl-server-mock"))` — mock qui lit le vrai `messages/fr.json` (pas une fixture par test), donc une clé cassée fait échouer le test comme en prod.
 
 ### File List
