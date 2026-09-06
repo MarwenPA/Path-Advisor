@@ -9,6 +9,7 @@ from apps.professions.views import (
     ProfessionReportCreateView,
     PublicProfessionDetailView,
     PublicProfessionListView,
+    PublicSeoProfessionDetailView,
 )
 
 app_name = "professions"
@@ -27,6 +28,12 @@ urlpatterns = [
     # Student-facing public endpoints
     path("professions/", PublicProfessionListView.as_view(), name="public-list"),
     path("professions/<slug:slug>/", PublicProfessionDetailView.as_view(), name="public-detail"),
+    # Story 7.1 — anonymous SEO fiche métier (AllowAny)
+    path(
+        "public/professions/<slug:slug>/",
+        PublicSeoProfessionDetailView.as_view(),
+        name="public-seo-detail",
+    ),
     path(
         "professions/<slug:slug>/reports/",
         ProfessionReportCreateView.as_view(),

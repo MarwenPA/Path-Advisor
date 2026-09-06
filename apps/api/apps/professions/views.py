@@ -11,6 +11,7 @@ from __future__ import annotations
 from django.db import transaction
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,6 +23,7 @@ from apps.professions.models import Profession, ProfessionReport
 from apps.professions.serializers import (
     ProfessionAdminSerializer,
     ProfessionCatalogSerializer,
+    ProfessionPublicSeoSerializer,
     ProfessionPublicSerializer,
     ProfessionReportAdminSerializer,
     ProfessionReportCreateSerializer,
@@ -163,4 +165,38 @@ class PublicProfessionDetailView(APIView):
         )
 
         serializer = ProfessionPublicSerializer(profession)
+        return Response(serializer.data)
+
+
+class PublicSeoProfessionDetailView(APIView):
+    """GET /api/v1/public/professions/{slug}/ — Story 7.1 AC: anonymous SSR
+    fiche métier for SEO. `AllowAny` — deliberately unauthenticated so
+    Google/Bing (and a logged-out visitor) get a fully-rendered page.
+
+    Distinct from `PublicProfessionDetailView` (misleadingly named —
+    despite "Public" it actually requires `IsAuthenticatedAndActive` +
+    `IsStudent`, kept as-is/unrenamed to avoid a churny rename across the
+    existing authenticated `/metiers/{slug}` flow): this view uses the
+    narrower `ProfessionPublicSeoSerializer` and does NOT audit-log with an
+    `actor` (there is none — `record_audit` accepts `actor=None`, which
+    `_resolve_actor` treats as a system/anonymous event).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request, slug: str) -> Response:
+        try:
+            profession = Profession.objects.get(slug=slug, is_active=True)
+        except Profession.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        record_audit(
+            action="profession_viewed_anonymous",
+            result=AuditResult.SUCCESS,
+            actor=None,
+            subject_id=profession.id,
+            metadata={"slug": profession.slug},
+        )
+
+        serializer = ProfessionPublicSeoSerializer(profession)
         return Response(serializer.data)

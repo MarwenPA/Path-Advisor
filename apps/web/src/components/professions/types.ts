@@ -35,7 +35,11 @@ export interface SalaryRange {
 }
 
 export interface Profession {
-  id: string;
+  // Story 7.1 — `id` is absent from the anonymous SEO endpoint's payload
+  // (`ProfessionPublicSeoSerializer`, internal PK never rendered); no
+  // component in this tree reads `profession.id` (confirmed by grep), so
+  // making it optional is safe rather than fabricating a value.
+  id?: string;
   slug: string;
   name: string;
   description: string;

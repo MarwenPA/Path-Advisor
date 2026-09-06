@@ -11,6 +11,15 @@ export const fetchProfession = cache(async (slug: string): Promise<Profession> =
 });
 
 /**
+ * `GET /api/v1/public/professions/{slug}/` — Story 7.1. AllowAny backend
+ * endpoint; used by the public `/metiers/{slug}` SSR page so an anonymous
+ * visitor (and Google/Bing) never depends on the auth-gated endpoint above.
+ */
+export const fetchPublicProfession = cache(async (slug: string): Promise<Profession> => {
+  return apiFetch<Profession>(`/api/v1/public/professions/${slug}/`);
+});
+
+/**
  * Lightweight catalog row — Story 3.13. Mirrors the backend's
  * `ProfessionCatalogSerializer` (deliberately narrower than `Profession`,
  * the full detail type above — no `daily_routine`/`requirements_json`/

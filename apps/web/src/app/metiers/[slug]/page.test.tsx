@@ -1,0 +1,84 @@
+/**
+ * `/metiers/[slug]` page tests — Story 7.1 (public SSR fiche métier).
+ */
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+const fetchPublicProfessionMock = vi.fn();
+vi.mock("@/lib/api/professions", () => ({
+  fetchPublicProfession: (...args: unknown[]) => fetchPublicProfessionMock(...args),
+}));
+
+const notFoundMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  notFound: () => notFoundMock(),
+}));
+
+vi.mock("./FicheMetierClient", () => ({
+  FicheMetierClient: ({ profession }: { profession: { name: string } }) => (
+    <div data-testid="fiche-metier-client">{profession.name}</div>
+  ),
+}));
+
+import { ApiError } from "@/lib/api/client";
+
+import MetierDetailPage from "./page";
+
+const PROFESSION = {
+  slug: "infirmier-test",
+  name: "Infirmier·ère",
+  description: "Description longue du métier d'infirmier.",
+  daily_routine: "Une journée type.",
+  requirements_json: [],
+  prospects_text: "Débouchés.",
+  median_salary_eur: 32000,
+  signals_json: { passions: [], valeurs: [], specialites: [] },
+  level_compatibility: [],
+  sector: "santé",
+};
+
+describe("MetierDetailPage (public)", () => {
+  it("renders the CTA to sign up for an anonymous visit (no score in query)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
+
+    render(
+      await MetierDetailPage({
+        params: Promise.resolve({ slug: "infirmier-test" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    expect(screen.getByTestId("fiche-metier-client")).toHaveTextContent("Infirmier·ère");
+    expect(
+      screen.getByRole("link", { name: /crée ton compte pour voir tes chances réelles/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /tous les métiers/i })).toBeInTheDocument();
+  });
+
+  it("hides the signup CTA when arriving from the authenticated recommendations flow", async () => {
+    fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
+
+    render(
+      await MetierDetailPage({
+        params: Promise.resolve({ slug: "infirmier-test" }),
+        searchParams: Promise.resolve({ score: "82", confidence: "high" }),
+      }),
+    );
+
+    expect(
+      screen.queryByRole("link", { name: /crée ton compte pour voir tes chances réelles/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /mes métiers/i })).toBeInTheDocument();
+  });
+
+  it("calls notFound() on a 404 (unknown slug)", async () => {
+    fetchPublicProfessionMock.mockRejectedValue(new ApiError(404, "Pas trouvé."));
+
+    await MetierDetailPage({
+      params: Promise.resolve({ slug: "metier-inexistant" }),
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(notFoundMock).toHaveBeenCalled();
+  });
+});
