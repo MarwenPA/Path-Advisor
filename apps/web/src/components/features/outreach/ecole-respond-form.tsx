@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * <EcoleRespondForm> — Story 5.7.
+ * <EcoleRespondForm> — Story 5.7 (+ Story 5.12 keyboard shortcuts).
  *
  * Rendered on `/ecole/outreach/[id]` for a `pending` request. 3 explicit
  * actions (épic AC): "Profil intéressant" (primary), "Profil non aligné"
@@ -9,8 +9,14 @@
  * rather than a full generic `ConsentDialog`, same §2 scope decision
  * pattern as Story 5.4's send flow), "Demande d'entretien" (tertiary,
  * proposes 2-3 slots). Optional comment (≤200 words) on every action.
+ *
+ * Story 5.12 AC — keyboard shortcuts on the "choose" step: `i` (intéressant,
+ * submits directly), `n` (non aligné, opens the confirm step), `e`
+ * (entretien, opens the slots step). Ignored while typing in the comment
+ * textarea (so a student's name containing "i" doesn't misfire) and while
+ * a submission is in flight.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -58,6 +64,21 @@ export function EcoleRespondForm({ outreachId }: EcoleRespondFormProps) {
   }
 
   const filledSlots = slots.map((s) => s.trim()).filter(Boolean);
+
+  useEffect(() => {
+    if (step !== "choose") return;
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === "TEXTAREA" || target?.tagName === "INPUT") return;
+      if (status === "submitting") return;
+      if (e.key === "i") submit("interested");
+      else if (e.key === "n") setStep("confirm-not-aligned");
+      else if (e.key === "e") setStep("interview-slots");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, status]);
 
   if (step === "confirm-not-aligned") {
     return (
