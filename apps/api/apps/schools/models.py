@@ -170,6 +170,12 @@ class AdmissionStat(models.Model):
     context_line = models.CharField(max_length=300)
     action_lever = models.CharField(max_length=300, blank=True)
     previous_proba = models.IntegerField(null=True, blank=True)
+    # Story 5.8 — set when a school's early-outreach response last nudged
+    # `expected_proba`. While this is within 24h, `AdmissionStatView` skips
+    # its usual bulletin-based recompute (`upsert_stat`) so a fresh
+    # bulletins-driven prediction doesn't silently erase the outreach badge
+    # the student just got notified about.
+    outreach_delta_applied_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

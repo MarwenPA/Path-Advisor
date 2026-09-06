@@ -25,7 +25,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from django.utils import timezone
+
 from apps.schools.models import AdmissionStat, School
+
+#: Story 5.8 — epic-mandated point ranges per response action. Fixed
+#: midpoint values (not randomized) so the propagation is deterministic and
+#: testable; still within each range the epic specifies ("+10 à +20" etc).
+OUTREACH_RESPONSE_STAT_DELTAS: dict[str, int] = {
+    "interested": 15,
+    "interview_requested": 7,
+    "not_aligned": -15,
+}
 
 
 @dataclass
@@ -161,5 +172,38 @@ class AdmissionPredictionService:
                 "action_lever": prediction.action_lever,
                 "previous_proba": previous_proba,
             },
+        )
+        return stat
+
+    def apply_outreach_response_delta(self, *, school: School, user, action: str) -> AdmissionStat:
+        """Story 5.8 AC — nudge `expected_proba` right after a school
+        responds to an early-outreach request (`action` is one of
+        `EarlyOutreachResponseAction`'s values). Runs synchronously in the
+        same request/response cycle that persists the school's answer —
+        trivially satisfies the "< 5 minutes" NFR-P5 without a separate
+        queue/worker for the MVP.
+
+        If no `AdmissionStat` exists yet for (school, user), creates the
+        usual bulletin-based baseline first (`upsert_stat`) so there's
+        something to nudge.
+        """
+        delta = OUTREACH_RESPONSE_STAT_DELTAS.get(action, 0)
+        stat = AdmissionStat.objects.filter(school=school, user=user).first()
+        if stat is None:
+            stat = self.upsert_stat(school=school, user=user)
+
+        previous_proba = stat.expected_proba
+        # Anti-humiliation guard-rail (Story 4.2) applies here too — never
+        # below 5%, and capped at 95% on the upside.
+        stat.expected_proba = max(5, min(95, stat.expected_proba + delta))
+        stat.previous_proba = previous_proba
+        stat.outreach_delta_applied_at = timezone.now()
+        stat.save(
+            update_fields=[
+                "expected_proba",
+                "previous_proba",
+                "outreach_delta_applied_at",
+                "updated_at",
+            ]
         )
         return stat
