@@ -63,9 +63,18 @@ export async function generateMetadata({
   if (!niveauInfo || !metier) return { title: "Quel bac choisir — Path Advisor" };
   try {
     const profession = await fetchPublicProfession(metier);
+    const title = `Quel bac pour devenir ${profession.name} depuis la ${niveauInfo.label} ? — Path Advisor`;
+    const description = `Quel bac choisir en ${niveauInfo.label} pour devenir ${profession.name} ? Formations et lycées associés.`;
     return {
-      title: `Quel bac pour devenir ${profession.name} depuis la ${niveauInfo.label} ? — Path Advisor`,
-      description: `Quel bac choisir en ${niveauInfo.label} pour devenir ${profession.name} ? Formations et lycées associés.`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `${SITE_ORIGIN}/${niveau}/quel-bac-pour-${metier}`,
+        type: "website",
+      },
+      twitter: { card: "summary_large_image", title, description },
     };
   } catch {
     return { title: "Quel bac choisir — Path Advisor" };

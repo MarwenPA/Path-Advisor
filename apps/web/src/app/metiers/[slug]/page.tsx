@@ -30,9 +30,21 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   try {
     const profession = await fetchPublicProfession(slug);
+    const title = `${profession.name} — Path Advisor`;
+    const description = profession.description.slice(0, 155);
+    // Story 7.5 AC — og:image comes from the sibling `opengraph-image.tsx`
+    // (Next.js file convention); Twitter falls back to it (see root
+    // `page.tsx` for the rationale).
     return {
-      title: `${profession.name} — Path Advisor`,
-      description: profession.description.slice(0, 155),
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `${SITE_ORIGIN}/metiers/${slug}`,
+        type: "website",
+      },
+      twitter: { card: "summary_large_image", title, description },
     };
   } catch {
     return { title: "Fiche métier — Path Advisor" };

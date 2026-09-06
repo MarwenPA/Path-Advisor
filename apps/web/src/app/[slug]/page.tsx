@@ -43,9 +43,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!metier) return { title: "Path Advisor" };
   try {
     const profession = await fetchPublicProfession(metier);
+    const title = `Devenir ${profession.name} : études, salaire, débouchés — Path Advisor`;
+    const description = `Comment devenir ${profession.name} ? Études, salaire, quel bac choisir, débouchés. ${profession.description.slice(0, 100)}`;
     return {
-      title: `Devenir ${profession.name} : études, salaire, débouchés — Path Advisor`,
-      description: `Comment devenir ${profession.name} ? Études, salaire, quel bac choisir, débouchés. ${profession.description.slice(0, 100)}`,
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `${SITE_ORIGIN}/devenir-${metier}`,
+        type: "website",
+      },
+      twitter: { card: "summary_large_image", title, description },
     };
   } catch {
     return { title: "Devenir — Path Advisor" };

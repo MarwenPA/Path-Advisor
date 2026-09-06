@@ -8,6 +8,7 @@ import { TrustSection } from "@/components/features/homepage/trust-section";
 import { fetchCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { getPostLoginPath } from "@/lib/auth/post-login-redirect";
+import { SITE_ORIGIN } from "@/lib/seo/occupation-landing";
 
 import type { Metadata } from "next";
 
@@ -15,13 +16,24 @@ const TITLE = "Path-Advisor — Trouve ta voie, étape par étape";
 const DESCRIPTION =
   "Découvre les métiers qui te correspondent, comprends tes vraies chances d'admission et construis ton parcours d'orientation, du collège aux études supérieures.";
 
+// Story 7.5 AC — og:title/description/image/url/type + Twitter Card.
+// og:image comes from `app/opengraph-image.tsx` (Next.js file convention,
+// auto-wired into this page's `<head>`); Twitter falls back to the same
+// `og:image` per the Twitter Card spec when no dedicated `twitter:image`
+// is set — no separate `twitter-image.tsx` needed.
 export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {
     title: TITLE,
     description: DESCRIPTION,
+    url: SITE_ORIGIN,
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 

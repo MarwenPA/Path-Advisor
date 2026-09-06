@@ -22,7 +22,7 @@ vi.mock("./FicheMetierClient", () => ({
 
 import { ApiError } from "@/lib/api/client";
 
-import MetierDetailPage from "./page";
+import MetierDetailPage, { generateMetadata } from "./page";
 
 const PROFESSION = {
   slug: "infirmier-test",
@@ -70,6 +70,18 @@ describe("MetierDetailPage (public)", () => {
     const jsonLd = JSON.parse(script!.innerHTML);
     expect(jsonLd["@type"]).toBe("Occupation");
     expect(jsonLd.name).toBe("Infirmier·ère");
+  });
+
+  it("exposes og:url/type and a Twitter summary_large_image card (Story 7.5 AC)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ slug: "infirmier-test" }),
+    });
+
+    expect(metadata.openGraph?.url).toBe("https://path-advisor.fr/metiers/infirmier-test");
+    expect(metadata.openGraph?.type).toBe("website");
+    expect(metadata.twitter?.card).toBe("summary_large_image");
   });
 
   it("hides the signup CTA when arriving from the authenticated recommendations flow", async () => {
