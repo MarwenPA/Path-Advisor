@@ -270,6 +270,41 @@ class SchoolPublicSeoSerializer(serializers.ModelSerializer):
         return list(similar)
 
 
+class ParcoursPublicSeoSerializer(serializers.ModelSerializer):
+    """Fields exposed to ANONYMOUS visitors — Story 7.3 (landing pages
+    long-tail SEO, "Quels bacs / formations choisir ?" panel + "écoles
+    cibles"). Deliberately narrower than `ParcoursSerializer`: no
+    `nodes`/`edges` (the full interactive graph — too heavy for a text
+    landing page) and no personalized `admission_stat` per node — this is
+    "quel bac mène à quelle école", not "mes chances à cette école".
+    """
+
+    target_school_name = serializers.SerializerMethodField()
+    target_school_slug = serializers.SerializerMethodField()
+    target_school_city = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Parcours
+        fields = [
+            "niveau_scolaire",
+            "label",
+            "is_default",
+            "target_school_name",
+            "target_school_slug",
+            "target_school_city",
+        ]
+        read_only_fields = fields
+
+    def get_target_school_name(self, obj: Parcours) -> str | None:
+        return obj.target_school.name if obj.target_school else None
+
+    def get_target_school_slug(self, obj: Parcours) -> str | None:
+        return obj.target_school.slug if obj.target_school else None
+
+    def get_target_school_city(self, obj: Parcours) -> str | None:
+        return obj.target_school.city if obj.target_school else None
+
+
 class ParcoursSerializer(serializers.ModelSerializer):
     """Serializer for Parcours — Story 4.3 + 4.5 inline stats + 4.6 filter metadata + 4.7 dates.
 

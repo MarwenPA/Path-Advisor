@@ -106,6 +106,9 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     #     scoring-engine fields.
     "public-seo-detail": "Anonymous SEO fiche métier — Story 7.1",
     "public-seo-school-detail": "Anonymous SEO fiche école/formation — Story 7.2",
+    "public-seo-metier-parcours-list": (
+        "Anonymous SEO parcours summary for long-tail landing pages — Story 7.3"
+    ),
 }
 
 

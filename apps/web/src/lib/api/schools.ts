@@ -86,6 +86,29 @@ export const fetchPublicSchool = cache(async (slug: string): Promise<School> => 
  * server-side (404) — dead code, never actually called anywhere in the
  * app until Story 5.8's 30s polling (below) became its first real caller.
  */
+/** Story 7.3 — one row of the anonymous "quels bacs/formations choisir ?"
+ * panel (no nodes/edges/admission_stat, unlike the authenticated Parcours
+ * graph endpoint). */
+export interface ParcoursSummary {
+  niveau_scolaire: string;
+  label: string;
+  is_default: boolean;
+  target_school_name: string | null;
+  target_school_slug: string | null;
+  target_school_city: string | null;
+}
+
+/** `GET /api/v1/public/metiers/{slug}/parcours/` — Story 7.3. `AllowAny`. */
+export async function fetchPublicParcoursSummary(
+  professionSlug: string,
+  niveauScolaire?: string,
+): Promise<ParcoursSummary[]> {
+  const qs = niveauScolaire ? `?niveau_scolaire=${encodeURIComponent(niveauScolaire)}` : "";
+  return apiFetch<ParcoursSummary[]>(
+    `/api/v1/public/metiers/${encodeURIComponent(professionSlug)}/parcours/${qs}`,
+  );
+}
+
 export async function fetchAdmissionStat(schoolSlug: string): Promise<AdmissionStat> {
   return apiFetch<AdmissionStat>(
     `/api/v1/schools/${encodeURIComponent(schoolSlug)}/admission-stat/`,
