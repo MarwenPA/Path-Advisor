@@ -31,7 +31,11 @@ export interface Formation {
 }
 
 export interface School {
-  id: string;
+  // Story 7.2 — absent from the anonymous SEO endpoint's payload
+  // (`SchoolPublicSeoSerializer`, internal PK never rendered for the
+  // "expanded" variant `<FicheEcole>` uses on the public fiche); only the
+  // "compare" variant's checkbox reads `.id`, unreachable from that page.
+  id?: string;
   slug: string;
   name: string;
   type: string;
@@ -53,12 +57,26 @@ export interface School {
   tuition_max_eur?: number;
   formations: Formation[];
   admission_stat?: AdmissionStat;
+  // Story 7.2 — cross-linking on the public fiche; only present from
+  // `fetchPublicSchool`, absent from the authenticated `fetchSchool`.
+  metiers_cibles?: { slug: string; name: string }[];
+  similar_schools?: { slug: string; name: string; city: string }[];
 }
 
 // React.cache() deduplicates concurrent calls within a single server render,
 // ensuring generateMetadata and the page component share one network request.
 export const fetchSchool = cache(async (slug: string): Promise<School> => {
   return apiFetch<School>(`/api/v1/schools/${slug}/`);
+});
+
+/**
+ * `GET /api/v1/public/schools/{slug}/` — Story 7.2. `AllowAny` backend
+ * endpoint; used by the public `/formations/{slug}` SSR page. No
+ * `admission_stat` in the payload (see `SchoolPublicSeoSerializer`), so
+ * `<FicheEcole>` naturally skips the personalized admission poller.
+ */
+export const fetchPublicSchool = cache(async (slug: string): Promise<School> => {
+  return apiFetch<School>(`/api/v1/public/schools/${slug}/`);
 });
 
 /**

@@ -105,6 +105,7 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     #     page ; narrower `ProfessionPublicSeoSerializer` excludes internal
     #     scoring-engine fields.
     "public-seo-detail": "Anonymous SEO fiche métier — Story 7.1",
+    "public-seo-school-detail": "Anonymous SEO fiche école/formation — Story 7.2",
 }
 
 

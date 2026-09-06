@@ -25,7 +25,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -41,6 +41,7 @@ from apps.schools.serializers import (
     SchoolAdminSerializer,
     SchoolCatalogSerializer,
     SchoolDetailSerializer,
+    SchoolPublicSeoSerializer,
 )
 from apps.schools.services import AdmissionPredictionService
 
@@ -98,6 +99,20 @@ class SchoolDetailView(RetrieveAPIView):
         context = super().get_serializer_context()
         context["formation_id"] = self.request.query_params.get("formation_id")
         return context
+
+
+class SchoolPublicSeoDetailView(RetrieveAPIView):
+    """GET /api/v1/public/schools/{slug}/ — Story 7.2 AC: anonymous SSR
+    fiche école/formation for SEO. `AllowAny` — no `admission_stat`
+    (`SchoolPublicSeoSerializer`), so `<FicheEcole>` naturally skips the
+    personalized `<AdmissionStatPoller>` (it's conditional on that field
+    being present) rather than needing a separate anonymous variant.
+    """
+
+    permission_classes: ClassVar = [AllowAny]
+    queryset = School.objects.prefetch_related("formations")
+    serializer_class = SchoolPublicSeoSerializer
+    lookup_field = "slug"
 
 
 class ParcoursListView(ListAPIView):

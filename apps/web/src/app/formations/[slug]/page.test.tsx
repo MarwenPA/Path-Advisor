@@ -1,0 +1,91 @@
+/**
+ * `/formations/[slug]` page tests — Story 7.2 (public SSR fiche
+ * école/formation).
+ */
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+
+const fetchPublicSchoolMock = vi.fn();
+vi.mock("@/lib/api/schools", () => ({
+  fetchPublicSchool: (...args: unknown[]) => fetchPublicSchoolMock(...args),
+}));
+
+const notFoundMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  notFound: () => notFoundMock(),
+}));
+
+vi.mock("@/components/schools/FicheEcole", () => ({
+  FicheEcole: ({ school }: { school: { name: string } }) => (
+    <div data-testid="fiche-ecole">{school.name}</div>
+  ),
+}));
+
+import { ApiError } from "@/lib/api/client";
+
+import PublicFormationPage from "./page";
+
+const SCHOOL = {
+  slug: "insa-lyon",
+  name: "INSA Lyon",
+  type: "ecole_ingenieur",
+  city: "Lyon",
+  region: "Auvergne-Rhône-Alpes",
+  postal_code: "69100",
+  apprenticeship: false,
+  internship: true,
+  selectivity_index: 2,
+  public_private: "public",
+  description: "École d'ingénieurs généraliste.",
+  top_debouches: ["Ingénieur"],
+  parcoursup_dates: {},
+  affelnet_dates: {},
+  official_url: "https://insa-lyon.fr",
+  formations: [],
+  metiers_cibles: [{ slug: "ingenieur-test", name: "Ingénieur" }],
+  similar_schools: [{ slug: "autre-ecole", name: "Autre École", city: "Paris" }],
+};
+
+describe("PublicFormationPage", () => {
+  it("renders the fiche + cross-links + signup CTA", async () => {
+    fetchPublicSchoolMock.mockResolvedValue(SCHOOL);
+
+    render(await PublicFormationPage({ params: Promise.resolve({ slug: "insa-lyon" }) }));
+
+    expect(screen.getByTestId("fiche-ecole")).toHaveTextContent("INSA Lyon");
+    expect(screen.getByRole("link", { name: "Ingénieur" })).toHaveAttribute(
+      "href",
+      "/metiers/ingenieur-test",
+    );
+    expect(screen.getByRole("link", { name: "Autre École" })).toHaveAttribute(
+      "href",
+      "/formations/autre-ecole",
+    );
+    expect(
+      screen.getByRole("link", {
+        name: /crée ton compte pour voir ta proba d'admission personnalisée/i,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("omits the cross-linking sections when empty", async () => {
+    fetchPublicSchoolMock.mockResolvedValue({
+      ...SCHOOL,
+      metiers_cibles: [],
+      similar_schools: [],
+    });
+
+    render(await PublicFormationPage({ params: Promise.resolve({ slug: "insa-lyon" }) }));
+
+    expect(screen.queryByText("Métiers auxquels cette formation mène")).not.toBeInTheDocument();
+    expect(screen.queryByText("Écoles similaires")).not.toBeInTheDocument();
+  });
+
+  it("calls notFound() on a 404 (unknown slug)", async () => {
+    fetchPublicSchoolMock.mockRejectedValue(new ApiError(404, "Pas trouvé."));
+
+    await PublicFormationPage({ params: Promise.resolve({ slug: "ecole-inexistante" }) });
+
+    expect(notFoundMock).toHaveBeenCalled();
+  });
+});
