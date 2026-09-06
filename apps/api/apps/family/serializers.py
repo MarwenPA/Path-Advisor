@@ -194,3 +194,20 @@ class ParentEcoleDetailSerializer(serializers.Serializer):
     tuition_max_eur = serializers.IntegerField(allow_null=True)
     formations = ParentEcoleFormationSerializer(many=True)
     admission_stat = ParentAdmissionStatSerializer(allow_null=True)
+
+
+class ParentChildCheckoutSessionSerializer(serializers.Serializer):
+    """Story 6.4 AC1/AC2 — hosted Stripe Checkout URL for the child."""
+
+    checkout_url = serializers.URLField()
+
+
+class ParentChildSubscriptionStatusSerializer(serializers.Serializer):
+    """Story 6.4 AC3 — "Mes abonnements" for one linked child."""
+
+    tier = serializers.CharField()
+    status = serializers.CharField()
+    current_period_end = serializers.DateTimeField(allow_null=True)
+    cancel_at_period_end = serializers.BooleanField()
+    is_premium = serializers.BooleanField()
+    paid_by_parent = serializers.BooleanField()

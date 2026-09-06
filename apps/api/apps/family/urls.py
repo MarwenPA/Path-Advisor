@@ -56,4 +56,20 @@ urlpatterns = [
         views.parent_child_ecole_detail,
         name="parent-child-ecole-detail",
     ),
+    # Story 6.4 — parent pays premium for a linked child
+    path(
+        "children/<str:student_id>/checkout-session/",
+        views.parent_child_checkout_session,
+        name="parent-child-checkout-session",
+    ),
+    path(
+        "children/<str:student_id>/subscription/",
+        views.parent_child_subscription_status,
+        name="parent-child-subscription-status",
+    ),
+    path(
+        "children/<str:student_id>/subscription/cancel/",
+        views.parent_child_cancel_subscription,
+        name="parent-child-subscription-cancel",
+    ),
 ]

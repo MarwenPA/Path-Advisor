@@ -8,6 +8,7 @@
  */
 import { redirect } from "next/navigation";
 
+import { ChildSubscriptionSection } from "@/components/features/parent/child-subscription-section";
 import { ParentDashboard } from "@/components/features/parent/parent-dashboard";
 import { ApiError } from "@/lib/api/client";
 import { fetchChildDashboard, type ParentChildDashboard } from "@/lib/api/parent";
@@ -38,6 +39,9 @@ export default async function ParentChildDashboardPage({
         {PARENT_COPY.pageTitle} — {dashboard.child.first_name}
       </h1>
       <p className="mt-2 text-body text-text-muted">{dashboard.child.masked_email}</p>
+      <div className="mt-6">
+        <ChildSubscriptionSection studentId={studentId} />
+      </div>
       <div className="mt-8">
         <ParentDashboard dashboard={dashboard} studentId={studentId} />
       </div>

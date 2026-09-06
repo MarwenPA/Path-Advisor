@@ -26,13 +26,20 @@ from apps.family.exceptions import ParentInvitationNotFoundOrExpired
 from apps.family.models import ParentInvitation, ParentInvitationStatus
 from apps.family.serializers import (
     LinkedChildSerializer,
+    ParentChildCheckoutSessionSerializer,
     ParentChildDashboardSerializer,
+    ParentChildSubscriptionStatusSerializer,
     ParentEcoleDetailSerializer,
     ParentInvitationAcceptSerializer,
     ParentInvitationCreateSerializer,
     ParentInvitationListItemSerializer,
     ParentInvitationPublicSerializer,
     ParentMetierDetailSerializer,
+)
+from apps.family.services.parent_billing import (
+    cancel_child_subscription,
+    create_child_checkout_session,
+    get_child_subscription_status,
 )
 from apps.family.services.parent_invitation import (
     accept_invitation,
@@ -253,3 +260,40 @@ def parent_child_metier_detail(request: Request, student_id: str, slug: str) -> 
 def parent_child_ecole_detail(request: Request, student_id: str, slug: str) -> Response:
     detail = get_child_ecole_detail(request.user, student_id, slug)
     return Response(ParentEcoleDetailSerializer(detail).data)
+
+
+@extend_schema(
+    summary="Story 6.4 AC1/AC2 — parent-initiated Checkout for a linked child",
+    responses={201: ParentChildCheckoutSessionSerializer, 403: None},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_checkout_session(request: Request, student_id: str) -> Response:
+    session = create_child_checkout_session(request.user, student_id)
+    return Response(
+        ParentChildCheckoutSessionSerializer({"checkout_url": session.checkout_url}).data,
+        status=drf_status.HTTP_201_CREATED,
+    )
+
+
+@extend_schema(
+    summary="Story 6.4 AC3 — 'Mes abonnements': child's subscription status",
+    responses={200: ParentChildSubscriptionStatusSerializer, 403: None},
+)
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_subscription_status(request: Request, student_id: str) -> Response:
+    data = get_child_subscription_status(request.user, student_id)
+    return Response(ParentChildSubscriptionStatusSerializer(data).data)
+
+
+@extend_schema(
+    summary="Story 6.4 AC3 — cancel a child's subscription at period end",
+    responses={200: ParentChildSubscriptionStatusSerializer, 403: None, 409: None},
+)
+@api_view(["POST"])
+@permission_classes([IsAuthenticated, IsParent])
+def parent_child_cancel_subscription(request: Request, student_id: str) -> Response:
+    cancel_child_subscription(request.user, student_id)
+    data = get_child_subscription_status(request.user, student_id)
+    return Response(ParentChildSubscriptionStatusSerializer(data).data)
