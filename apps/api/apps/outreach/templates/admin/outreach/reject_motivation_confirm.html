@@ -1,0 +1,40 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<p>
+  Tu es sur le point de rejeter la motivation de la demande
+  <code>{{ outreach.id }}</code> ({{ outreach.student.email }} → {{ outreach.school.name }}).
+</p>
+
+<p style="background: #fff8c5; padding: 12px 16px; border-radius: 4px; margin: 16px 0;">
+  L'élève reçoit un email avec ta raison et peut réécrire sa motivation pour la
+  soumettre à nouveau. L'envoi reste bloqué jusque-là.
+</p>
+
+<p><strong>Motivation soumise :</strong></p>
+<blockquote style="white-space: pre-wrap; border-left: 3px solid #ccc; padding-left: 12px;">{{ outreach.motivation_text }}</blockquote>
+
+{% if errors %}
+<ul class="messagelist">
+  {% for e in errors %}<li class="error">{{ e }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<form method="post">
+  {% csrf_token %}
+  <fieldset class="module aligned">
+    <div class="form-row">
+      <label for="reason"><strong>Raison du rejet (obligatoire, envoyée à l'élève)</strong></label>
+      <textarea name="reason" id="reason" rows="4" cols="60" required></textarea>
+    </div>
+  </fieldset>
+  <div class="submit-row">
+    <input type="submit" value="Rejeter la motivation" class="default" />
+    <a href="{% url 'admin:outreach_earlyoutreachrequest_changelist' %}" class="button cancel-link">Retour</a>
+  </div>
+</form>
+{% endblock %}

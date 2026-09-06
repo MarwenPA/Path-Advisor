@@ -1,0 +1,11 @@
+Salut,
+
+Ta motivation pour l'envoi anticipé de ton profil à {{ school.name }}
+n'a pas pu être validée en l'état :
+
+{{ reason }}
+
+Ton envoi reste bloqué. Tu peux réécrire ta motivation depuis "Mes envois"
+et la soumettre à nouveau — elle repartira en relecture.
+
+L'équipe Path-Advisor

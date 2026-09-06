@@ -54,6 +54,7 @@ export function SendOutreachButton({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedProfession = professions.find((p) => p.id === professionId);
+  const wordCount = motivation.trim() === "" ? 0 : motivation.trim().split(/\s+/).length;
 
   function handleOpenChange(next: boolean) {
     setOpen(next);
@@ -113,16 +114,16 @@ export function SendOutreachButton({
                   </Select>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="outreach-motivation">Motivation (facultatif)</Label>
+                  <Label htmlFor="outreach-motivation">Motivation (facultatif, 200-500 mots)</Label>
                   <Textarea
                     id="outreach-motivation"
                     value={motivation}
                     onChange={(event) => setMotivation(event.target.value)}
                     rows={5}
                     maxLength={4000}
-                    placeholder="Explique en quelques mots pourquoi ce métier et cette école t'intéressent…"
+                    placeholder="Quelques angles possibles : ce qui t'attire dans ce métier, un projet ou une expérience qui t'y a mené, ce que tu cherches dans cette école en particulier…"
                   />
-                  <p className="text-caption text-text-subtle">{motivation.length} caractères</p>
+                  <p className="text-caption text-text-subtle">{wordCount} mots</p>
                 </div>
               </div>
               <SheetFooter>
@@ -147,6 +148,12 @@ export function SendOutreachButton({
                   L&apos;école ne verra ni tes autres métiers recommandés, ni les autres écoles que
                   tu cibles.
                 </p>
+                {motivation ? (
+                  <p className="text-text-muted">
+                    Ta motivation passe d&apos;abord par une relecture (sous 24h ouvrées) avant
+                    d&apos;être envoyée à l&apos;école.
+                  </p>
+                ) : null}
                 {status === "error" ? (
                   <p role="alert" className="text-danger">
                     {errorMessage}

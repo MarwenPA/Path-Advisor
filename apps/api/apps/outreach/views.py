@@ -1,8 +1,15 @@
-"""Early-outreach API views — Story 5.4.
+"""Early-outreach API views — Stories 5.4 + 5.5.
 
 Routes:
-  POST /api/v1/schools/{slug}/outreach/  — create a request for that school (AC2/AC3/AC5)
-  GET  /api/v1/outreach/requests/        — list current user's requests (AC4)
+  POST /api/v1/schools/{slug}/outreach/       — create a request for that school (AC2/AC3/AC5)
+  GET  /api/v1/outreach/requests/             — list current user's requests (AC4)
+  GET  /api/v1/outreach/quota/                — current-month quota status (AC1/AC3)
+  POST /api/v1/outreach/requests/{id}/resubmit/ — student corrects+resubmits a rejected motivation (5.5)
+
+Moderation itself (approve/reject a `pending_moderation` motivation) is a
+`path_admin` action exposed via the Django admin (`apps/outreach/admin.py`),
+not a separate DRF endpoint — Story 9.4 (back-office admin) is the future
+home for a dedicated moderation queue UI; the admin is the interim tool.
 """
 
 from __future__ import annotations
@@ -18,11 +25,16 @@ from rest_framework.views import APIView
 from apps.billing.services.subscription_service import SubscriptionService
 from apps.core.permissions import IsAuthenticatedAndActive, IsStudent
 from apps.outreach.models import EarlyOutreachRequest
-from apps.outreach.serializers import EarlyOutreachCreateSerializer, EarlyOutreachListSerializer
+from apps.outreach.serializers import (
+    EarlyOutreachCreateSerializer,
+    EarlyOutreachListSerializer,
+    EarlyOutreachResubmitSerializer,
+)
 from apps.outreach.services.early_outreach import (
     MONTHLY_QUOTA,
     count_outreach_this_month,
     create_early_outreach_request,
+    resubmit_early_outreach_motivation,
 )
 from apps.professions.models import Profession
 from apps.schools.models import School
@@ -97,3 +109,26 @@ class OutreachQuotaView(APIView):
         return Response(
             {"used": used, "limit": MONTHLY_QUOTA, "remaining": max(0, MONTHLY_QUOTA - used)}
         )
+
+
+class EarlyOutreachResubmitView(APIView):
+    """POST /api/v1/outreach/requests/{id}/resubmit/ — Story 5.5.
+
+    Student corrects a `rejected` motivation and resubmits it; goes back to
+    `pending_moderation`. `get_object_or_404` scopes the lookup to
+    `student=request.user` so a student can never resubmit someone else's
+    request (would 404, not 403 — doesn't leak that the id exists)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsStudent]
+
+    def post(self, request: Request, outreach_id: str) -> Response:
+        outreach = get_object_or_404(EarlyOutreachRequest, id=outreach_id, student=request.user)
+        serializer = EarlyOutreachResubmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Not caught here — DomainError subclasses (incl. OutreachModerationStateError)
+        # are handled globally by the RFC7807 exception handler.
+        outreach = resubmit_early_outreach_motivation(
+            outreach=outreach, motivation_text=serializer.validated_data["motivation_text"]
+        )
+        return Response(EarlyOutreachListSerializer(outreach).data)

@@ -1,10 +1,16 @@
-"""Early-outreach request model — Story 5.4.
+"""Early-outreach request model — Stories 5.4 + 5.5.
 
-`EarlyOutreachRequest` is the central model for the rest of Epic 5 (5.5
-moderation, 5.6 school reception, 5.7 school response, 5.8 real-time stat
-propagation, 5.9 enriched history). This story only ever creates rows in
-`pending` — no school-side account exists yet (Story 5.6), so `responded`/
-`expired_7d` are declared for forward compatibility but unreachable today.
+`EarlyOutreachRequest` is the central model for the rest of Epic 5 (5.6
+school reception, 5.7 school response, 5.8 real-time stat propagation, 5.9
+enriched history). No school-side account exists yet (Story 5.6), so
+`responded`/`expired_7d` are declared for forward compatibility but
+unreachable today.
+
+Story 5.5 adds a moderation gate on the optional motivation: a request with
+a non-empty `motivation_text` starts life as `pending_moderation` instead of
+`pending`, and stays blocked (not visible/sendable to a school) until a
+`path_admin` approves it (→ back to `pending`) or rejects it (→ `rejected`,
+with `rejection_reason` set — the student can then resubmit).
 
 Data classification: contains a student's motivation text + which school/
 profession they're targeting — not health data, but personal/behavioral.
@@ -28,6 +34,8 @@ def _default_outreach_id() -> str:
 
 class EarlyOutreachRequestStatus(models.TextChoices):
     PENDING = "pending", "En attente"
+    PENDING_MODERATION = "pending_moderation", "Motivation en cours de relecture"
+    REJECTED = "rejected", "Motivation refusée"
     RESPONDED = "responded", "École a répondu"
     EXPIRED_7D = "expired_7d", "Expiré (7 jours sans réponse)"
 
@@ -71,12 +79,20 @@ class EarlyOutreachRequest(models.Model):
     )
     motivation_text = models.TextField(
         blank=True,
-        help_text="200-500 words optional free-text motivation (Story 5.5 adds moderation).",
+        help_text=(
+            "Optional free-text motivation, 200-500 words when present "
+            "(Story 5.5). Gates the request into `pending_moderation` until "
+            "a path_admin approves/rejects it."
+        ),
     )
     status = models.CharField(
         max_length=20,
         choices=EarlyOutreachRequestStatus.choices,
         default=EarlyOutreachRequestStatus.PENDING,
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Set when `status=rejected` — explains why to the student (Story 5.5 AC).",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
