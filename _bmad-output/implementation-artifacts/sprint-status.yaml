@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-09-02  # 5.3 implemented -> review; 7.8 (page d'accueil moderne) created -> dev -> reviewed -> done
+last_updated: 2026-09-06  # 7.6 CI-verified (pgvector/slug/SEO-description/LCP-flake fixes) -> done; 7.7 (i18n foundation) created -> ready-for-dev
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -149,7 +149,7 @@ development_status:
   7-4-sitemap-robots-schema-org: done
   7-5-open-graph-twitter-meta: done
   7-6-core-web-vitals: done
-  7-7-i18n-foundation: backlog
+  7-7-i18n-foundation: ready-for-dev
   7-8-page-accueil-publique-moderne: done
   epic-7-retrospective: optional
 
