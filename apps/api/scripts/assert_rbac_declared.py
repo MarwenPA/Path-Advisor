@@ -109,6 +109,8 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     "public-seo-metier-parcours-list": (
         "Anonymous SEO parcours summary for long-tail landing pages — Story 7.3"
     ),
+    "public-profession-slugs": "Sitemap slugs feed — Story 7.4",
+    "public-school-slugs": "Sitemap slugs feed — Story 7.4",
 }
 
 

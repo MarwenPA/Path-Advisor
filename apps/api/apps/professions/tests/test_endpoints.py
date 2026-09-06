@@ -394,3 +394,45 @@ class TestPublicSeoProfessionDetail:
             subject_id=str(profession.pk),
         )
         assert log.actor_id is None
+
+
+# ── Sitemap slugs feed — Story 7.4 ───────────────────────────────────────────
+
+
+class TestPublicProfessionSlugs:
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_anonymous_can_access_slugs(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-profession-slugs")
+        response = client.get(url)
+        assert response.status_code == 200
+        slugs = [row["slug"] for row in response.json()]
+        assert profession.slug in slugs
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_slugs_only_has_slug_and_updated_at(self, profession):
+        client = APIClient()
+        url = reverse("professions:public-profession-slugs")
+        response = client.get(url)
+        row = response.json()[0]
+        assert set(row.keys()) == {"slug", "updated_at"}
+
+    @pytest.mark.django_db
+    @pytest.mark.postgresql_only
+    def test_slugs_excludes_inactive_professions(self, profession):
+        Profession.objects.create(
+            slug="metier-inactif-test",
+            name="Métier inactif",
+            description="Description " * 10,
+            daily_routine="Routine " * 10,
+            prospects_text="Prospects",
+            median_salary_eur=25000,
+            is_active=False,
+        )
+        client = APIClient()
+        url = reverse("professions:public-profession-slugs")
+        response = client.get(url)
+        slugs = [row["slug"] for row in response.json()]
+        assert "metier-inactif-test" not in slugs

@@ -79,6 +79,16 @@ export const fetchPublicSchool = cache(async (slug: string): Promise<School> => 
   return apiFetch<School>(`/api/v1/public/schools/${slug}/`);
 });
 
+/** Story 7.4 — `{slug, updated_at}` rows for `app/sitemap.ts`. */
+export interface SchoolSlugRow {
+  slug: string;
+  updated_at: string;
+}
+
+export async function fetchPublicSchoolSlugs(): Promise<SchoolSlugRow[]> {
+  return apiFetch<SchoolSlugRow[]>("/api/v1/public/schools/slugs/");
+}
+
 /**
  * `GET /api/v1/schools/{slug}/admission-stat/` — Story 4.2's real endpoint
  * (`AdmissionStatView`). Story 5.8 code-review fix: this previously POSTed

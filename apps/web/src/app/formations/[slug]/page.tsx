@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FicheEcole } from "@/components/schools/FicheEcole";
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicSchool } from "@/lib/api/schools";
+import { SITE_ORIGIN, buildEducationalOrganizationJsonLd } from "@/lib/seo/occupation-landing";
 
 /**
  * `/formations/{slug}` — Story 7.2 (SSR fiche école/formation indexable,
@@ -48,8 +49,18 @@ export default async function PublicFormationPage({
     throw err;
   }
 
+  // Story 7.4 AC — EducationalOrganization JSON-LD (rich snippets).
+  const educationalOrgJsonLd = buildEducationalOrganizationJsonLd(
+    school,
+    `${SITE_ORIGIN}/formations/${slug}`,
+  );
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(educationalOrgJsonLd) }}
+      />
       {/* No public catalog listing page exists yet (out of scope for this
           story — no AC asks for `/formations` index) so there is no "back
           to list" link here, unlike the authenticated `/schools` flow. */}

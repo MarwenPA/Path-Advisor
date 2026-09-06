@@ -55,6 +55,23 @@ describe("MetierDetailPage (public)", () => {
     expect(screen.getByRole("link", { name: /tous les métiers/i })).toBeInTheDocument();
   });
 
+  it("emits Schema.org Occupation JSON-LD (Story 7.4 AC)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
+
+    const { container } = render(
+      await MetierDetailPage({
+        params: Promise.resolve({ slug: "infirmier-test" }),
+        searchParams: Promise.resolve({}),
+      }),
+    );
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const jsonLd = JSON.parse(script!.innerHTML);
+    expect(jsonLd["@type"]).toBe("Occupation");
+    expect(jsonLd.name).toBe("Infirmier·ère");
+  });
+
   it("hides the signup CTA when arriving from the authenticated recommendations flow", async () => {
     fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
 

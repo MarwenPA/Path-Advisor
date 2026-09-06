@@ -68,6 +68,20 @@ describe("PublicFormationPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("emits Schema.org EducationalOrganization JSON-LD (Story 7.4 AC)", async () => {
+    fetchPublicSchoolMock.mockResolvedValue(SCHOOL);
+
+    const { container } = render(
+      await PublicFormationPage({ params: Promise.resolve({ slug: "insa-lyon" }) }),
+    );
+
+    const script = container.querySelector('script[type="application/ld+json"]');
+    expect(script).not.toBeNull();
+    const jsonLd = JSON.parse(script!.innerHTML);
+    expect(jsonLd["@type"]).toBe("EducationalOrganization");
+    expect(jsonLd.name).toBe("INSA Lyon");
+  });
+
   it("omits the cross-linking sections when empty", async () => {
     fetchPublicSchoolMock.mockResolvedValue({
       ...SCHOOL,

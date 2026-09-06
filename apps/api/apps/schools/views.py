@@ -43,6 +43,7 @@ from apps.schools.serializers import (
     SchoolCatalogSerializer,
     SchoolDetailSerializer,
     SchoolPublicSeoSerializer,
+    SchoolSlugSerializer,
 )
 from apps.schools.services import AdmissionPredictionService
 
@@ -114,6 +115,16 @@ class SchoolPublicSeoDetailView(RetrieveAPIView):
     queryset = School.objects.prefetch_related("formations")
     serializer_class = SchoolPublicSeoSerializer
     lookup_field = "slug"
+
+
+class SchoolPublicSlugsView(ListAPIView):
+    """GET /api/v1/public/schools/slugs/ — Story 7.4. Feeds `app/sitemap.ts`
+    (mirrors `PublicProfessionSlugsView`)."""
+
+    permission_classes: ClassVar = [AllowAny]
+    queryset = School.objects.order_by("slug")
+    serializer_class = SchoolSlugSerializer
+    pagination_class = None
 
 
 class ParcoursListView(ListAPIView):

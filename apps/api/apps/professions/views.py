@@ -28,6 +28,7 @@ from apps.professions.serializers import (
     ProfessionReportAdminSerializer,
     ProfessionReportCreateSerializer,
     ProfessionReportResponseSerializer,
+    ProfessionSlugSerializer,
 )
 
 
@@ -199,4 +200,20 @@ class PublicSeoProfessionDetailView(APIView):
         )
 
         serializer = ProfessionPublicSeoSerializer(profession)
+        return Response(serializer.data)
+
+
+class PublicProfessionSlugsView(APIView):
+    """GET /api/v1/public/professions/slugs/ — Story 7.4. `AllowAny`.
+
+    Feeds `app/sitemap.ts` — no pagination (the referential is a curated
+    catalog, not user-generated content; a few hundred rows tops), no
+    heavy fields (just `slug` + `updated_at` for `lastmod`).
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request: Request) -> Response:
+        professions = Profession.objects.filter(is_active=True).order_by("slug")
+        serializer = ProfessionSlugSerializer(professions, many=True)
         return Response(serializer.data)

@@ -97,6 +97,27 @@ export function buildOccupationJsonLd(profession: Profession, url: string) {
   return jsonLd;
 }
 
+/** Schema.org `EducationalOrganization` — Story 7.4 AC (rich snippets on
+ * `/formations/{slug}`). Minimal fields mapped straight from `School`. */
+export function buildEducationalOrganizationJsonLd(
+  school: {
+    name: string;
+    description: string;
+    city: string;
+    official_url: string;
+  },
+  url: string,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "EducationalOrganization",
+    name: school.name,
+    description: school.description,
+    address: { "@type": "PostalAddress", addressLocality: school.city, addressCountry: "FR" },
+    url: school.official_url || url,
+  };
+}
+
 /** Schema.org `FAQPage` — must mirror `faq` exactly (Google Rich Results
  * requirement: markup content must match visible content). */
 export function buildFaqPageJsonLd(faq: FaqEntry[]) {
