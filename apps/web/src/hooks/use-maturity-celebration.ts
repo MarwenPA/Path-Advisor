@@ -9,10 +9,8 @@ import type { MaturityLevel } from "@/lib/profile/maturity";
 // ---------------------------------------------------------------------------
 
 const CELEBRATION_MESSAGES: Partial<Record<MaturityLevel, string>> = {
-  enriched:
-    "Profil enrichi débloqué — tes stats sont maintenant personnalisées.",
-  complete:
-    "Profil complet débloqué — tu profites de toutes les features.",
+  enriched: "Profil enrichi débloqué — tes stats sont maintenant personnalisées.",
+  complete: "Profil complet débloqué — tu profites de toutes les features.",
 };
 
 const STORAGE_PREFIX = "maturity_prev_level";
@@ -37,7 +35,7 @@ export interface MaturityCelebration {
  */
 export function useMaturityCelebration(
   currentLevel: MaturityLevel | undefined,
-  userId: string | null | undefined
+  userId: string | null | undefined,
 ): MaturityCelebration {
   const [message, setMessage] = React.useState<string | null>(null);
 

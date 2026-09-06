@@ -45,9 +45,7 @@ describe("BulletinsPostponedBanner", () => {
 
     wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
 
-    expect(
-      screen.getByText(/ajouter tes bulletins/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/ajouter tes bulletins/i)).toBeInTheDocument();
   });
 
   it("does not render when bulletins_status is completed", () => {
@@ -72,9 +70,7 @@ describe("BulletinsPostponedBanner", () => {
       data: {
         bulletins_status: "postponed",
         bulletins_postponed_at: "2026-06-01T10:00:00Z",
-        bulletins_postponed_banner_dismissed_until: new Date(
-          Date.now() + 86400000
-        ).toISOString(),
+        bulletins_postponed_banner_dismissed_until: new Date(Date.now() + 86400000).toISOString(),
       },
       isLoading: false,
       isError: false,
@@ -156,9 +152,7 @@ describe("BulletinsPostponedBanner", () => {
     } as unknown as MockStudentProfile);
     vi.mocked(isBannerVisible).mockReturnValue(true);
 
-    const { container } = wrap(
-      <BulletinsPostponedBanner onAddClick={onAddClick} />
-    );
+    const { container } = wrap(<BulletinsPostponedBanner onAddClick={onAddClick} />);
 
     const text = container.textContent?.toLowerCase() ?? "";
     const forbidden = ["incomplet", "manque", "débloque", "profil dégradé", "%"];

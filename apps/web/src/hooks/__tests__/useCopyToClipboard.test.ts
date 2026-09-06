@@ -142,8 +142,6 @@ describe("useCopyToClipboard", () => {
     });
 
     // No "state update on unmounted component" warning should be emitted.
-    expect(errorSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("unmounted"),
-    );
+    expect(errorSpy).not.toHaveBeenCalledWith(expect.stringContaining("unmounted"));
   });
 });

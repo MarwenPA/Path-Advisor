@@ -3,12 +3,7 @@
 import { Camera, PenLine } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface BulletinsAddSheetProps {
   open: boolean;
@@ -16,19 +11,20 @@ interface BulletinsAddSheetProps {
   onSuccess: () => void;
 }
 
-export function BulletinsAddSheet({
-  open,
-  onClose,
-  onSuccess,
-}: BulletinsAddSheetProps) {
+export function BulletinsAddSheet({ open, onClose, onSuccess }: BulletinsAddSheetProps) {
   if (!open) return null;
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose();
+      }}
+    >
       <SheetContent
         side="bottom"
         aria-modal="true"
-        className="rounded-t-2xl px-6 pb-8 pt-4 sm:side-right"
+        className="sm:side-right rounded-t-2xl px-6 pb-8 pt-4"
       >
         <SheetHeader className="mb-6">
           <SheetTitle>Ajoute tes bulletins</SheetTitle>
@@ -63,11 +59,7 @@ export function BulletinsAddSheet({
           </Button>
         </div>
 
-        <Button
-          variant="ghost"
-          className="mt-4 w-full text-muted-foreground"
-          onClick={onClose}
-        >
+        <Button variant="ghost" className="mt-4 w-full text-muted-foreground" onClick={onClose}>
           Annuler
         </Button>
       </SheetContent>

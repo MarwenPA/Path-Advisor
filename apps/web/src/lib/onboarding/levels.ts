@@ -15,12 +15,7 @@ export const REF_VERSION = "2026-05-v1" as const;
 // Niveau scolaire (AC2)
 // ---------------------------------------------------------------------------
 
-export type NiveauId =
-  | "college_3eme"
-  | "lycee_2nde"
-  | "lycee_1ere"
-  | "lycee_terminale"
-  | "postbac";
+export type NiveauId = "college_3eme" | "lycee_2nde" | "lycee_1ere" | "lycee_terminale" | "postbac";
 
 export type NiveauItem = {
   readonly id: NiveauId;
@@ -125,14 +120,7 @@ export const FILIERES_LYCEE: readonly FiliereItem[] = [
 // Sous-filières techno (AC4)
 // ---------------------------------------------------------------------------
 
-export type SousFiliereId =
-  | "STMG"
-  | "STI2D"
-  | "ST2S"
-  | "STL"
-  | "STD2A"
-  | "STAV"
-  | "STHR";
+export type SousFiliereId = "STMG" | "STI2D" | "ST2S" | "STL" | "STD2A" | "STAV" | "STHR";
 
 export type SousFiliereItem = {
   readonly id: SousFiliereId;
@@ -141,13 +129,33 @@ export type SousFiliereItem = {
 };
 
 export const SOUS_FILIERES_TECHNO: readonly SousFiliereItem[] = [
-  { id: "STMG", label: "STMG", description: "Sciences et Technologies du Management et de la Gestion" },
-  { id: "STI2D", label: "STI2D", description: "Sciences et Technologies de l'Industrie et du Développement Durable" },
+  {
+    id: "STMG",
+    label: "STMG",
+    description: "Sciences et Technologies du Management et de la Gestion",
+  },
+  {
+    id: "STI2D",
+    label: "STI2D",
+    description: "Sciences et Technologies de l'Industrie et du Développement Durable",
+  },
   { id: "ST2S", label: "ST2S", description: "Sciences et Technologies de la Santé et du Social" },
   { id: "STL", label: "STL", description: "Sciences et Technologies de Laboratoire" },
-  { id: "STD2A", label: "STD2A", description: "Sciences et Technologies du Design et des Arts Appliqués" },
-  { id: "STAV", label: "STAV", description: "Sciences et Technologies de l'Agronomie et du Vivant" },
-  { id: "STHR", label: "STHR", description: "Sciences et Technologies de l'Hôtellerie et de la Restauration" },
+  {
+    id: "STD2A",
+    label: "STD2A",
+    description: "Sciences et Technologies du Design et des Arts Appliqués",
+  },
+  {
+    id: "STAV",
+    label: "STAV",
+    description: "Sciences et Technologies de l'Agronomie et du Vivant",
+  },
+  {
+    id: "STHR",
+    label: "STHR",
+    description: "Sciences et Technologies de l'Hôtellerie et de la Restauration",
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -180,15 +188,35 @@ export const SPECIALITES_LYCEE: readonly SpecialiteItem[] = [
   { id: "physique-chimie", label: "Physique-Chimie", shortLabel: "Physique-Chimie" },
   { id: "svt", label: "Sciences de la Vie et de la Terre (SVT)", shortLabel: "SVT" },
   { id: "ses", label: "Sciences Économiques et Sociales (SES)", shortLabel: "SES" },
-  { id: "hggsp", label: "Histoire-Géo, Géopolitique et Sciences Politiques (HGGSP)", shortLabel: "HGGSP" },
+  {
+    id: "hggsp",
+    label: "Histoire-Géo, Géopolitique et Sciences Politiques (HGGSP)",
+    shortLabel: "HGGSP",
+  },
   { id: "hlp", label: "Humanités, Littérature et Philosophie (HLP)", shortLabel: "HLP" },
-  { id: "llcer", label: "Langues, Littératures et Cultures Étrangères (LLCER)", shortLabel: "LLCER" },
-  { id: "llca", label: "Littérature, Langues et Cultures de l'Antiquité (LLCA)", shortLabel: "LLCA" },
+  {
+    id: "llcer",
+    label: "Langues, Littératures et Cultures Étrangères (LLCER)",
+    shortLabel: "LLCER",
+  },
+  {
+    id: "llca",
+    label: "Littérature, Langues et Cultures de l'Antiquité (LLCA)",
+    shortLabel: "LLCA",
+  },
   { id: "nsi", label: "Numérique et Sciences Informatiques (NSI)", shortLabel: "NSI" },
-  { id: "arts", label: "Arts (plastiques / théâtre / musique / cinéma / danse)", shortLabel: "Arts" },
+  {
+    id: "arts",
+    label: "Arts (plastiques / théâtre / musique / cinéma / danse)",
+    shortLabel: "Arts",
+  },
   { id: "si", label: "Sciences de l'Ingénieur (SI)", shortLabel: "SI" },
   { id: "bio-ecologie", label: "Biologie-Écologie (lycées agricoles)", shortLabel: "Bio-Écologie" },
-  { id: "eppcs", label: "Éducation Physique, Pratiques et Culture Sportives (EPPCS)", shortLabel: "EPPCS" },
+  {
+    id: "eppcs",
+    label: "Éducation Physique, Pratiques et Culture Sportives (EPPCS)",
+    shortLabel: "EPPCS",
+  },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -224,7 +252,10 @@ export const SPECIALITES_BAC_PRO: readonly SpecialiteProItem[] = [
   { id: "cuisine", label: "Cuisine" },
   { id: "systemes-numeriques", label: "Systèmes numériques" },
   { id: "gestion-administration", label: "Gestion-Administration" },
-  { id: "metiers-electricite", label: "Métiers de l'électricité et de ses environnements connectés" },
+  {
+    id: "metiers-electricite",
+    label: "Métiers de l'électricité et de ses environnements connectés",
+  },
   { id: "maintenance-vehicules", label: "Maintenance des véhicules" },
   { id: "metiers-batiment-tp", label: "Métiers du bâtiment et des travaux publics" },
   { id: "metiers-bois", label: "Métiers du bois" },
@@ -240,13 +271,7 @@ export const SPECIALITES_BAC_PRO: readonly SpecialiteProItem[] = [
 // Post-bac (AC5)
 // ---------------------------------------------------------------------------
 
-export type PostbacYearId =
-  | "bac_year"
-  | "bac+1"
-  | "bac+2"
-  | "bac+3"
-  | "bac+4_plus"
-  | "pause";
+export type PostbacYearId = "bac_year" | "bac+1" | "bac+2" | "bac+3" | "bac+4_plus" | "pause";
 
 export type PostbacYearItem = {
   readonly id: PostbacYearId;
@@ -295,10 +320,7 @@ export const POSTBAC_FORMATIONS: readonly PostbacFormationItem[] = [
 // ---------------------------------------------------------------------------
 
 /** How many specialties are expected for a given (level, filiere) combo. */
-export function expectedSpecCount(
-  level: NiveauId,
-  filiere: FiliereId | null,
-): number | null {
+export function expectedSpecCount(level: NiveauId, filiere: FiliereId | null): number | null {
   if (filiere === "general") {
     if (level === "lycee_1ere") return 3;
     if (level === "lycee_terminale") return 2;
@@ -312,10 +334,7 @@ export function expectedSpecCount(
 
 /** Whether the level requires sous_filiere_techno. */
 export function requiresSousFiliere(level: NiveauId, filiere: FiliereId | null): boolean {
-  return (
-    filiere === "techno" &&
-    (level === "lycee_1ere" || level === "lycee_terminale")
-  );
+  return filiere === "techno" && (level === "lycee_1ere" || level === "lycee_terminale");
 }
 
 /** Calendar label for the recap card (AC6). */

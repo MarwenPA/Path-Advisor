@@ -11,12 +11,17 @@ import { cache } from "react";
 import { apiFetch } from "./client";
 
 export interface AdmissionStat {
-  min_proba: number; // 0-100, percentage
+  // Optional: unused by every current consumer (CarteAdmission, notably —
+  // confirmed via repo-wide grep) and absent from the narrower
+  // `AdmissionStatInline` the backend sends inline on Parcours nodes
+  // (Story 4.5 AC2) — `ParcoursCard` renders that narrower shape through
+  // the same `CarteAdmission` component.
+  min_proba?: number; // 0-100, percentage
   expected_proba: number; // 0-100, percentage (primary display value)
-  max_proba: number; // 0-100, percentage
+  max_proba?: number; // 0-100, percentage
   label: "audacieux" | "realiste" | "sur" | "estimation_indicative";
-  context_line: string; // e.g. "Moyenne admise 2024 : 14,5"
-  action_lever: string | null; // e.g. "+ 2 points en maths feraient passer à 58 %"
+  context_line?: string; // e.g. "Moyenne admise 2024 : 14,5"
+  action_lever?: string | null; // e.g. "+ 2 points en maths feraient passer à 58 %"
   updated_at?: string; // ISO 8601 UTC, optional
   previous_proba?: number; // Previous session probability for delta badge
   compatibility?: "compatible" | "a_renforcer" | "au_dessus" | null; // Added by Story 4.13

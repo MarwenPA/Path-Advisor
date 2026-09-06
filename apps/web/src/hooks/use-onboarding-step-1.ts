@@ -106,10 +106,7 @@ export function useOnboardingStep1(userId?: string | null) {
   // Pass 2 PR2-H4 — per-user query key. A logout / login on the same tab
   // now invalidates the previous user's cache entry on `userId` change
   // because TanStack treats a new key as a new query.
-  const queryKey = React.useMemo(
-    () => [...QUERY_KEY_PREFIX, userId ?? "anon"] as const,
-    [userId],
-  );
+  const queryKey = React.useMemo(() => [...QUERY_KEY_PREFIX, userId ?? "anon"] as const, [userId]);
 
   // Pass 2 PR2-H7 — eagerly drop the legacy global localStorage key on
   // mount when a real userId is provided. The Pass 1 cleanup only ran on

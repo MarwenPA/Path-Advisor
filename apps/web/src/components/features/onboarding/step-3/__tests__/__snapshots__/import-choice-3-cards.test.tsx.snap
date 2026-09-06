@@ -6,12 +6,12 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
   class="flex flex-col gap-4"
 >
   <ul
-    class="flex flex-col gap-4 list-none p-0 m-0"
+    class="m-0 flex list-none flex-col gap-4 p-0"
   >
     <li>
       <button
         aria-label="Scanner ou importer mes bulletins, environ 30 secondes"
-        class="w-full text-left rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-2)] p-6 min-h-[80px] flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] focus-visible:outline-offset-2 hover:bg-[var(--color-bg-3)] transition-colors duration-150 cursor-pointer"
+        class="w-full rounded-[var(--radius-lg)] border border-[var(--color-border)] text-left min-h-[80px] bg-[var(--color-bg-2)] p-6 flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] transition-colors duration-150 hover:bg-[var(--color-bg-3)] cursor-pointer"
         type="button"
       >
         <span
@@ -44,17 +44,17 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
           class="flex flex-col gap-1"
         >
           <span
-            class="text-[var(--text-h3)] font-semibold text-[var(--color-text)]"
+            class="font-semibold text-[var(--color-text)] text-[var(--text-h3)]"
           >
             Scanner / importer mes bulletins
           </span>
           <span
-            class="text-[var(--text-body)] text-[var(--color-text-muted)]"
+            class="text-[var(--color-text-muted)] text-[var(--text-body)]"
           >
             Photo ou PDF, on lit pour toi
           </span>
           <span
-            class="text-[var(--text-caption)] text-[var(--color-text-subtle)]"
+            class="text-[var(--color-text-subtle)] text-[var(--text-caption)]"
           >
             ~30 secondes
           </span>
@@ -64,7 +64,7 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
     <li>
       <button
         aria-label="Saisir mes notes à la main, environ 3 minutes"
-        class="w-full text-left rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-2)] p-6 min-h-[80px] flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] focus-visible:outline-offset-2 hover:bg-[var(--color-bg-3)] transition-colors duration-150 cursor-pointer"
+        class="w-full rounded-[var(--radius-lg)] border border-[var(--color-border)] text-left min-h-[80px] bg-[var(--color-bg-2)] p-6 flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] transition-colors duration-150 hover:bg-[var(--color-bg-3)] cursor-pointer"
         type="button"
       >
         <span
@@ -95,17 +95,17 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
           class="flex flex-col gap-1"
         >
           <span
-            class="text-[var(--text-h3)] font-semibold text-[var(--color-text)]"
+            class="font-semibold text-[var(--color-text)] text-[var(--text-h3)]"
           >
             Saisir mes notes à la main
           </span>
           <span
-            class="text-[var(--text-body)] text-[var(--color-text-muted)]"
+            class="text-[var(--color-text-muted)] text-[var(--text-body)]"
           >
             Formulaire structuré, simple
           </span>
           <span
-            class="text-[var(--text-caption)] text-[var(--color-text-subtle)]"
+            class="text-[var(--color-text-subtle)] text-[var(--text-caption)]"
           >
             ~3 minutes
           </span>
@@ -115,7 +115,7 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
     <li>
       <button
         aria-label="Plus tard, je préfère explorer d'abord. Tu pourras ajouter tes bulletins à tout moment"
-        class="w-full text-left rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-bg-2)] p-6 min-h-[80px] flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] focus-visible:outline-offset-2 hover:bg-[var(--color-bg-3)] transition-colors duration-150 cursor-pointer"
+        class="w-full rounded-[var(--radius-lg)] border border-[var(--color-border)] text-left min-h-[80px] bg-[var(--color-bg-2)] p-6 flex items-start gap-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] transition-colors duration-150 hover:bg-[var(--color-bg-3)] cursor-pointer"
         type="button"
       >
         <span
@@ -146,17 +146,17 @@ exports[`ImportChoice3Cards — AC1 > snapshot: 3 visually identical cards 1`] =
           class="flex flex-col gap-1"
         >
           <span
-            class="text-[var(--text-h3)] font-semibold text-[var(--color-text)]"
+            class="font-semibold text-[var(--color-text)] text-[var(--text-h3)]"
           >
             Plus tard, je préfère explorer d'abord
           </span>
           <span
-            class="text-[var(--text-body)] text-[var(--color-text-muted)]"
+            class="text-[var(--color-text-muted)] text-[var(--text-body)]"
           >
             Tu pourras ajouter à tout moment
           </span>
           <span
-            class="text-[var(--text-caption)] text-[var(--color-text-subtle)]"
+            class="text-[var(--color-text-subtle)] text-[var(--text-caption)]"
           >
             Recos un peu plus génériques pour l'instant
           </span>

@@ -199,7 +199,7 @@ export function OnboardingStep2() {
           <span aria-hidden>‹</span>
         </button>
 
-        <ProgressDots total={3} current={2} />
+        <ProgressDots current={2} />
 
         <button
           type="button"

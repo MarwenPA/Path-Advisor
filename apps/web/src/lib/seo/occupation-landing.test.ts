@@ -73,8 +73,8 @@ describe("buildFaqPageJsonLd", () => {
     const jsonLd = buildFaqPageJsonLd(faq);
     expect(jsonLd["@type"]).toBe("FAQPage");
     expect(jsonLd.mainEntity).toHaveLength(faq.length);
-    expect(jsonLd.mainEntity[0].name).toBe(faq[0].question);
-    expect(jsonLd.mainEntity[0].acceptedAnswer.text).toBe(faq[0].answer);
+    expect(jsonLd.mainEntity[0]?.name).toBe(faq[0]?.question);
+    expect(jsonLd.mainEntity[0]?.acceptedAnswer.text).toBe(faq[0]?.answer);
   });
 });
 

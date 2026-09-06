@@ -34,20 +34,29 @@ export function useManualBulletinDraft(trimestreId: string) {
     return () => clearTimeout(id);
   }, [drafts, trimestreId]);
 
-  const updateDraft = useCallback(
-    (subjectId: string, updates: Partial<MatiereDraft>) => {
-      setDrafts((prev) => {
-        const idx = prev.findIndex((d) => d.subject_id === subjectId);
-        if (idx === -1) {
-          return [...prev, { subject_id: subjectId, note: null, appreciation: null, ...updates }];
-        }
-        const updated = [...prev];
-        updated[idx] = { ...updated[idx], ...updates };
-        return updated;
-      });
-    },
-    []
-  );
+  const updateDraft = useCallback((subjectId: string, updates: Partial<MatiereDraft>) => {
+    setDrafts((prev) => {
+      const idx = prev.findIndex((d) => d.subject_id === subjectId);
+      if (idx === -1) {
+        return [...prev, { subject_id: subjectId, note: null, appreciation: null, ...updates }];
+      }
+      const updated = [...prev];
+      // Spreading `Partial<MatiereDraft>` over the existing entry widens
+      // every field back to `T | undefined` in TS's eyes (even fields
+      // `updates` never actually clears) — merge field by field with an
+      // explicit fallback instead of asserting the type away.
+      const existing = updated[idx];
+      if (!existing) return prev;
+      updated[idx] = {
+        subject_id: existing.subject_id,
+        note: updates.note !== undefined ? updates.note : existing.note,
+        appreciation:
+          updates.appreciation !== undefined ? updates.appreciation : existing.appreciation,
+        is_custom: updates.is_custom !== undefined ? updates.is_custom : existing.is_custom,
+      };
+      return updated;
+    });
+  }, []);
 
   const removeDraft = useCallback((subjectId: string) => {
     setDrafts((prev) => prev.filter((d) => d.subject_id !== subjectId));

@@ -70,8 +70,7 @@ function SectorBadge({ sector }: { sector: string }) {
 
 function RequirementsList({ requirements }: { requirements: RequirementItem[] }) {
   const grouped = requirements.reduce<Record<string, string[]>>((acc, item) => {
-    if (!acc[item.type]) acc[item.type] = [];
-    acc[item.type].push(item.label);
+    (acc[item.type] ??= []).push(item.label);
     return acc;
   }, {});
 

@@ -41,6 +41,7 @@ const _entry = (over: Partial<AccessListEntry> = {}): AccessListEntry => ({
   visible_data: ["metiers_explores", "parcours_sauvegardes"],
   masked_data: ["bulletins_detailles"],
   revocable: true,
+  last_accessed_at: null,
   ...over,
 });
 

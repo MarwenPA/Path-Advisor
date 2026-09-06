@@ -5,9 +5,12 @@ import type { Profession } from "@/components/professions/types";
 // Mock apiFetch before importing the module under test
 vi.mock("../client", () => ({
   apiFetch: vi.fn(),
+  // Mirrors the real `ApiError` constructor signature in client.ts
+  // (status, message, problem?) — this mock had drifted to the opposite
+  // argument order.
   ApiError: class ApiError extends Error {
     status: number;
-    constructor(message: string, status: number) {
+    constructor(status: number, message: string) {
       super(message);
       this.status = status;
     }
@@ -56,7 +59,7 @@ describe("fetchProfession", () => {
 
   it("propagates ApiError on 404 with correct status", async () => {
     const { apiFetch, ApiError } = await import("../client");
-    const err = new ApiError("Not found", 404);
+    const err = new ApiError(404, "Not found");
     vi.mocked(apiFetch).mockRejectedValueOnce(err);
 
     const { fetchProfession } = await import("../professions");

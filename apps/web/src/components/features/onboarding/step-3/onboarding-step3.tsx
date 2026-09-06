@@ -59,16 +59,18 @@ export function OnboardingStep3() {
     fetch("/api/v1/students/me/bulletins/onboarding/status", { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then(
-        (data: {
-          state: string;
-          bulletin_ids?: string[];
-          recaps?: Array<{
-            bulletinId: string;
-            normalizedFields: NormalizedField[];
-            confidenceAvg: number;
-            isLowQuality: boolean;
-          }>;
-        } | null) => {
+        (
+          data: {
+            state: string;
+            bulletin_ids?: string[];
+            recaps?: Array<{
+              bulletinId: string;
+              normalizedFields: NormalizedField[];
+              confidenceAvg: number;
+              isLowQuality: boolean;
+            }>;
+          } | null,
+        ) => {
           if (!data || data.state === "idle") return;
           const serverState = data.state as "ocr_running" | "recap_editing" | "fallback";
           const bulletinIds = data.bulletin_ids ?? [];
@@ -87,7 +89,7 @@ export function OnboardingStep3() {
                 }))
               : [];
           send({ type: "HYDRATE", serverState, bulletinIds, recaps });
-        }
+        },
       )
       .catch(() => {});
   }, [send, userId]);
@@ -96,9 +98,12 @@ export function OnboardingStep3() {
   const pickerFilesRef = useRef<PickedFile[]>([]);
 
   // Multi-bulletin OCR polling (#2)
-  const { queries: ocrQueries, allDone, allSucceeded, anyFailed } = useOCRJobs(
-    state.matches("ocr_running") ? state.context.bulletinIds : []
-  );
+  const {
+    queries: ocrQueries,
+    allDone,
+    allSucceeded,
+    anyFailed,
+  } = useOCRJobs(state.matches("ocr_running") ? state.context.bulletinIds : []);
 
   // Detect network errors from OCR queries
   const hasNetworkError = ocrQueries.some((q) => q.isError && !q.data);
@@ -151,7 +156,7 @@ export function OnboardingStep3() {
       }
     } else if (anyFailed) {
       const failedQuery = ocrQueries.find(
-        (q) => q.data?.status === "failed" || q.data?.status === "timeout"
+        (q) => q.data?.status === "failed" || q.data?.status === "timeout",
       );
       send({
         type: "OCR_FAILED",
@@ -257,9 +262,7 @@ export function OnboardingStep3() {
     // Abort if the server rejected — don't mark as validated
     if (!res.ok) return;
 
-    const corrections = fields.filter(
-      (f, i) => f.value !== (recap.fields[i]?.value ?? "")
-    ).length;
+    const corrections = fields.filter((f, i) => f.value !== (recap.fields[i]?.value ?? "")).length;
     track({
       name: "onboarding_step3_bulletin_finalized",
       bulletin_id: bulletinId,
@@ -287,7 +290,7 @@ export function OnboardingStep3() {
     try {
       localStorage.setItem(
         "ocr_pending_merge",
-        JSON.stringify({ bulletinIds: state.context.bulletinIds })
+        JSON.stringify({ bulletinIds: state.context.bulletinIds }),
       );
     } catch {
       // Storage full — silently skip
@@ -299,13 +302,14 @@ export function OnboardingStep3() {
 
   if (state.matches("idle")) {
     return (
-      <div className="flex flex-col gap-6 px-4 py-8 max-w-lg mx-auto">
+      <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8">
         <div className="flex flex-col gap-2">
-          <h1 className="text-[var(--text-h2)] font-semibold text-[var(--color-text)]">
+          <h1 className="font-semibold text-[var(--color-text)] text-[var(--text-h2)]">
             Tes bulletins, comment tu préfères ?
           </h1>
-          <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
-            3 façons de faire. Aucune n&apos;est mieux qu&apos;une autre — choisis selon ton humeur du moment.
+          <p className="text-[var(--color-text-muted)] text-[var(--text-body)]">
+            3 façons de faire. Aucune n&apos;est mieux qu&apos;une autre — choisis selon ton humeur
+            du moment.
           </p>
         </div>
         <ImportChoice3Cards onSelect={handleCardSelect} />
@@ -341,12 +345,17 @@ export function OnboardingStep3() {
         id: pf.id,
         file: pf.file,
         progress,
-        status: progress === 100 ? ("done" as const) : pf.error ? ("failed" as const) : ("uploading" as const),
+        status:
+          progress === 100
+            ? ("done" as const)
+            : pf.error
+              ? ("failed" as const)
+              : ("uploading" as const),
         error: pf.error,
       };
     });
     return (
-      <div className="px-4 py-8 max-w-lg mx-auto">
+      <div className="mx-auto max-w-lg px-4 py-8">
         <UploadProgress
           files={uploadFiles}
           onModifySelection={() => send({ type: "CANCEL_PICKER" })}
@@ -360,7 +369,7 @@ export function OnboardingStep3() {
     const isComplete = allSucceeded;
     const isError = anyFailed;
     return (
-      <div className="px-4 py-8 max-w-lg mx-auto">
+      <div className="mx-auto max-w-lg px-4 py-8">
         <OCRLoader
           bulletinIds={state.context.bulletinIds}
           estimatedSeconds={state.context.estimatedSeconds}
@@ -376,7 +385,7 @@ export function OnboardingStep3() {
 
   if (state.matches("recap_editing")) {
     return (
-      <div className="px-4 py-8 max-w-lg mx-auto">
+      <div className="mx-auto max-w-lg px-4 py-8">
         <BulletinRecapEditor
           recaps={state.context.recaps}
           activeIndex={state.context.activeRecapIndex}
@@ -391,11 +400,8 @@ export function OnboardingStep3() {
 
   if (state.matches("fallback")) {
     return (
-      <div className="px-4 py-8 max-w-lg mx-auto">
-        <OCRGracefulFallback
-          onManual={handleManualFallback}
-          onRetry={handleRetryScan}
-        />
+      <div className="mx-auto max-w-lg px-4 py-8">
+        <OCRGracefulFallback onManual={handleManualFallback} onRetry={handleRetryScan} />
       </div>
     );
   }

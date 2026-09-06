@@ -43,7 +43,7 @@ export function BrancheLycee({
   return (
     <section
       aria-labelledby="branche-lycee-heading"
-      className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-2 duration-200"
+      className="flex flex-col gap-6 duration-200 animate-in fade-in slide-in-from-bottom-2"
     >
       <div>
         <h3 id="branche-lycee-heading" className="text-h3 font-semibold text-text">
@@ -119,7 +119,9 @@ export function BrancheLycee({
                   className={[
                     "flex cursor-pointer items-center justify-between rounded-md border px-4 py-2.5",
                     "min-h-[44px] bg-bg-2 transition-colors",
-                    isSelected ? "border-brand bg-brand/5" : "border-border hover:border-border-strong",
+                    isSelected
+                      ? "border-brand bg-brand/5"
+                      : "border-border hover:border-border-strong",
                   ].join(" ")}
                 >
                   <div>

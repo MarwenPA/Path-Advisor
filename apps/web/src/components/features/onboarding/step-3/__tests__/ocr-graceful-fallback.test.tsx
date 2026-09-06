@@ -7,21 +7,24 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }));
 
-// Mock GracefulFallback component
+// Mock GracefulFallback component — prop names match the real component's
+// `primaryAction`/`secondaryAction`/`tertiaryLink` (this mock had drifted).
 vi.mock("@/components/ui/graceful-fallback", () => ({
   GracefulFallback: ({
-    primary,
-    secondary,
-    tertiary,
+    primaryAction,
+    secondaryAction,
+    tertiaryLink,
   }: {
-    primary: { label: string; onClick: () => void };
-    secondary?: { label: string; onClick: () => void };
-    tertiary?: { label: string; onClick: () => void };
+    primaryAction: { label: string; onClick: () => void };
+    secondaryAction?: { label: string; onClick: () => void };
+    tertiaryLink?: { label: string; onClick: () => void };
   }) => (
     <div>
-      <button onClick={primary.onClick}>{primary.label}</button>
-      {secondary && <button onClick={secondary.onClick}>{secondary.label}</button>}
-      {tertiary && <button onClick={tertiary.onClick}>{tertiary.label}</button>}
+      <button onClick={primaryAction.onClick}>{primaryAction.label}</button>
+      {secondaryAction && (
+        <button onClick={secondaryAction.onClick}>{secondaryAction.label}</button>
+      )}
+      {tertiaryLink && <button onClick={tertiaryLink.onClick}>{tertiaryLink.label}</button>}
     </div>
   ),
 }));

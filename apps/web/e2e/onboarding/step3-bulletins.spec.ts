@@ -40,9 +40,27 @@ test.describe("Story 2.3 — Bulletin OCR", () => {
                 is_low_quality: false,
                 confidence_avg: 0.88,
                 normalized_fields: [
-                  { key: "matiere_0", label: "Mathématiques", value: "15.5", confidence: 0.9, isLowConfidence: false },
-                  { key: "matiere_1", label: "Français", value: "13", confidence: 0.85, isLowConfidence: false },
-                  { key: "matiere_2", label: "Histoire-Géo", value: "14", confidence: 0.88, isLowConfidence: false },
+                  {
+                    key: "matiere_0",
+                    label: "Mathématiques",
+                    value: "15.5",
+                    confidence: 0.9,
+                    isLowConfidence: false,
+                  },
+                  {
+                    key: "matiere_1",
+                    label: "Français",
+                    value: "13",
+                    confidence: 0.85,
+                    isLowConfidence: false,
+                  },
+                  {
+                    key: "matiere_2",
+                    label: "Histoire-Géo",
+                    value: "14",
+                    confidence: 0.88,
+                    isLowConfidence: false,
+                  },
                 ],
               },
             }),
@@ -68,7 +86,9 @@ test.describe("Story 2.3 — Bulletin OCR", () => {
       await expect(cards).toHaveCount(3);
     });
 
-    test("scan card → file picker → upload → OCR → recap → validate → dashboard", async ({ page }) => {
+    test("scan card → file picker → upload → OCR → recap → validate → dashboard", async ({
+      page,
+    }) => {
       // 1. Select scan card (first card)
       await page.locator("button").nth(0).click();
 
@@ -132,7 +152,13 @@ test.describe("Story 2.3 — Bulletin OCR", () => {
               is_low_quality: false,
               confidence_avg: 0.55,
               normalized_fields: [
-                { key: "matiere_0", label: "Maths", value: "?", confidence: 0.45, isLowConfidence: true },
+                {
+                  key: "matiere_0",
+                  label: "Maths",
+                  value: "?",
+                  confidence: 0.45,
+                  isLowConfidence: true,
+                },
               ],
             },
           }),
@@ -213,7 +239,9 @@ test.describe("Story 2.3 — Bulletin OCR", () => {
       await page.getByRole("button", { name: /analyser|lancer|upload/i }).click();
 
       // Graceful fallback should appear
-      await expect(page.getByRole("button", { name: /main|saisir/i })).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByRole("button", { name: /main|saisir/i })).toBeVisible({
+        timeout: 15_000,
+      });
       await expect(page.getByRole("button", { name: /réessayer|retry/i })).toBeVisible();
     });
   });

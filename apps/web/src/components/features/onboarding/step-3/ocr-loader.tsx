@@ -45,9 +45,9 @@ export function OCRLoader({
 
   if (isNetworkError) {
     return (
-      <div className="flex flex-col items-center gap-4 text-center py-8">
+      <div className="flex flex-col items-center gap-4 py-8 text-center">
         <WifiOff className="size-8 text-[var(--color-text-muted)]" aria-hidden />
-        <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
+        <p className="text-[var(--color-text-muted)] text-[var(--text-body)]">
           On essaie de récupérer les résultats…
           <br />
           Vérifie ta connexion ou attends quelques secondes.

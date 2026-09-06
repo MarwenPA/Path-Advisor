@@ -8,6 +8,7 @@
  * a "Se connecter" link instead of retrying the form.
  */
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ export function ParentSignupForm({ token, prefillEmail }: { token: string; prefi
       <div role="alert" className="flex flex-col gap-3 rounded-md border border-border p-4">
         <p className="text-body text-text">{PARENT_SIGNUP_COPY.emailTakenMessage}</p>
         <Button asChild>
-          <a href="/auth/login">{PARENT_SIGNUP_COPY.loginCta}</a>
+          <Link href="/auth/login">{PARENT_SIGNUP_COPY.loginCta}</Link>
         </Button>
       </div>
     );

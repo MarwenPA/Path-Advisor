@@ -131,9 +131,14 @@ describe("Home page", () => {
 describe("Home page metadata (Story 7.5 AC — OG + Twitter Card)", () => {
   it("exposes og:url/type and a Twitter summary_large_image card", async () => {
     const { metadata } = await import("./page");
+    // Next's `Metadata["openGraph"]`/`["twitter"]` types are unions of many
+    // subtypes (Website/Article/...) that don't individually guarantee
+    // `type`/`card` — loosen to a plain record for this assertion only.
+    const openGraph = metadata.openGraph as Record<string, unknown> | undefined;
+    const twitter = metadata.twitter as Record<string, unknown> | undefined;
 
-    expect(metadata.openGraph?.url).toBe("https://path-advisor.fr");
-    expect(metadata.openGraph?.type).toBe("website");
-    expect(metadata.twitter?.card).toBe("summary_large_image");
+    expect(openGraph?.url).toBe("https://path-advisor.fr");
+    expect(openGraph?.type).toBe("website");
+    expect(twitter?.card).toBe("summary_large_image");
   });
 });

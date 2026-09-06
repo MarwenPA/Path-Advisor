@@ -124,6 +124,10 @@ export function ParcoursList({
   const defaultIndex = parcours.findIndex((p) => p.is_default);
   const effectiveDefaultIndex = defaultIndex >= 0 ? defaultIndex : 0;
   const defaultParcours = parcours[effectiveDefaultIndex];
+  // `parcours.length === 0` already returned early above, so
+  // `effectiveDefaultIndex` is always a valid index — this is purely to
+  // satisfy TS's noUncheckedIndexedAccess, never actually reachable.
+  if (!defaultParcours) return null;
   const alternatives = parcours.filter((_, i) => i !== effectiveDefaultIndex);
   const altCount = alternatives.length;
 

@@ -132,6 +132,6 @@ describe("StatPersonnelle", () => {
     const hiddenSpans = region.querySelectorAll('[aria-hidden="true"]');
     expect(hiddenSpans.length).toBeGreaterThan(0);
     // The first aria-hidden span is the icon
-    expect(hiddenSpans[0].textContent).toBe("✓");
+    expect(hiddenSpans[0]?.textContent).toBe("✓");
   });
 });

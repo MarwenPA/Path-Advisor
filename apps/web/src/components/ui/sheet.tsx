@@ -26,8 +26,7 @@ const SheetOverlay = React.forwardRef<
 ));
 SheetOverlay.displayName = "SheetOverlay";
 
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+interface SheetContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
   side?: "top" | "bottom" | "left" | "right";
 }
 
@@ -63,14 +62,8 @@ const SheetContent = React.forwardRef<
 ));
 SheetContent.displayName = "SheetContent";
 
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col space-y-2 text-left", className)}
-    {...props}
-  />
+const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col space-y-2 text-left", className)} {...props} />
 );
 SheetHeader.displayName = "SheetHeader";
 
@@ -86,10 +79,7 @@ const SheetTitle = React.forwardRef<
 ));
 SheetTitle.displayName = "SheetTitle";
 
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
     {...props}
@@ -97,12 +87,4 @@ const SheetFooter = ({
 );
 SheetFooter.displayName = "SheetFooter";
 
-export {
-  Sheet,
-  SheetTrigger,
-  SheetClose,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-};
+export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle };

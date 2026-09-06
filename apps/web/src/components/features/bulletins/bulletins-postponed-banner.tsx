@@ -34,15 +34,14 @@ export function BulletinsPostponedBanner({
       aria-live="polite"
       className={
         isSidebar
-          ? "max-w-[320px] border border-border rounded-md bg-bg-2 p-3"
-          : "fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-bg-2 px-4 py-3 flex items-center justify-between gap-3 max-h-14"
+          ? "max-w-[320px] rounded-md border border-border bg-bg-2 p-3"
+          : "fixed bottom-0 left-0 right-0 z-40 flex max-h-14 items-center justify-between gap-3 border-t border-border bg-bg-2 px-4 py-3"
       }
     >
-      <p className="text-sm text-muted-foreground flex-1">
-        Tu peux ajouter tes bulletins à tout moment pour des stats
-        personnalisées.
+      <p className="flex-1 text-sm text-muted-foreground">
+        Tu peux ajouter tes bulletins à tout moment pour des stats personnalisées.
       </p>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex shrink-0 items-center gap-2">
         <Button variant="ghost" size="sm" onClick={onAddClick}>
           Ajouter →
         </Button>

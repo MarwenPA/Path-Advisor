@@ -14,7 +14,7 @@ const UPLOAD_TIMEOUT_MS = 60_000;
 async function uploadOneFile(
   file: File,
   onProgress: (pct: number) => void,
-  attempt = 0
+  attempt = 0,
 ): Promise<UploadResult> {
   return new Promise((resolve) => {
     const formData = new FormData();
@@ -78,7 +78,7 @@ export function useBulletinUpload() {
   const [fileProgress, setFileProgress] = useState<Record<string, number>>({});
 
   const upload = async (
-    entries: UploadEntry[]
+    entries: UploadEntry[],
   ): Promise<{
     results: Array<{ entry: UploadEntry; result: UploadResult }>;
     bulletinIds: string[];
@@ -94,8 +94,8 @@ export function useBulletinUpload() {
         batch.map(({ id, file }) =>
           uploadOneFile(file, (pct) => {
             setFileProgress((prev) => ({ ...prev, [id]: pct }));
-          }).then((result) => ({ entry: { id, file }, result }))
-        )
+          }).then((result) => ({ entry: { id, file }, result })),
+        ),
       );
       allResults.push(...batchResults);
     }

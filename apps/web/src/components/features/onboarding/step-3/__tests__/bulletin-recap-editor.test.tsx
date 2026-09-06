@@ -7,10 +7,9 @@ import { BulletinRecapEditor } from "../bulletin-recap-editor";
 
 function makeField(overrides?: Partial<NormalizedField>): NormalizedField {
   return {
-    key: "note_0",
-    label: "Mathématiques",
+    key: "note",
     value: "15",
-    confidence: 0.90,
+    confidence: 0.9,
     isLowConfidence: false,
     ...overrides,
   };
@@ -20,7 +19,7 @@ function makeRecap(overrides?: Partial<BulletinRecap>): BulletinRecap {
   return {
     bulletinId: "b1",
     label: "Bulletin 1",
-    fields: [makeField()],
+    fields: [{ key: "matiere", value: "Mathématiques", confidence: 0.9 }, makeField()],
     confidenceAvg: 0.9,
     validated: false,
     ...overrides,
@@ -37,9 +36,9 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={vi.fn()}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
-    expect(screen.getByText("Mathématiques")).toBeTruthy();
+    expect(screen.getByDisplayValue("Mathématiques")).toBeTruthy();
   });
 
   it("renders current note value", () => {
@@ -51,7 +50,7 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={vi.fn()}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
     expect(screen.getByDisplayValue("15")).toBeTruthy();
   });
@@ -66,28 +65,38 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={onFieldsChange}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
     const input = screen.getByDisplayValue("15");
     await userEvent.clear(input);
     await userEvent.type(input, "16");
+    // `NoteInput` only commits (calls `onChange` → `onFieldsChange`) on
+    // blur or Enter — typing alone only updates local draft state.
+    await userEvent.tab();
     expect(onFieldsChange).toHaveBeenCalled();
   });
 
   it("shows low-confidence warning indicator for AC6", () => {
     render(
       <BulletinRecapEditor
-        recaps={[makeRecap({ fields: [makeField({ confidence: 0.4, isLowConfidence: true })] })]}
+        recaps={[
+          makeRecap({
+            fields: [
+              { key: "matiere", value: "Mathématiques", confidence: 0.9 },
+              makeField({ confidence: 0.4, isLowConfidence: true }),
+            ],
+          }),
+        ]}
         activeIndex={0}
         onActiveChange={vi.fn()}
         onFieldsChange={vi.fn()}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
-    // There should be a visual indicator (icon, aria-label, or text) for low confidence
-    const lowConfWarning = document.querySelector("[data-low-confidence], [aria-label*='confidence']");
-    expect(lowConfWarning).toBeTruthy();
+    // There should be a visual indicator (icon + SR-only "À vérifier" text)
+    // for low confidence — see `SubjectRow`'s `aria-describedby={warnId}`.
+    expect(screen.getByText("À vérifier")).toBeTruthy();
   });
 
   it("renders tabs when multiple bulletins", () => {
@@ -99,7 +108,7 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={vi.fn()}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
     expect(screen.getByText("Bulletin 1")).toBeTruthy();
     expect(screen.getByText("Bulletin 2")).toBeTruthy();
@@ -115,7 +124,7 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={vi.fn()}
         onValidate={onValidate}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
     await userEvent.click(screen.getByRole("button", { name: /valid/i }));
     expect(onValidate).toHaveBeenCalledWith("b1");
@@ -130,7 +139,7 @@ describe("BulletinRecapEditor — AC5/AC6", () => {
         onFieldsChange={vi.fn()}
         onValidate={vi.fn()}
         onAllValidated={vi.fn()}
-      />
+      />,
     );
     expect(container.querySelector("table")).toBeTruthy();
   });

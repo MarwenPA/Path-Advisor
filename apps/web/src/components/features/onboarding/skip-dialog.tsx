@@ -34,9 +34,7 @@ export function SkipDialog({ open, onOpenChange, onConfirm, isSubmitting }: Skip
       description={
         "Pas de souci. Tu pourras déclarer tes passions, valeurs et centres d'intérêt à tout moment depuis ton profil. Tes recos seront un peu plus génériques pour l'instant, mais elles s'affineront dès que tu reviendras compléter."
       }
-      dataMentioned={[
-        "Tes passions et valeurs sont utilisées pour adapter tes recos métiers",
-      ]}
+      dataMentioned={["Tes passions et valeurs sont utilisées pour adapter tes recos métiers"]}
       duration="Tu peux compléter à tout moment depuis ton profil"
       beneficiary="Toi — ce sont tes données, tu décides"
       acceptLabel="Oui, plus tard"

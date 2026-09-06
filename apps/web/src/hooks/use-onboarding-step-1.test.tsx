@@ -9,9 +9,8 @@ const fetchSnapshotMock = vi.fn();
 const patchSnapshotMock = vi.fn();
 
 vi.mock("@/lib/api/onboarding", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/api/onboarding")>(
-    "@/lib/api/onboarding",
-  );
+  const actual =
+    await vi.importActual<typeof import("@/lib/api/onboarding")>("@/lib/api/onboarding");
   return {
     ...actual,
     fetchOnboardingSnapshot: (...args: unknown[]) => fetchSnapshotMock(...args),
@@ -138,9 +137,7 @@ describe("useOnboardingStep1", () => {
     // The Probe shows the initial state from the draft (TanStack initialData
     // wins until refetch); the effect that clears localStorage on completion
     // is what we actually assert.
-    await waitFor(() =>
-      expect(window.localStorage.getItem(draftKeyFor(TEST_USER_ID))).toBeNull(),
-    );
+    await waitFor(() => expect(window.localStorage.getItem(draftKeyFor(TEST_USER_ID))).toBeNull());
   });
 
   // Pass 2 PR2-H7 — a stale LEGACY-keyed draft (left behind by a previous
@@ -159,9 +156,7 @@ describe("useOnboardingStep1", () => {
     render(<Probe userId={TEST_USER_ID} />, { wrapper: makeWrapper() });
     // The cleanup effect runs after mount; the legacy key disappears even
     // though no PATCH has succeeded yet.
-    await waitFor(() =>
-      expect(window.localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull(),
-    );
+    await waitFor(() => expect(window.localStorage.getItem(DRAFT_STORAGE_KEY)).toBeNull());
     // The namespaced key was never written (no draft existed for this user)
     // so the snapshot stays empty — User A's "leaked-from-prior-user" is
     // not visible.

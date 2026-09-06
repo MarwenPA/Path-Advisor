@@ -53,7 +53,7 @@ export function FicheEcole({
           <input
             type="checkbox"
             checked={isSelected ?? false}
-            onChange={() => onSelect?.(school.id)}
+            onChange={() => school.id && onSelect?.(school.id)}
             aria-label={"Selectionner " + school.name + " pour comparer"}
             className="mt-1"
           />

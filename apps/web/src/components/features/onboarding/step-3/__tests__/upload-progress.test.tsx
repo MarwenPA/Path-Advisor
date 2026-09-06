@@ -28,11 +28,11 @@ describe("UploadProgress — AC3", () => {
 
   it("shows success state when done", () => {
     render(<UploadProgress files={[makeFile({ progress: 100, status: "done" })]} />);
-    expect(screen.getByText(/terminé|done|✓/i)).toBeTruthy();
+    expect(screen.getByLabelText("Envoyé")).toBeTruthy();
   });
 
   it("shows retry button on error", () => {
-    render(<UploadProgress files={[makeFile({ status: "failed" })]} />);
+    render(<UploadProgress files={[makeFile({ status: "failed" })]} onRetry={() => {}} />);
     expect(screen.getByRole("button", { name: /retry|réessayer/i })).toBeTruthy();
   });
 

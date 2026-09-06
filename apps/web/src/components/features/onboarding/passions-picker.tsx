@@ -189,7 +189,8 @@ export function PassionsPicker({
         })}
         {filtered.length === 0 ? (
           <p className="text-body-sm text-text-muted">
-            Pas dans la liste ? Ajoute-le toi-même via <span className="font-medium">+ Ajouter</span>.
+            Pas dans la liste ? Ajoute-le toi-même via{" "}
+            <span className="font-medium">+ Ajouter</span>.
           </p>
         ) : null}
       </div>
@@ -206,9 +207,10 @@ export function PassionsPicker({
             disabled={customCount >= MAX_CUSTOM_PASSIONS || isAtMax}
             data-testid="passions-add-custom-trigger"
             className={cn(
-              "inline-flex w-fit min-h-11 items-center gap-1 self-start rounded-md px-3 py-2 text-body-sm font-medium text-brand underline underline-offset-4",
+              "inline-flex min-h-11 w-fit items-center gap-1 self-start rounded-md px-3 py-2 text-body-sm font-medium text-brand underline underline-offset-4",
               "hover:text-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              (customCount >= MAX_CUSTOM_PASSIONS || isAtMax) && "cursor-not-allowed opacity-60 no-underline",
+              (customCount >= MAX_CUSTOM_PASSIONS || isAtMax) &&
+                "cursor-not-allowed no-underline opacity-60",
             )}
           >
             <Plus aria-hidden className="h-4 w-4" />
@@ -256,7 +258,11 @@ export function PassionsPicker({
               </button>
             </div>
             {customError ? (
-              <p role="status" className="text-caption text-danger" data-testid="passions-custom-error">
+              <p
+                role="status"
+                className="text-caption text-danger"
+                data-testid="passions-custom-error"
+              >
                 {customError}
               </p>
             ) : null}
@@ -296,11 +302,7 @@ export function PassionsPicker({
           `aria-live`), so this helper is presentational only — `role="note"`
           + no `aria-live` to avoid the per-screen live-region cascade. */}
       {isAtMax ? (
-        <p
-          role="note"
-          className="text-caption text-warning"
-          data-testid="passions-max-helper"
-        >
+        <p role="note" className="text-caption text-warning" data-testid="passions-max-helper">
           Maximum {MAX_PASSIONS_TOTAL} — désélectionne pour en changer.
         </p>
       ) : null}

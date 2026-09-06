@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { BookOpen, ChevronDown, ChevronUp, FileText, Heart, Sparkles } from "lucide-react";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -73,7 +74,7 @@ function devCheckCopy(text: string): void {
       if (lower.includes(word)) {
         console.warn(
           `[ProfileMaturityIndicator] Forbidden word found in copy: "${word}" in "${text}". ` +
-            "See Story 2.7 § 4.3 — Mots interdits dans le copy."
+            "See Story 2.7 § 4.3 — Mots interdits dans le copy.",
         );
       }
     }
@@ -112,16 +113,16 @@ function NextActionsList({ actions, listId }: NextActionsListProps) {
               type="button"
               onClick={action.onClick}
               className={cn(
-                "w-full flex items-center gap-3 rounded-md border border-border bg-card",
-                "px-4 py-4 text-left min-h-[64px]",
-                "hover:bg-muted hover:border-foreground/30",
+                "flex w-full items-center gap-3 rounded-md border border-border bg-card",
+                "min-h-[64px] px-4 py-4 text-left",
+                "hover:border-foreground/30 hover:bg-muted",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                "transition-colors"
+                "transition-colors",
               )}
             >
               {ACTION_ICONS[action.icon]}
-              <span className="flex-1 min-w-0">
-                <span className="block font-medium text-sm text-foreground">{action.label}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-foreground">{action.label}</span>
                 <span className="block text-xs text-muted-foreground">{action.benefit}</span>
               </span>
               <ChevronDown className="size-4 shrink-0 text-muted-foreground" aria-hidden />
@@ -153,10 +154,7 @@ function MaturityProfileHeader({ level, nextActions, showCallToAction, uid }: He
     <section
       role="region"
       aria-labelledby={titleId}
-      className={cn(
-        "w-full max-w-[1080px] rounded-lg border border-border bg-card",
-        "p-6"
-      )}
+      className={cn("w-full max-w-[1080px] rounded-lg border border-border bg-card", "p-6")}
     >
       <span className="sr-only" aria-live="polite">
         {`Niveau de profil : ${LEVEL_LABELS[level]}.`}
@@ -190,9 +188,7 @@ function MaturityProfileHeader({ level, nextActions, showCallToAction, uid }: He
             )}
           </Button>
 
-          {expanded && (
-            <NextActionsList actions={nextActions} listId={listId} />
-          )}
+          {expanded && <NextActionsList actions={nextActions} listId={listId} />}
         </>
       )}
     </section>
@@ -210,7 +206,7 @@ function MaturityDashboardCard({ level, uid }: { level: MaturityLevel; uid: stri
     <div
       className={cn(
         "flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between",
-        "rounded-lg border border-border bg-card px-4 py-3"
+        "rounded-lg border border-border bg-card px-4 py-3",
       )}
       aria-label={`Niveau de profil : ${LEVEL_LABELS[level]}`}
     >
@@ -219,12 +215,9 @@ function MaturityDashboardCard({ level, uid }: { level: MaturityLevel; uid: stri
         {" · "}
         <span className="text-muted-foreground">{LEVEL_DESCRIPTIONS[level]}</span>
       </span>
-      <a
-        href="/profile"
-        className="text-sm text-primary hover:underline whitespace-nowrap"
-      >
+      <Link href="/profile" className="whitespace-nowrap text-sm text-primary hover:underline">
         Mon profil →
-      </a>
+      </Link>
     </div>
   );
 }
@@ -235,16 +228,16 @@ function MaturityDashboardCard({ level, uid }: { level: MaturityLevel; uid: stri
 
 function MaturityInlineCompact({ level }: { level: MaturityLevel }) {
   return (
-    <a
+    <Link
       href="/profile"
       title={LEVEL_DESCRIPTIONS[level]}
       className={cn(
         "inline-flex items-center rounded-full border border-border bg-card",
-        "px-3 py-1 text-sm text-foreground hover:bg-muted transition-colors"
+        "px-3 py-1 text-sm text-foreground transition-colors hover:bg-muted",
       )}
     >
       {LEVEL_LABELS[level]}
-    </a>
+    </Link>
   );
 }
 

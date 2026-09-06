@@ -31,10 +31,7 @@ describe("InteretsFreeForm", () => {
   it("clearing a field down to empty string returns null in the triplet", () => {
     const onChange = vi.fn();
     render(
-      <InteretsFreeForm
-        value={{ "1": "podcast", "2": null, "3": null }}
-        onChange={onChange}
-      />,
+      <InteretsFreeForm value={{ "1": "podcast", "2": null, "3": null }} onChange={onChange} />,
     );
     fireEvent.change(document.getElementById("interet-1")!, { target: { value: "" } });
     expect(onChange).toHaveBeenCalledWith({ "1": null, "2": null, "3": null });
@@ -92,11 +89,7 @@ describe("InteretsFreeForm", () => {
 
   it("uses placeholdersOverride when provided (AC8 — per niveau scolaire)", () => {
     render(
-      <InteretsFreeForm
-        value={empty}
-        onChange={vi.fn()}
-        placeholdersOverride={["A", "B", "C"]}
-      />,
+      <InteretsFreeForm value={empty} onChange={vi.fn()} placeholdersOverride={["A", "B", "C"]} />,
     );
     expect(screen.getByPlaceholderText("A")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("B")).toBeInTheDocument();
