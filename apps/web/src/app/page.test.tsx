@@ -146,5 +146,7 @@ describe("Home page metadata (Story 7.5 AC — OG + Twitter Card)", () => {
     expect(openGraph?.url).toBe("https://path-advisor.fr");
     expect(openGraph?.type).toBe("website");
     expect(twitter?.card).toBe("summary_large_image");
+    // Epic 7 review fix — explicit canonical, relative to `metadataBase`.
+    expect(metadata.alternates?.canonical).toBe("/");
   });
 });

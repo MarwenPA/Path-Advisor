@@ -14,9 +14,12 @@ export const fetchProfession = cache(async (slug: string): Promise<Profession> =
  * `GET /api/v1/public/professions/{slug}/` — Story 7.1. AllowAny backend
  * endpoint; used by the public `/metiers/{slug}` SSR page so an anonymous
  * visitor (and Google/Bing) never depends on the auth-gated endpoint above.
+ * `forwardCookies: false` — Epic 7 review fix: forwarding cookies calls
+ * `cookies()`, which forced every public page dynamic and made their
+ * `revalidate = 3600` inert (see `apiFetch`'s docstring).
  */
 export const fetchPublicProfession = cache(async (slug: string): Promise<Profession> => {
-  return apiFetch<Profession>(`/api/v1/public/professions/${slug}/`);
+  return apiFetch<Profession>(`/api/v1/public/professions/${slug}/`, { forwardCookies: false });
 });
 
 /** Story 7.4 — `{slug, updated_at}` rows for `app/sitemap.ts`. */
@@ -26,7 +29,10 @@ export interface ProfessionSlugRow {
 }
 
 export async function fetchPublicProfessionSlugs(): Promise<ProfessionSlugRow[]> {
-  return apiFetch<ProfessionSlugRow[]>("/api/v1/public/professions/slugs/");
+  // AllowAny endpoint — no cookies, same rationale as fetchPublicProfession.
+  return apiFetch<ProfessionSlugRow[]>("/api/v1/public/professions/slugs/", {
+    forwardCookies: false,
+  });
 }
 
 /**

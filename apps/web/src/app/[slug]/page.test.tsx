@@ -89,6 +89,42 @@ describe("DevenirMetierPage", () => {
     expect(fetchPublicProfessionMock).not.toHaveBeenCalled();
   });
 
+  it("links to the four /{niveau}/quel-bac-pour-{metier} pages (Epic 7 review — orphan fix)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
+    fetchPublicParcoursSummaryMock.mockResolvedValue([]);
+
+    render(
+      await DevenirMetierPage({ params: Promise.resolve({ slug: "devenir-infirmier-test" }) }),
+    );
+
+    for (const niveau of [
+      "3eme",
+      "terminale-generale",
+      "terminale-technologique",
+      "terminale-pro",
+    ]) {
+      expect(
+        document.querySelector(`a[href="/${niveau}/quel-bac-pour-infirmier-test"]`),
+      ).not.toBeNull();
+    }
+  });
+
+  it("escapes </script> in JSON-LD (Epic 7 review — stored XSS)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue({
+      ...PROFESSION,
+      prospects_text: `piégé</script><script>alert("xss")</script>`,
+    });
+    fetchPublicParcoursSummaryMock.mockResolvedValue([]);
+
+    const { container } = render(
+      await DevenirMetierPage({ params: Promise.resolve({ slug: "devenir-infirmier-test" }) }),
+    );
+
+    for (const script of container.querySelectorAll('script[type="application/ld+json"]')) {
+      expect(script.innerHTML).not.toContain("</script>");
+    }
+  });
+
   it("still renders when the parcours summary fetch fails", async () => {
     fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
     fetchPublicParcoursSummaryMock.mockRejectedValue(new Error("network"));

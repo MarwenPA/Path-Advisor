@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicProfession } from "@/lib/api/professions";
 import { fetchPublicParcoursSummary } from "@/lib/api/schools";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import {
+  NIVEAU_SLUGS,
   SITE_ORIGIN,
   buildFaqPageJsonLd,
   buildOccupationFaq,
@@ -32,6 +34,12 @@ import {
  */
 export const revalidate = 3600;
 
+// Epic 7 review fix — enables ISR; see `/metiers/[slug]/page.tsx` for why
+// this returns `[]` instead of fetching all slugs at build time.
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
+
 const DEVENIR_PREFIX = "devenir-";
 
 function extractMetierSlug(slug: string): string | null {
@@ -53,6 +61,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
       title,
       description,
+      // Epic 7 review fix — explicit canonical (relative, resolved against
+      // the root layout's `metadataBase`): this landing shares much of its
+      // content with `/metiers/{slug}` and the niveau pages, so each URL
+      // must declare itself unambiguously.
+      alternates: { canonical: `/devenir-${metier}` },
       openGraph: {
         title,
         description,
@@ -74,6 +87,9 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
     return null;
   }
   const t = await getTranslations("devenirMetierPage");
+  // Niveau labels live under the sibling page's namespace (single source
+  // of truth for the label of each niveau slug — Story 7.7 convention).
+  const tNiveauLabels = await getTranslations("quelBacPourPage.niveauLabels");
 
   let profession;
   try {
@@ -101,14 +117,16 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      {/* Epic 7 review fix — `serializeJsonLd` escapes `<` (stored XSS via
+          admin-editable description/prospects/FAQ text; `lib/seo/json-ld.ts`). */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(occupationJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(occupationJsonLd) }}
       />
       {faqJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
         />
       )}
 
@@ -166,6 +184,33 @@ export default async function DevenirMetierPage({ params }: { params: Promise<{ 
           </dl>
         </section>
       )}
+
+      {/* Epic 7 review fix — the `/{niveau}/quel-bac-pour-{metier}` pages
+          (Story 7.3 AC2) were orphans: in no sitemap and linked from
+          nowhere, so Google could never discover them. They're now both
+          sitemap-declared (`app/sitemap.ts`) and cross-linked from here,
+          their natural parent. Rendered inline (not a shared component):
+          `src/components/**` is owned by the accessibility workstream. */}
+      <nav aria-labelledby="niveau-pages-title" className="mb-8">
+        <h2 id="niveau-pages-title" className="mb-3 text-h3 font-semibold text-text">
+          {t("niveauPagesTitle")}
+        </h2>
+        <ul className="flex flex-col gap-1">
+          {Object.keys(NIVEAU_SLUGS).map((niveau) => (
+            <li key={niveau}>
+              <Link
+                href={`/${niveau}/quel-bac-pour-${metier}`}
+                className="text-body-sm text-primary hover:underline"
+              >
+                {t("niveauPageLink", {
+                  name: profession.name,
+                  niveauLabel: tNiveauLabels(niveau),
+                })}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
 
       <section
         aria-labelledby="signup-cta-title"

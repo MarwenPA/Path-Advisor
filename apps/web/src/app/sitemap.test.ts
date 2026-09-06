@@ -33,6 +33,26 @@ describe("sitemap", () => {
     expect(urls).toContain("https://path-advisor.fr/formations/insa-lyon");
   });
 
+  it("declares the /{niveau}/quel-bac-pour-{metier} pages (Epic 7 review — orphan fix)", async () => {
+    fetchPublicProfessionSlugsMock.mockResolvedValue([
+      { slug: "infirmier", updated_at: "2026-01-01T00:00:00Z" },
+    ]);
+    fetchPublicSchoolSlugsMock.mockResolvedValue([]);
+
+    const entries = await sitemap();
+    const urls = entries.map((e) => e.url);
+
+    // Exactly the four slugs `NIVEAU_SLUGS` (the page's validation map)
+    // accepts — anything else would put 404s in the sitemap.
+    expect(urls).toContain("https://path-advisor.fr/3eme/quel-bac-pour-infirmier");
+    expect(urls).toContain("https://path-advisor.fr/terminale-generale/quel-bac-pour-infirmier");
+    expect(urls).toContain(
+      "https://path-advisor.fr/terminale-technologique/quel-bac-pour-infirmier",
+    );
+    expect(urls).toContain("https://path-advisor.fr/terminale-pro/quel-bac-pour-infirmier");
+    expect(urls.filter((u) => u.includes("quel-bac-pour"))).toHaveLength(4);
+  });
+
   it("does not throw when a fetch fails (graceful degradation)", async () => {
     fetchPublicProfessionSlugsMock.mockRejectedValue(new Error("network"));
     fetchPublicSchoolSlugsMock.mockResolvedValue([]);

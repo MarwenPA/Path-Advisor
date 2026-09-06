@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { FicheEcole } from "@/components/schools/FicheEcole";
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicSchool } from "@/lib/api/schools";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import { SITE_ORIGIN, buildEducationalOrganizationJsonLd } from "@/lib/seo/occupation-landing";
 
 /**
@@ -18,6 +19,12 @@ import { SITE_ORIGIN, buildEducationalOrganizationJsonLd } from "@/lib/seo/occup
  * métier page.
  */
 export const revalidate = 3600;
+
+// Epic 7 review fix — enables ISR; see `/metiers/[slug]/page.tsx` for why
+// this returns `[]` instead of fetching all slugs at build time.
+export function generateStaticParams(): { slug: string }[] {
+  return [];
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -35,6 +42,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return {
       title,
       description,
+      // Epic 7 review fix — explicit canonical (relative, resolved against
+      // the root layout's `metadataBase`).
+      alternates: { canonical: `/formations/${slug}` },
       openGraph: {
         title,
         description,
@@ -76,9 +86,11 @@ export default async function PublicFormationPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      {/* Epic 7 review fix — `serializeJsonLd` escapes `<` (stored XSS via
+          admin-editable school description; see `lib/seo/json-ld.ts`). */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(educationalOrgJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(educationalOrgJsonLd) }}
       />
       {/* No public catalog listing page exists yet (out of scope for this
           story — no AC asks for `/formations` index) so there is no "back

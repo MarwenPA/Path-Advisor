@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicProfession } from "@/lib/api/professions";
 import { fetchPublicParcoursSummary } from "@/lib/api/schools";
+import { serializeJsonLd } from "@/lib/seo/json-ld";
 import {
+  NIVEAU_SLUGS,
   SITE_ORIGIN,
   buildFaqPageJsonLd,
   buildOccupationFaq,
@@ -35,6 +37,12 @@ import {
  */
 export const revalidate = 3600;
 
+// Epic 7 review fix — enables ISR; see `/metiers/[slug]/page.tsx` for why
+// this returns `[]` instead of fetching all combinations at build time.
+export function generateStaticParams(): { slug: string; metierSlug: string }[] {
+  return [];
+}
+
 const QUEL_BAC_POUR_PREFIX = "quel-bac-pour-";
 
 function extractMetierSlug(metierSlug: string): string | null {
@@ -43,15 +51,11 @@ function extractMetierSlug(metierSlug: string): string | null {
     : null;
 }
 
-// Story 7.7 — niveau *labels* moved to `messages/fr.json#quelBacPourPage.niveauLabels`
-// (keyed by the same niveau slug); this map keeps only the non-translatable
-// backend enum mapping (`apiValue`, `Parcours.NiveauScolaire`).
-const NIVEAU_SLUGS: Record<string, { apiValue: string }> = {
-  "3eme": { apiValue: "troisieme_bac_pro" },
-  "terminale-generale": { apiValue: "terminale_generale" },
-  "terminale-technologique": { apiValue: "terminale_technologique" },
-  "terminale-pro": { apiValue: "terminale_pro" },
-};
+// Story 7.7 — niveau *labels* live in `messages/fr.json#quelBacPourPage.niveauLabels`
+// (keyed by the same niveau slug). Epic 7 review fix: the slug→enum map
+// itself moved to `lib/seo/occupation-landing.ts` (`NIVEAU_SLUGS`) so
+// `app/sitemap.ts` enumerates exactly the slugs this page accepts —
+// keeping a second copy here risked sitemap entries that 404.
 
 export async function generateMetadata({
   params,
@@ -71,6 +75,9 @@ export async function generateMetadata({
     return {
       title,
       description,
+      // Epic 7 review fix — explicit canonical (relative, resolved against
+      // the root layout's `metadataBase`); see `/devenir-{metier}`.
+      alternates: { canonical: `/${niveau}/quel-bac-pour-${metier}` },
       openGraph: {
         title,
         description,
@@ -119,14 +126,16 @@ export default async function QuelBacPourMetierPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
+      {/* Epic 7 review fix — `serializeJsonLd` escapes `<` (stored XSS via
+          admin-editable description/prospects/FAQ text; `lib/seo/json-ld.ts`). */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(occupationJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(occupationJsonLd) }}
       />
       {faqJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqJsonLd) }}
         />
       )}
 
