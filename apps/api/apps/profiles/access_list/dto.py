@@ -36,3 +36,8 @@ class AccessListEntry:
     revocable: bool
     source_name: str
     source_pk: str
+    #: Story 6.11 — "date dernière consultation", visible to the student.
+    #: `None` when the source doesn't track per-access timestamps (e.g.
+    #: `ParentalConsentSource` — no such tracking exists on `ParentalConsent`
+    #: yet; documented deviation rather than a fabricated value).
+    last_accessed_at: datetime | None = None

@@ -8,6 +8,7 @@
  * a screen-reader user knows WHAT they would revoke.
  */
 import { RevokeAccessButton } from "@/components/features/privacy/revoke-access-button";
+import { ViewAccessHistoryButton } from "@/components/features/privacy/view-access-history-button";
 import { ACCESS_LIST_COPY, type DataAreaKey, type TierType } from "@/lib/i18n/fr/access-list";
 
 import type { AccessListEntry } from "@/lib/api/access-list";
@@ -69,12 +70,27 @@ export function TierAccessCard({ entry }: { entry: AccessListEntry }) {
             {tierLabel}
           </span>
         </div>
-        <p className="text-xs text-text-subtle">
-          {ACCESS_LIST_COPY.grantedAtLabel} :{" "}
-          <time dateTime={entry.granted_at} title={grantedAtAbsolute}>
-            {relativeFromNow(entry.granted_at)}
-          </time>
-        </p>
+        <div className="flex flex-col items-end gap-1 text-xs text-text-subtle">
+          <p>
+            {ACCESS_LIST_COPY.grantedAtLabel} :{" "}
+            <time dateTime={entry.granted_at} title={grantedAtAbsolute}>
+              {relativeFromNow(entry.granted_at)}
+            </time>
+          </p>
+          <p>
+            {ACCESS_LIST_COPY.lastAccessedLabel} :{" "}
+            {entry.last_accessed_at ? (
+              <time
+                dateTime={entry.last_accessed_at}
+                title={new Date(entry.last_accessed_at).toLocaleString("fr-FR")}
+              >
+                {relativeFromNow(entry.last_accessed_at)}
+              </time>
+            ) : (
+              ACCESS_LIST_COPY.lastAccessedNever
+            )}
+          </p>
+        </div>
       </header>
 
       <div id={visibilityListId} className="grid gap-3 md:grid-cols-2">
@@ -100,7 +116,8 @@ export function TierAccessCard({ entry }: { entry: AccessListEntry }) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <ViewAccessHistoryButton entryId={entry.id} />
         <RevokeAccessButton entry={entry} />
       </div>
     </article>

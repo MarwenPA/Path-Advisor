@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import re
 
+from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -23,6 +24,7 @@ from apps.core.permissions import IsStudent
 from apps.profiles.access_list import AccessListAggregator
 from apps.profiles.access_list.aggregator import MAX_ENTRIES, TRUNCATED_FLAG_KEY
 from apps.profiles.access_list.exceptions import EntryNotFound
+from apps.profiles.access_list.history import export_access_history_csv, get_access_history
 from apps.profiles.access_list.revoker import revoke_entry
 from apps.profiles.serializers import AccessListEntrySerializer
 
@@ -137,3 +139,40 @@ def revoke_access_list_entry(request: Request, entry_id: str) -> Response:
         return Response(_NOT_FOUND_BODY, status=status.HTTP_404_NOT_FOUND)
 
     return Response(result)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsStudent])
+def access_list_entry_history(request: Request, entry_id: str) -> Response:
+    """Story 6.11 — `GET .../access-list/{id}/history/`: 90-day timestamped
+    consultation log for one entry (see `access_list/history.py`)."""
+    if not _ENTRY_ID_REGEX.match(entry_id):
+        return Response(_NOT_FOUND_BODY, status=status.HTTP_404_NOT_FOUND)
+    try:
+        history = get_access_history(user=request.user, entry_id=entry_id)
+    except EntryNotFound:
+        return Response(_NOT_FOUND_BODY, status=status.HTTP_404_NOT_FOUND)
+    return Response(
+        {
+            "results": [
+                {"consulted_at": row["consulted_at"], "metadata": row["metadata"]}
+                for row in history
+            ]
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated, IsStudent])
+def access_list_entry_history_export(request: Request, entry_id: str) -> HttpResponse:
+    """Story 6.11 AC — CSV export of the same 90-day log (RGPD Article 15,
+    same right invoked by Story 1.11)."""
+    if not _ENTRY_ID_REGEX.match(entry_id):
+        return Response(_NOT_FOUND_BODY, status=status.HTTP_404_NOT_FOUND)
+    try:
+        csv_bytes = export_access_history_csv(user=request.user, entry_id=entry_id)
+    except EntryNotFound:
+        return Response(_NOT_FOUND_BODY, status=status.HTTP_404_NOT_FOUND)
+    response = HttpResponse(csv_bytes, content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="historique-acces.csv"'
+    return response
