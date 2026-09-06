@@ -31,7 +31,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   try {
     const profession = await fetchPublicProfession(slug);
     const title = `${profession.name} — Path Advisor`;
-    const description = profession.description.slice(0, 155);
+    // Story 7.6 fix (same class of bug as `/formations/[slug]`): an empty
+    // `description` would otherwise produce no `<meta name="description">`
+    // tag at all — defensive fallback even though no currently-seeded
+    // profession has an empty description.
+    const description = profession.description
+      ? profession.description.slice(0, 155)
+      : `Découvre le métier ${profession.name} sur Path Advisor : missions, débouchés, formations et parcours pour y accéder.`;
     // Story 7.5 AC — og:image comes from the sibling `opengraph-image.tsx`
     // (Next.js file convention); Twitter falls back to it (see root
     // `page.tsx` for the rationale).

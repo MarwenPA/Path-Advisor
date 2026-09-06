@@ -23,7 +23,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   try {
     const school = await fetchPublicSchool(slug);
     const title = `${school.name} — Path Advisor`;
-    const description = school.description.slice(0, 155);
+    // Story 7.6 fix: some seeded schools have an empty `description` —
+    // an empty string produces no `<meta name="description">` tag at all
+    // (confirmed via a real Lighthouse SEO audit, not a hypothetical),
+    // so fall back to a generic sentence rather than emitting nothing.
+    const description = school.description
+      ? school.description.slice(0, 155)
+      : `${school.name} — ${school.city}. Découvre les formations, débouchés et modalités d'admission sur Path Advisor.`;
     return {
       title,
       description,

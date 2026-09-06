@@ -1,0 +1,127 @@
+name: ci-lighthouse
+
+# Story 7.6 — Core Web Vitals gate. Runs a real Django backend (migrated +
+# seeded with the curated professions/schools referential, same
+# `seed_professions`/`seed_schools` management commands used in local dev)
+# behind a production Next.js build, then audits 5 reference PUBLIC pages
+# with Lighthouse CI. None of these 5 pages call the ai-service (the public
+# endpoints they use — Story 7.1/7.2/7.3 — are pure Django reads, no
+# recommendation scoring), so no ai-service container is needed here.
+#
+# A failing assertion in `lighthouserc.json` fails this job — required-status
+# branch protection on `main` turns that into an actual merge block (AC:
+# "le merge est bloqué si une métrique critique dégrade").
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "apps/api/**"
+      - ".github/workflows/ci-lighthouse.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "apps/api/**"
+      - ".github/workflows/ci-lighthouse.yml"
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # Plain `postgres:16` lacks the `vector` extension `core.0001_init_
+        # extensions` requires (pgvector, for embeddings) — must match the
+        # image `infra/docker-compose.yml` actually uses.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: path_advisor
+          POSTGRES_PASSWORD: path_advisor_local_dev
+          POSTGRES_DB: path_advisor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U path_advisor"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: path_advisor
+      POSTGRES_USER: path_advisor
+      POSTGRES_PASSWORD: path_advisor_local_dev
+      REDIS_URL: redis://localhost:6379/0
+      DJANGO_SETTINGS_MODULE: path_advisor.settings.local
+      DJANGO_SECRET_KEY: ci-lighthouse-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install API dependencies
+        working-directory: apps/api
+        run: uv sync
+
+      - name: Migrate + seed referential (professions, schools, parcours)
+        working-directory: apps/api
+        run: |
+          uv run python manage.py migrate --noinput
+          uv run python manage.py seed_professions
+          uv run python manage.py seed_schools
+
+      - name: Start Django API (background)
+        working-directory: apps/api
+        run: |
+          uv run python manage.py runserver 0.0.0.0:8000 &
+          echo $! > /tmp/django.pid
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/api/v1/public/professions/technicien-aeronautique/ && break
+            sleep 1
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install web dependencies
+        working-directory: apps/web
+        run: npm ci --legacy-peer-deps
+
+      - name: Build Next.js (production)
+        working-directory: apps/web
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          API_URL_SERVER: http://localhost:8000
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Start Next.js (background)
+        working-directory: apps/web
+        run: |
+          npm run start -- -p 3000 &
+          echo $! > /tmp/next.pid
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3000/ && break
+            sleep 1
+          done
+        env:
+          API_URL_SERVER: http://localhost:8000
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Lighthouse CI
+        working-directory: apps/web
+        run: npx lhci autorun --config=lighthouserc.json
