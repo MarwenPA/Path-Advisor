@@ -94,6 +94,18 @@ export interface ParentEcoleFormation {
   affelnet_open: boolean;
 }
 
+/** Story 6.3 §AC3 — every `AdmissionStat` field except `action_lever` (it
+ * names a subject + grade delta, indirectly revealing a bulletin figure). */
+export interface ParentAdmissionStat {
+  min_proba: number;
+  expected_proba: number;
+  max_proba: number;
+  label: "audacieux" | "realiste" | "sur" | "estimation_indicative";
+  context_line: string;
+  previous_proba: number | null;
+  updated_at: string;
+}
+
 export interface ParentEcoleDetail {
   school_id: string;
   slug: string;
@@ -105,6 +117,7 @@ export interface ParentEcoleDetail {
   tuition_min_eur: number | null;
   tuition_max_eur: number | null;
   formations: ParentEcoleFormation[];
+  admission_stat: ParentAdmissionStat | null;
 }
 
 export async function fetchChildMetierDetail(
