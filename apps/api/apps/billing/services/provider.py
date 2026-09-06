@@ -35,9 +35,20 @@ class PaymentProvider(abc.ABC):
 
     @abc.abstractmethod
     def create_checkout_session(
-        self, *, customer_email: str, client_reference_id: str
+        self,
+        *,
+        customer_email: str,
+        client_reference_id: str,
+        metadata: dict[str, str] | None = None,
     ) -> CheckoutSession:
-        """Create a hosted checkout session for the premium plan and return its URL."""
+        """Create a hosted checkout session for the premium plan and return its URL.
+
+        `metadata` (Story 6.4) — Stripe echoes this dict back verbatim on
+        `checkout.session.completed`; used to carry `paid_by_user_id` when a
+        parent pays on a linked child's behalf (`client_reference_id` stays
+        the beneficiary — never the payer — so `SubscriptionService.
+        _resolve_user` needs no special-casing).
+        """
 
     @abc.abstractmethod
     def handle_webhook(self, *, payload: bytes, signature_header: str) -> WebhookEvent:

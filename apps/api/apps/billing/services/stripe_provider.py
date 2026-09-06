@@ -29,7 +29,11 @@ class StripeProvider(PaymentProvider):
         self._cancel_url = settings.STRIPE_CHECKOUT_CANCEL_URL
 
     def create_checkout_session(
-        self, *, customer_email: str, client_reference_id: str
+        self,
+        *,
+        customer_email: str,
+        client_reference_id: str,
+        metadata: dict[str, str] | None = None,
     ) -> CheckoutSession:
         session = self._client.checkout.Session.create(
             mode="subscription",
@@ -38,6 +42,7 @@ class StripeProvider(PaymentProvider):
             client_reference_id=client_reference_id,
             success_url=self._success_url,
             cancel_url=self._cancel_url,
+            metadata=metadata or {},
         )
         return CheckoutSession(session_id=session["id"], checkout_url=session["url"])
 

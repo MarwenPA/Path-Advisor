@@ -75,6 +75,17 @@ class Subscription(models.Model):
     # Distinct from an immediate cancel (merge-on-second-checkout, RGPD
     # pre_delete signal) which never sets this flag.
     cancel_at_period_end = models.BooleanField(default=False)
+    # Story 6.4 — set when this subscription was purchased by a linked
+    # PARENT on the student's behalf rather than by the student themselves.
+    # `SET_NULL` on delete: losing the payer's account must never take down
+    # the beneficiary's (already-paid-for) premium access.
+    paid_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="subscriptions_paid_for",
+    )
     stripe_customer_id = models.CharField(max_length=255, blank=True, default="")
     stripe_subscription_id = models.CharField(max_length=255, blank=True, default="", db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)

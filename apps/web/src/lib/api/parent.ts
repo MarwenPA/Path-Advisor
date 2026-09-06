@@ -6,7 +6,7 @@
  * Bulletins are NEVER exposed — the backend returns 403 on any bulletin route.
  * Mirrors the Django DTOs 1:1 (snake_case in transit).
  */
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
 export interface LinkedChild {
   id: string;
@@ -135,5 +135,39 @@ export async function fetchChildEcoleDetail(
 ): Promise<ParentEcoleDetail> {
   return apiFetch<ParentEcoleDetail>(
     `/api/v1/family/children/${encodeURIComponent(studentId)}/ecoles/${encodeURIComponent(slug)}/`,
+  );
+}
+
+/** Story 6.4 — parent pays premium for a linked child. */
+export interface ChildSubscriptionStatus {
+  tier: "free" | "premium";
+  status: "active" | "past_due" | "cancelled";
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  is_premium: boolean;
+  paid_by_parent: boolean;
+}
+
+export async function fetchChildSubscriptionStatus(
+  studentId: string,
+): Promise<ChildSubscriptionStatus> {
+  return apiFetch<ChildSubscriptionStatus>(
+    `/api/v1/family/children/${encodeURIComponent(studentId)}/subscription/`,
+  );
+}
+
+export async function createChildCheckoutSession(
+  studentId: string,
+): Promise<{ checkout_url: string }> {
+  return apiFetch<{ checkout_url: string }>(
+    `/api/v1/family/children/${encodeURIComponent(studentId)}/checkout-session/`,
+    { method: "POST", csrfToken: readCsrfCookie() ?? undefined },
+  );
+}
+
+export async function cancelChildSubscription(studentId: string): Promise<ChildSubscriptionStatus> {
+  return apiFetch<ChildSubscriptionStatus>(
+    `/api/v1/family/children/${encodeURIComponent(studentId)}/subscription/cancel/`,
+    { method: "POST", csrfToken: readCsrfCookie() ?? undefined },
   );
 }

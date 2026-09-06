@@ -14,7 +14,8 @@ import structlog
 from django.db import transaction
 from django.utils import timezone
 
-from apps.audit.decorators import audit_action
+from apps.audit.decorators import audit_action, record_audit
+from apps.audit.models import AuditResult
 from apps.billing.exceptions import NoActiveSubscription
 from apps.billing.models import Subscription
 from apps.core.exceptions import InsufficientPlan
@@ -156,6 +157,14 @@ class SubscriptionService:
         ):
             cls._cancel_superseded_subscription(existing.stripe_subscription_id)
 
+        # Story 6.4 — a parent-paid checkout carries `paid_by_user_id` in
+        # Stripe's `metadata` (set in `BillingService.create_checkout_session`
+        # when `beneficiary` was passed). A plain self-checkout has no
+        # metadata, so this is `None` and the field is cleared — correct:
+        # a later self-renewal by the (now-adult?) student must not keep
+        # showing "payé par ton parent" from a stale prior purchase.
+        paid_by_user_id = (obj.get("metadata") or {}).get("paid_by_user_id") or None
+
         Subscription.objects.update_or_create(
             user=user,
             defaults={
@@ -169,8 +178,19 @@ class SubscriptionService:
                 "stripe_customer_id": obj.get("customer", "") or "",
                 "stripe_subscription_id": new_stripe_sub_id,
                 "current_period_end": _ts(obj.get("current_period_end")),
+                "paid_by_id": paid_by_user_id,
             },
         )
+        if paid_by_user_id:
+            # AC4 — a durable trace linking paying_user_id (parent) to
+            # beneficiary_user_id (student), distinct from the generic
+            # `billing.subscription_event_applied` wrapper on `apply_event`.
+            record_audit(
+                action="billing.premium_purchased_by_parent",
+                result=AuditResult.SUCCESS,
+                subject_id=user.id,
+                metadata={"paying_user_id": paid_by_user_id, "beneficiary_user_id": user.id},
+            )
         # Story 5.3 AC2 — best-effort confirmation email; must never fail the
         # webhook (record_webhook_event's transaction would roll back the
         # activation itself on any raise here).

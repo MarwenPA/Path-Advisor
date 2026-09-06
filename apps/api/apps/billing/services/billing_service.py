@@ -30,12 +30,26 @@ class BillingService:
     @audit_action(
         "billing.checkout_session_created",
         subject_from=lambda kwargs, ret: kwargs["user"].id,
+        metadata_from=lambda kwargs, ret: {
+            "beneficiary_user_id": (kwargs.get("beneficiary") or kwargs["user"]).id,
+        },
     )
-    def create_checkout_session(self, *, user) -> CheckoutSession:
+    def create_checkout_session(self, *, user, beneficiary=None) -> CheckoutSession:
+        """`beneficiary` (Story 6.4) — the user whose tier upgrades once this
+        checkout completes. `None` (the default, every pre-6.4 call site)
+        means "self-checkout": `user` pays and benefits. When a linked
+        `PARENT` pays for their child, `user` is the parent (Stripe customer,
+        audit actor) and `beneficiary` is the child — `client_reference_id`
+        is always the beneficiary so the webhook activates the right
+        `Subscription` row without any special-casing.
+        """
+        target = beneficiary or user
+        metadata = {"paid_by_user_id": user.id} if beneficiary is not None else None
         try:
             return self._provider.create_checkout_session(
                 customer_email=user.email,
-                client_reference_id=user.id,
+                client_reference_id=target.id,
+                metadata=metadata,
             )
         except stripe.error.StripeError as exc:
             # Only provider-side failures become a 502 (degraded mode). Any other
