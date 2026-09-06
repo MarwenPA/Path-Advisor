@@ -61,11 +61,17 @@ export const fetchSchool = cache(async (slug: string): Promise<School> => {
   return apiFetch<School>(`/api/v1/schools/${slug}/`);
 });
 
+/**
+ * `GET /api/v1/schools/{slug}/admission-stat/` — Story 4.2's real endpoint
+ * (`AdmissionStatView`). Story 5.8 code-review fix: this previously POSTed
+ * to `/api/v1/schools/predict-admission/`, a route that doesn't exist
+ * server-side (404) — dead code, never actually called anywhere in the
+ * app until Story 5.8's 30s polling (below) became its first real caller.
+ */
 export async function fetchAdmissionStat(schoolSlug: string): Promise<AdmissionStat> {
-  return apiFetch<AdmissionStat>("/api/v1/schools/predict-admission/", {
-    method: "POST",
-    body: { school_slug: schoolSlug },
-  });
+  return apiFetch<AdmissionStat>(
+    `/api/v1/schools/${encodeURIComponent(schoolSlug)}/admission-stat/`,
+  );
 }
 
 /**

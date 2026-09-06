@@ -8,9 +8,10 @@ Two directions:
       round only (§2 scope decision, see `EarlyOutreachResponse`'s
       docstring) — no multi-round negotiation loop in the MVP.
 
-Propagating a response to the student's admission stat is explicitly out
-of scope here — Story 5.8 owns that. This module only records the answer
-and sends the "someone responded" notification.
+Story 5.8 propagates the response to the student's admission stat
+(`AdmissionPredictionService.apply_outreach_response_delta`) synchronously,
+in the same call — trivially satisfies the "< 5 minutes" NFR-P5 without a
+separate queue/worker for the MVP volume.
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ from apps.outreach.services.early_outreach_email import (
     send_school_responded_email,
 )
 from apps.schools.models import SchoolStaff
+from apps.schools.services import AdmissionPredictionService
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,20 @@ def respond_to_outreach_request(
     )
     outreach.status = EarlyOutreachRequestStatus.RESPONDED
     outreach.save(update_fields=["status", "updated_at"])
+
+    # Story 5.8 AC — recompute the student's admission stat for this school
+    # right away. A failure here must not roll back the response itself
+    # (the school's answer is the source of truth; the stat is derived).
+    try:
+        AdmissionPredictionService().apply_outreach_response_delta(
+            school=outreach.school, user=outreach.student, action=action
+        )
+    except Exception:
+        logger.warning(
+            "outreach.stat_propagation_failed",
+            extra={"outreach_id": outreach.id},
+            exc_info=True,
+        )
 
     try:
         send_school_responded_email(outreach=outreach, response=response)

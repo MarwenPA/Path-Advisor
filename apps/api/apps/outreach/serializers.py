@@ -139,7 +139,13 @@ class EcoleOutreachListSerializer(serializers.ModelSerializer):
 
 class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
     """Story 5.7 — read-only view of a school's response, nested wherever
-    a request is displayed (school detail, student list/detail)."""
+    a request is displayed (school detail, student list/detail). Story 5.8
+    adds `stat_delta` — the exact point value already applied to the
+    student's `AdmissionStat` for this school (looked up from the same
+    `OUTREACH_RESPONSE_STAT_DELTAS` mapping the propagation service uses,
+    single-sourced — never recomputed independently here)."""
+
+    stat_delta = serializers.SerializerMethodField()
 
     class Meta:
         model = EarlyOutreachResponse
@@ -149,9 +155,15 @@ class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
             "proposed_slots",
             "accepted_slot",
             "alternative_note",
+            "stat_delta",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_stat_delta(self, obj: EarlyOutreachResponse) -> int:
+        from apps.schools.services import OUTREACH_RESPONSE_STAT_DELTAS
+
+        return OUTREACH_RESPONSE_STAT_DELTAS.get(obj.action, 0)
 
 
 class EcoleOutreachDetailSerializer(EcoleOutreachListSerializer):

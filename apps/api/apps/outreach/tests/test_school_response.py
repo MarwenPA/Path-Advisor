@@ -23,7 +23,7 @@ from apps.outreach.models import (
     EarlyOutreachResponseAction,
 )
 from apps.professions.models import Profession
-from apps.schools.models import School, SchoolStaff
+from apps.schools.models import AdmissionStat, School, SchoolStaff
 
 pytestmark = pytest.mark.django_db
 
@@ -308,3 +308,57 @@ class TestInterviewFollowUp:
         )
 
         assert response.status_code == 404
+
+
+class TestStatPropagation:
+    """Story 5.8 — responding nudges the student's AdmissionStat for that school."""
+
+    def test_interested_response_nudges_the_stat_up(
+        self, school_admin_client, student, school, profession
+    ):
+        outreach = _create_outreach(student=student, school=school, profession=profession)
+
+        response = school_admin_client.post(
+            reverse("outreach:ecole-outreach-respond", kwargs={"outreach_id": outreach.id}),
+            {"action": "interested"},
+            format="json",
+        )
+
+        assert response.status_code == 201, response.content
+        with bypass_rls(reason="test_assert.read_stat"):
+            stat = AdmissionStat.objects.get(school=school, user=student)
+        assert stat.outreach_delta_applied_at is not None
+        assert stat.expected_proba > stat.previous_proba
+
+    def test_not_aligned_response_nudges_the_stat_down(
+        self, school_admin_client, student, school, profession
+    ):
+        outreach = _create_outreach(student=student, school=school, profession=profession)
+
+        response = school_admin_client.post(
+            reverse("outreach:ecole-outreach-respond", kwargs={"outreach_id": outreach.id}),
+            {"action": "not_aligned"},
+            format="json",
+        )
+
+        assert response.status_code == 201, response.content
+        with bypass_rls(reason="test_assert.read_stat"):
+            stat = AdmissionStat.objects.get(school=school, user=student)
+        assert stat.expected_proba < stat.previous_proba
+
+    def test_response_serializer_exposes_the_stat_delta(
+        self, school_admin_client, student, school, profession
+    ):
+        outreach = _create_outreach(student=student, school=school, profession=profession)
+
+        response = school_admin_client.post(
+            reverse("outreach:ecole-outreach-respond", kwargs={"outreach_id": outreach.id}),
+            {
+                "action": "interview_requested",
+                "proposed_slots": ["2026-10-01T10:00:00Z", "2026-10-02T14:00:00Z"],
+            },
+            format="json",
+        )
+
+        assert response.status_code == 201, response.content
+        assert response.json()["response"]["stat_delta"] == 7

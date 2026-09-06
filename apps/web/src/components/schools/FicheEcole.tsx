@@ -2,7 +2,7 @@
 
 import type { School, Formation } from "@/lib/api/schools";
 import { cn } from "@/lib/utils";
-import { CarteAdmission } from "./CarteAdmission";
+import { AdmissionStatPoller } from "./AdmissionStatPoller";
 
 interface FicheEcoleProps {
   school: School;
@@ -150,8 +150,8 @@ export function FicheEcole({
         <section aria-label="Statistique d'admission" className="mt-4">
           <h3 className="mb-2 text-sm font-medium">Tes chances d&apos;admission</h3>
           {school.admission_stat ? (
-            <CarteAdmission
-              admissionStat={school.admission_stat}
+            <AdmissionStatPoller
+              initialStat={school.admission_stat}
               variant="medium"
               schoolName={school.name}
               schoolSlug={school.slug}

@@ -17,9 +17,11 @@ Routes (Story 4.8):
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import ClassVar
 
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
@@ -31,7 +33,7 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
 from apps.professions.models import Profession
-from apps.schools.models import FavoriteSchool, Formation, Parcours, School
+from apps.schools.models import AdmissionStat, FavoriteSchool, Formation, Parcours, School
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
@@ -156,6 +158,14 @@ class AdmissionStatView(APIView):
 
     Story 4.2 — returns (or computes and persists) the admission probability
     range for the requesting user and the given school.
+
+    Story 5.8 — skips the usual bulletin-based recompute (`upsert_stat`,
+    which unconditionally overwrites `expected_proba`) when a school's
+    early-outreach response nudged the stat within the last 24h
+    (`outreach_delta_applied_at`). Without this guard, a student checking
+    their fiche école moments after the "l'école a répondu" notification —
+    the exact moment they're most likely to look — would immediately have
+    the "+15 pts" badge silently erased by a same-poll recompute.
     """
 
     permission_classes: ClassVar = [IsAuthenticated]
@@ -163,6 +173,13 @@ class AdmissionStatView(APIView):
     def get(self, request: Request, slug: str) -> Response:
         school = get_object_or_404(School, slug=slug)
         service = AdmissionPredictionService()
+
+        existing = AdmissionStat.objects.filter(school=school, user=request.user).first()
+        if existing and existing.outreach_delta_applied_at:
+            recent = (timezone.now() - existing.outreach_delta_applied_at) < timedelta(hours=24)
+            if recent:
+                return Response(AdmissionStatSerializer(existing).data)
+
         stat = service.upsert_stat(school=school, user=request.user)
         serializer = AdmissionStatSerializer(stat)
         return Response(serializer.data)
