@@ -1,13 +1,15 @@
 /**
- * `/mes-envois` — Story 5.4 §AC4 + Story 5.5 (moderation states + resubmit).
+ * `/mes-envois` — Story 5.4 §AC4 + Story 5.5 (moderation) + Story 5.7
+ * (school response + interview follow-up).
  *
  * Minimal flat list (école, métier visé, date, statut) — Story 5.9 will
  * enrich this with grouping by status, a detail view, and the stat-impact
- * badge. No école-side response flow exists yet (Story 5.6/5.7), so
- * `responded`/`expired_7d` are placeholders for now.
+ * badge (that badge itself needs Story 5.8's stat recompute, not built
+ * here).
  */
 import Link from "next/link";
 
+import { InterviewResponseForm } from "@/components/features/outreach/interview-response-form";
 import { ResubmitMotivationForm } from "@/components/features/outreach/resubmit-motivation-form";
 import { fetchOutreachRequests } from "@/lib/api/outreach";
 
@@ -19,6 +21,12 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Motivation refusée",
   responded: "École a répondu",
   expired_7d: "Expiré",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  interested: "Profil intéressant — candidature encouragée",
+  not_aligned: "Profil non aligné",
+  interview_requested: "Demande d'entretien",
 };
 
 export default async function MesEnvoisPage() {
@@ -57,6 +65,34 @@ export default async function MesEnvoisPage() {
               </p>
               {r.status === "rejected" ? (
                 <ResubmitMotivationForm outreachId={r.id} rejectionReason={r.rejection_reason} />
+              ) : null}
+              {r.response ? (
+                <div className="mt-2 rounded-md bg-card p-3">
+                  <p className="text-body-sm text-text">
+                    Réponse : {ACTION_LABELS[r.response.action] ?? r.response.action}
+                  </p>
+                  {r.response.comment ? (
+                    <p className="text-body-sm text-text-muted">{r.response.comment}</p>
+                  ) : null}
+                  {r.response.action === "interview_requested" &&
+                  !r.response.accepted_slot &&
+                  !r.response.alternative_note ? (
+                    <InterviewResponseForm
+                      outreachId={r.id}
+                      proposedSlots={r.response.proposed_slots}
+                    />
+                  ) : null}
+                  {r.response.accepted_slot ? (
+                    <p className="text-body-sm text-text-muted">
+                      Créneau accepté : {new Date(r.response.accepted_slot).toLocaleString("fr-FR")}
+                    </p>
+                  ) : null}
+                  {r.response.alternative_note ? (
+                    <p className="text-body-sm text-text-muted">
+                      Ta proposition : {r.response.alternative_note}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </li>
           ))}

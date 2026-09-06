@@ -1,0 +1,13 @@
+Salut,
+
+{{ school.name }} a répondu à ton envoi anticipé pour le métier "{{ outreach.profession.name }}".
+
+{% if response.action == "interested" %}Bonne nouvelle : ton profil est jugé intéressant, ta candidature est encouragée !{% elif response.action == "not_aligned" %}Ton profil ne correspond pas à leurs critères cette année. Continue à explorer d'autres écoles !{% elif response.action == "interview_requested" %}L'école te propose un entretien. Connecte-toi à ton espace "Mes envois" pour voir les créneaux proposés et répondre.{% endif %}
+{% if response.comment %}
+Message de l'école :
+{{ response.comment }}
+{% endif %}
+
+Retrouve le détail dans "Mes envois" depuis ton espace.
+
+L'équipe Path-Advisor

@@ -1,0 +1,6 @@
+Bonjour,
+
+L'élève a accepté un créneau d'entretien pour la demande {{ outreach.id }}.
+Connecte-toi à ton espace école pour voir le créneau retenu.
+
+L'équipe Path-Advisor

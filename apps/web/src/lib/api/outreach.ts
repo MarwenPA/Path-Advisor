@@ -1,5 +1,5 @@
 /**
- * API client for early-outreach requests — Stories 5.4 + 5.5.
+ * API client for early-outreach requests — Stories 5.4 + 5.5 + 5.7.
  */
 import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
@@ -16,12 +16,24 @@ export type EarlyOutreachRequestStatusValue =
   | "responded"
   | "expired_7d";
 
+export type OutreachResponseAction = "interested" | "not_aligned" | "interview_requested";
+
+export interface OutreachResponse {
+  action: OutreachResponseAction;
+  comment: string;
+  proposed_slots: string[];
+  accepted_slot: string;
+  alternative_note: string;
+  created_at: string;
+}
+
 export interface EarlyOutreachRequestItem {
   id: string;
   school_name: string;
   profession_name: string;
   status: EarlyOutreachRequestStatusValue;
   rejection_reason: string;
+  response: OutreachResponse | null;
   created_at: string;
 }
 
@@ -65,5 +77,27 @@ export async function resubmitOutreachRequest(
       body: { motivation_text: motivationText },
       csrfToken: readCsrfCookie() ?? undefined,
     },
+  );
+}
+
+/** Story 5.7 — student accepts one of the school's proposed interview slots. */
+export async function acceptInterviewSlot(
+  outreachId: string,
+  slot: string,
+): Promise<EarlyOutreachRequestItem> {
+  return apiFetch<EarlyOutreachRequestItem>(
+    `/api/v1/outreach/requests/${encodeURIComponent(outreachId)}/interview/accept/`,
+    { method: "POST", body: { slot }, csrfToken: readCsrfCookie() ?? undefined },
+  );
+}
+
+/** Story 5.7 — student can't make any proposed slot, suggests one instead. */
+export async function proposeInterviewAlternative(
+  outreachId: string,
+  note: string,
+): Promise<EarlyOutreachRequestItem> {
+  return apiFetch<EarlyOutreachRequestItem>(
+    `/api/v1/outreach/requests/${encodeURIComponent(outreachId)}/interview/alternative/`,
+    { method: "POST", body: { note }, csrfToken: readCsrfCookie() ?? undefined },
   );
 }

@@ -1,11 +1,22 @@
 /**
- * API client for the school-side reception of early-outreach requests —
- * Story 5.6. `school_admin`-only endpoints (RBAC enforced server-side —
- * this client has no knowledge of the boundary, it just calls the URLs).
+ * API client for the school-side reception + response to early-outreach
+ * requests — Stories 5.6 + 5.7. `school_admin`-only endpoints (RBAC
+ * enforced server-side — this client has no knowledge of the boundary, it
+ * just calls the URLs).
  */
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
 export type EcoleOutreachStatus = "pending" | "responded" | "expired_7d";
+export type EcoleResponseAction = "interested" | "not_aligned" | "interview_requested";
+
+export interface EcoleOutreachResponse {
+  action: EcoleResponseAction;
+  comment: string;
+  proposed_slots: string[];
+  accepted_slot: string;
+  alternative_note: string;
+  created_at: string;
+}
 
 export interface EcoleOutreachListItem {
   id: string;
@@ -18,6 +29,7 @@ export interface EcoleOutreachListItem {
 
 export interface EcoleOutreachDetail extends EcoleOutreachListItem {
   motivation_text: string;
+  response: EcoleOutreachResponse | null;
 }
 
 export interface PaginatedEcoleOutreach {
@@ -44,4 +56,21 @@ export async function fetchEcoleOutreachQueue(
 
 export async function fetchEcoleOutreachDetail(outreachId: string): Promise<EcoleOutreachDetail> {
   return apiFetch<EcoleOutreachDetail>(`/api/v1/ecole/outreach/${encodeURIComponent(outreachId)}/`);
+}
+
+export interface RespondPayload {
+  action: EcoleResponseAction;
+  comment?: string;
+  proposed_slots?: string[];
+}
+
+/** Story 5.7 AC — the school's one-shot response. */
+export async function respondToOutreachRequest(
+  outreachId: string,
+  payload: RespondPayload,
+): Promise<EcoleOutreachDetail> {
+  return apiFetch<EcoleOutreachDetail>(
+    `/api/v1/ecole/outreach/${encodeURIComponent(outreachId)}/respond/`,
+    { method: "POST", body: payload, csrfToken: readCsrfCookie() ?? undefined },
+  );
 }

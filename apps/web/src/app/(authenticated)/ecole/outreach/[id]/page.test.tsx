@@ -10,8 +10,10 @@ vi.mock("@/lib/api/ecole-outreach", () => ({
 }));
 
 const notFoundMock = vi.fn();
+const routerMock = { refresh: vi.fn() };
 vi.mock("next/navigation", () => ({
   notFound: () => notFoundMock(),
+  useRouter: () => routerMock,
 }));
 
 import { ApiError } from "@/lib/api/client";
@@ -27,6 +29,7 @@ describe("EcoleOutreachDetailPage", () => {
       parcours_label: "Bac STI2D → BUT",
       motivation_text: "Un texte de motivation détaillé.",
       status: "pending",
+      response: null,
       created_at: "2026-09-10T00:00:00Z",
     });
 

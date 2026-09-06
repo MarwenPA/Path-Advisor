@@ -1,0 +1,7 @@
+Bonjour,
+
+L'élève ne peut se rendre disponible à aucun des créneaux proposés pour la
+demande {{ outreach.id }} et suggère une alternative. Connecte-toi à ton
+espace école pour voir sa proposition et le recontacter directement.
+
+L'équipe Path-Advisor
