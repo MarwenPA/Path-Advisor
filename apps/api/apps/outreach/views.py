@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
@@ -52,6 +52,10 @@ from apps.outreach.services.school_reception import (
     get_school_for_admin,
     get_school_outreach_request,
     list_school_outreach_requests,
+)
+from apps.outreach.services.school_reporting import (
+    build_school_reporting,
+    export_school_reporting_csv,
 )
 from apps.outreach.services.school_response import (
     accept_interview_slot,
@@ -296,3 +300,30 @@ class InterviewAlternativeView(APIView):
         propose_interview_alternative(outreach=outreach, note=serializer.validated_data["note"])
         outreach.refresh_from_db()
         return Response(EarlyOutreachListSerializer(outreach).data)
+
+
+class EcoleReportingView(APIView):
+    """GET /api/v1/ecole/reporting/ — Story 5.10 AC (KPIs).
+
+    Aggregate-only — no student name/email ever appears (the `User` model
+    has neither), so RGPD anonymization at the reporting level is
+    structural, not a filtering step to remember."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsSchoolAdmin]
+
+    def get(self, request: Request) -> Response:
+        school = get_school_for_admin(user=request.user)
+        return Response(build_school_reporting(school=school))
+
+
+class EcoleReportingExportView(APIView):
+    """GET /api/v1/ecole/reporting/export.csv/ — Story 5.10 AC (export)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsSchoolAdmin]
+
+    def get(self, request: Request) -> HttpResponse:
+        school = get_school_for_admin(user=request.user)
+        csv_content = export_school_reporting_csv(school=school)
+        response = HttpResponse(csv_content, content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="reporting-{school.slug}.csv"'
+        return response

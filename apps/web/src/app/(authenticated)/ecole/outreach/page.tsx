@@ -43,7 +43,12 @@ export default async function EcoleOutreachQueuePage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-2 text-2xl font-bold">Profils reçus</h1>
+      <div className="mb-2 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">Profils reçus</h1>
+        <Link href="/ecole/reporting" className="text-body-sm text-primary hover:underline">
+          Voir le reporting →
+        </Link>
+      </div>
       <p className="mb-6 text-body-sm text-text-muted">
         Les envois anticipés d&apos;élèves visant ton établissement.
       </p>
