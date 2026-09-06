@@ -40,3 +40,9 @@ export interface CohortDashboard {
 export async function fetchCohortDashboard(): Promise<CohortDashboard> {
   return apiFetch<CohortDashboard>("/api/v1/establishments/cohort-dashboard/");
 }
+
+/** Story 6.9 AC — CSV export URL (a plain link, not a fetch: the browser
+ * handles the file download via Content-Disposition, same pattern as
+ * `ECOLE_REPORTING_EXPORT_URL`). Aggregate-only, k-anonymized — never
+ * contains a student id or name. */
+export const COHORT_REPORTING_EXPORT_URL = "/api/v1/establishments/cohort-dashboard/export.csv/";

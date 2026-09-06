@@ -136,7 +136,7 @@ development_status:
   6-6-dashboard-cohorte-conseillere: done
   6-7-consentement-conseillere-vue-profil: done
   6-8-vue-profil-eleve-conseillere: done
-  6-9-export-reporting-anonymise: backlog
+  6-9-export-reporting-anonymise: done
   6-10-composant-cohort-dashboard: backlog
   6-11-composant-permission-list-etendu: backlog
   epic-6-retrospective: optional

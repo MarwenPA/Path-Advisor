@@ -29,6 +29,7 @@ from apps.establishments.serializers import (
     CounselorStudentProfileSerializer,
 )
 from apps.establishments.services.cohort_dashboard import get_cohort_dashboard
+from apps.establishments.services.cohort_reporting_export import export_cohort_reporting_csv
 from apps.establishments.services.counselor_consent import (
     decide_consent,
     list_pending_consent_requests,
@@ -111,6 +112,17 @@ def counselor_cohort_dashboard(request: Request) -> Response:
     and "mode dégradé" scope decisions)."""
     dashboard = get_cohort_dashboard(counselor=request.user)
     return Response(CohortDashboardSerializer(dashboard).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsCounselor])
+def counselor_cohort_reporting_export(request: Request) -> HttpResponse:
+    """GET /api/v1/establishments/cohort-dashboard/export.csv/ — Story 6.9
+    AC. Aggregate-only, k-anonymized (see `cohort_reporting_export.py`)."""
+    csv_bytes = export_cohort_reporting_csv(counselor=request.user)
+    response = HttpResponse(csv_bytes, content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="reporting-cohorte.csv"'
+    return response
 
 
 @api_view(["GET"])

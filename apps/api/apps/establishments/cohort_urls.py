@@ -35,6 +35,12 @@ urlpatterns = [
         counselor_views.counselor_cohort_dashboard,
         name="counselor-cohort-dashboard",
     ),
+    # Story 6.9 — cohort reporting export (CSV, k-anonymized)
+    path(
+        "cohort-dashboard/export.csv/",
+        counselor_views.counselor_cohort_reporting_export,
+        name="counselor-cohort-reporting-export",
+    ),
     # Story 6.8 — counselor individual profile view
     path(
         "students/<str:student_id>/profile/",
