@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { fetchSchool } from "@/lib/api/schools";
 import { FicheEcole } from "@/components/schools/FicheEcole";
+import { OutreachSection } from "@/components/features/outreach/outreach-section";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -26,6 +27,9 @@ export default async function SchoolPage({ params }: { params: Promise<{ slug: s
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <FicheEcole school={school} variant="expanded" />
+      <div className="mt-6">
+        <OutreachSection schoolSlug={school.slug} schoolName={school.name} />
+      </div>
     </main>
   );
 }

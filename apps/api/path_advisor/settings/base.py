@@ -73,6 +73,8 @@ INSTALLED_APPS = [
     # actually references), Cohort, CohortImportJob, StudentImportInvitation,
     # CounselorInvitation.
     "apps.establishments",
+    # Story 5.4 — premium B2C early-outreach requests (élève -> école).
+    "apps.outreach",
 ]
 
 MIDDLEWARE = [

@@ -55,6 +55,13 @@ describe("assertAllowedRole", () => {
     }
   });
 
+  it("allows /mes-envois for student only (Story 5.4)", () => {
+    expect(assertAllowedRole("/mes-envois", "student")).toBe("allow");
+    for (const role of ["parent", "counselor", "school_admin", "path_admin", "support"] as const) {
+      expect(assertAllowedRole("/mes-envois", role)).toBe("forbidden");
+    }
+  });
+
   it("allows /mes-metiers, /mes-paris for student only (code-review fix, Story 8.8)", () => {
     // These route trees existed since Epic 3/4 but had no matrix entry —
     // every authenticated user was silently redirected to /auth/forbidden.

@@ -39,6 +39,10 @@ export const ROUTE_ALLOWED_ROLES: Record<string, ReadonlyArray<UserRole>> = {
   // outbound link targets one of these) the new student landing page.
   "/mes-metiers": ["student"],
   "/mes-paris": ["student"],
+  // Story 5.4 — early-outreach requests history (premium feature, but the
+  // page itself is reachable by any student so a freemium visitor sees the
+  // real empty-state copy explaining premium, not a 403).
+  "/mes-envois": ["student"],
   // Story 1.15 follow-up (2026-09) — `/profile` (+ `/profile/history`) lived
   // in the `(auth)` route group with NO layout/guard at all until moved
   // under `(authenticated)/` so it gets the sidebar/mobile nav + this guard.
