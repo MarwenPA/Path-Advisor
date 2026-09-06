@@ -266,12 +266,13 @@ class SchoolPublicSeoSerializer(serializers.ModelSerializer):
 
     def get_similar_schools(self, school: School) -> list[dict]:
         """AC2 cross-linking — "écoles similaires". No similarity/
-        recommendation model exists — heuristic: same `type`, excluding
-        self, ordered by name, capped at 4. Documented as a proxy, not a
+        recommendation model exists — heuristic: same `type`, active only
+        (this renders on public pages — deactivated schools must not be
+        cross-linked), excluding self, ordered by name, capped at 4. Documented as a proxy, not a
         real similarity engine.
         """
         similar = (
-            School.objects.filter(type=school.type)
+            School.objects.filter(type=school.type, is_active=True)
             .exclude(id=school.id)
             .order_by("name")
             .values("slug", "name", "city")[:4]

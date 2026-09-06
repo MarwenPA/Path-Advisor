@@ -32,6 +32,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
+from apps.core.throttling import PublicSeoAnonThrottle
 from apps.professions.models import Profession
 from apps.schools.models import AdmissionStat, FavoriteSchool, Formation, Parcours, School
 from apps.schools.serializers import (
@@ -80,7 +81,10 @@ class SchoolListView(ListAPIView):
     """
 
     permission_classes: ClassVar = [IsAuthenticated]
-    queryset = School.objects.order_by("name")
+    # Deactivated schools are hidden from the browsable catalog (mirrors the
+    # profession catalog's is_active filter); existing favorites pointing at a
+    # deactivated school stay reachable via /mes-paris and /schools/{slug}.
+    queryset = School.objects.filter(is_active=True).order_by("name")
     serializer_class = SchoolCatalogSerializer
     pagination_class = _SchoolPagination
 
@@ -109,20 +113,26 @@ class SchoolPublicSeoDetailView(RetrieveAPIView):
     (`SchoolPublicSeoSerializer`), so `<FicheEcole>` naturally skips the
     personalized `<AdmissionStatPoller>` (it's conditional on that field
     being present) rather than needing a separate anonymous variant.
+    Deactivated schools 404 here — they must never be served to anonymous
+    visitors (mirrors the `is_active=True` filter on every public
+    profession endpoint).
     """
 
     permission_classes: ClassVar = [AllowAny]
-    queryset = School.objects.prefetch_related("formations")
+    throttle_classes = [PublicSeoAnonThrottle]
+    queryset = School.objects.filter(is_active=True).prefetch_related("formations")
     serializer_class = SchoolPublicSeoSerializer
     lookup_field = "slug"
 
 
 class SchoolPublicSlugsView(ListAPIView):
     """GET /api/v1/public/schools/slugs/ — Story 7.4. Feeds `app/sitemap.ts`
-    (mirrors `PublicProfessionSlugsView`)."""
+    (mirrors `PublicProfessionSlugsView`, including its `is_active` filter —
+    a deactivated school must not be sitemapped)."""
 
     permission_classes: ClassVar = [AllowAny]
-    queryset = School.objects.order_by("slug")
+    throttle_classes = [PublicSeoAnonThrottle]
+    queryset = School.objects.filter(is_active=True).order_by("slug")
     serializer_class = SchoolSlugSerializer
     pagination_class = None
 
@@ -183,14 +193,25 @@ class ParcoursListView(ListAPIView):
 class ParcoursPublicSeoListView(ListAPIView):
     """GET /api/v1/public/metiers/{slug}/parcours/ — Story 7.3 AC. `AllowAny`
     — feeds the "Quels bacs / formations choisir ?" panel + "écoles cibles"
-    links on the long-tail SEO landing pages. Same niveau_scolaire filter
-    semantics as `ParcoursListView` (exact match, else terminale_generale
-    fallback, else all) but the narrower `ParcoursPublicSeoSerializer`
-    (no nodes/edges graph, no personalized admission_stat).
+    links on the long-tail SEO landing pages. Uses the narrower
+    `ParcoursPublicSeoSerializer` (no nodes/edges graph, no personalized
+    admission_stat).
+
+    Unlike `ParcoursListView` (whose terminale_generale fallback is an
+    in-app UX affordance — Story 4.7 AC4, the student sees which niveau is
+    shown), this endpoint returns an EMPTY list when the requested
+    `niveau_scolaire` has no rows: the SEO pages render the result under a
+    niveau-specific heading, so silently substituting another niveau would
+    publish factually wrong content (e.g. post-bac formations presented as
+    3ème options). The frontend already has a proper empty state.
+
+    Parcours whose `target_school` has been deactivated are excluded
+    (rows without a target_school are kept — nothing to leak).
     """
 
     serializer_class = ParcoursPublicSeoSerializer
     permission_classes: ClassVar = [AllowAny]
+    throttle_classes = [PublicSeoAnonThrottle]
     pagination_class = None
 
     def get_queryset(self):
@@ -200,17 +221,16 @@ class ParcoursPublicSeoListView(ListAPIView):
         except Profession.DoesNotExist:
             return Parcours.objects.none()
 
-        qs = Parcours.objects.filter(profession=profession).select_related("target_school")
+        qs = (
+            Parcours.objects.filter(profession=profession)
+            .exclude(target_school__is_active=False)
+            .select_related("target_school")
+        )
 
         niveau = self.request.query_params.get("niveau_scolaire", "")
         if niveau:
-            exact = qs.filter(niveau_scolaire=niveau)
-            if exact.exists():
-                return exact.order_by("-is_default", "niveau_scolaire")
-            fallback = qs.filter(niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE)
-            if fallback.exists():
-                return fallback.order_by("-is_default")
-            return qs.order_by("-is_default", "niveau_scolaire")
+            # No fallback on the public path — exact niveau match or nothing.
+            qs = qs.filter(niveau_scolaire=niveau)
 
         return qs.order_by("-is_default", "niveau_scolaire")
 

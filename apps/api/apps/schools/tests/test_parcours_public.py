@@ -105,6 +105,52 @@ class TestParcoursPublicSeoList:
         assert len(data) == 1
         assert data[0]["niveau_scolaire"] == "troisieme_bac_pro"
 
+    def test_no_silent_niveau_fallback(self, terminale_parcours, profession):
+        """Adversarial-review fix: when the requested niveau has no rows, the
+        public SEO endpoint must return an EMPTY list — never substitute
+        terminale_generale rows under a niveau-specific heading (post-bac
+        formations were being presented as 3ème options). The authenticated
+        `ParcoursListView` keeps its Story 4.7 AC4 fallback."""
+        client = APIClient()
+        url = (
+            f"/api/v1/public/metiers/{profession.slug}/parcours/?niveau_scolaire=troisieme_bac_pro"
+        )
+        response = client.get(url)
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_excludes_parcours_targeting_deactivated_school(self, profession, school):
+        inactive = School.objects.create(
+            slug="ecole-fermee-parcours-test",
+            name="École Fermée",
+            type=School.Type.ECOLE_SANTE,
+            city="Paris",
+            region="Île-de-France",
+            postal_code="75000",
+            selectivity_index=2,
+            public_private=School.PublicPrivate.PUBLIC,
+            official_url="https://test.example",
+            is_active=False,
+        )
+        Parcours.objects.create(
+            profession=profession,
+            target_school=inactive,
+            niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE,
+            label="Bac général → école fermée",
+        )
+        Parcours.objects.create(
+            profession=profession,
+            target_school=school,
+            niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE,
+            label="Bac général → IFSI",
+        )
+        client = APIClient()
+        url = f"/api/v1/public/metiers/{profession.slug}/parcours/"
+        response = client.get(url)
+        slugs = [row["target_school_slug"] for row in response.json()]
+        assert school.slug in slugs
+        assert inactive.slug not in slugs
+
     def test_empty_for_unknown_profession(self):
         client = APIClient()
         url = "/api/v1/public/metiers/metier-inexistant/parcours/"

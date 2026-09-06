@@ -232,8 +232,14 @@ REST_FRAMEWORK = {
     # Per-scope throttle rates. Each scope is set on a ScopedRateThrottle / a
     # custom UserRateThrottle subclass. Story 1.11 adds `gdpr_export_create` as
     # a defense-in-depth layer above the 24h application rate limit.
+    # `public_seo` bounds the anonymous `AllowAny` SEO endpoints (Stories
+    # 7.1-7.4) per IP — no global `DEFAULT_THROTTLE_CLASSES` on purpose: the
+    # SSR frontend fans out several API calls per page render, and a blanket
+    # anon rate would silently apply to every future endpoint. Each public
+    # view opts in via `apps.core.throttling.PublicSeoAnonThrottle`.
     "DEFAULT_THROTTLE_RATES": {
         "gdpr_export_create": "50/hour",
+        "public_seo": "120/min",
     },
 }
 
