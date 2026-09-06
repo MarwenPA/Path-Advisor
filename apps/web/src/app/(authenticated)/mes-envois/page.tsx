@@ -1,19 +1,22 @@
 /**
- * `/mes-envois` — Story 5.4 §AC4.
+ * `/mes-envois` — Story 5.4 §AC4 + Story 5.5 (moderation states + resubmit).
  *
  * Minimal flat list (école, métier visé, date, statut) — Story 5.9 will
  * enrich this with grouping by status, a detail view, and the stat-impact
- * badge. Every request is `pending` today (no école-side response flow
- * exists yet, Story 5.6/5.7), so the status column is a placeholder for now.
+ * badge. No école-side response flow exists yet (Story 5.6/5.7), so
+ * `responded`/`expired_7d` are placeholders for now.
  */
 import Link from "next/link";
 
+import { ResubmitMotivationForm } from "@/components/features/outreach/resubmit-motivation-form";
 import { fetchOutreachRequests } from "@/lib/api/outreach";
 
 export const metadata = { title: "Mes envois — Path Advisor" };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "En attente",
+  pending_moderation: "Motivation en cours de relecture",
+  rejected: "Motivation refusée",
   responded: "École a répondu",
   expired_7d: "Expiré",
 };
@@ -52,6 +55,9 @@ export default async function MesEnvoisPage() {
                   year: "numeric",
                 })}
               </p>
+              {r.status === "rejected" ? (
+                <ResubmitMotivationForm outreachId={r.id} rejectionReason={r.rejection_reason} />
+              ) : null}
             </li>
           ))}
         </ul>

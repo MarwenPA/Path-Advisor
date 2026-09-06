@@ -1,0 +1,8 @@
+Salut,
+
+Bonne nouvelle : ta motivation a été validée. Ton profil est en route vers
+{{ school.name }}.
+
+Tu peux suivre l'avancement dans "Mes envois" depuis ton espace.
+
+L'équipe Path-Advisor

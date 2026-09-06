@@ -21,3 +21,15 @@ class MonthlyOutreachQuotaExceeded(DomainError):
     default_detail = (
         "Tu as utilisé tes 5 envois ce mois — ta limite repart le 1er du mois prochain."
     )
+
+
+class OutreachModerationStateError(DomainError):
+    """Story 5.5 — a moderation action (approve/reject/resubmit) was
+    attempted on a request that isn't in the state it requires (e.g.
+    approving a request that's already `pending`, or resubmitting one
+    that isn't `rejected`)."""
+
+    type = "https://path-advisor.fr/errors/outreach-moderation-state"
+    title = "Action de modération impossible dans cet état"
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Cette demande n'est pas dans un état permettant cette action."

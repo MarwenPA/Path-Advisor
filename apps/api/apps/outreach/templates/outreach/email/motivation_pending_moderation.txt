@@ -1,0 +1,10 @@
+Salut,
+
+On a bien reçu ta motivation pour l'envoi anticipé de ton profil à
+{{ school.name }}.
+
+Elle est en cours de relecture par notre équipe (sous 24h ouvrées). Ton
+envoi ne partira vers l'école qu'une fois la relecture terminée — pas
+besoin de refaire quoi que ce soit en attendant.
+
+L'équipe Path-Advisor

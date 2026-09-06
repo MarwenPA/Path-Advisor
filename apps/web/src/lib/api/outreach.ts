@@ -1,5 +1,5 @@
 /**
- * API client for early-outreach requests — Story 5.4.
+ * API client for early-outreach requests — Stories 5.4 + 5.5.
  */
 import { apiFetch, readCsrfCookie } from "@/lib/api/client";
 
@@ -9,11 +9,19 @@ export interface OutreachQuota {
   remaining: number;
 }
 
+export type EarlyOutreachRequestStatusValue =
+  | "pending"
+  | "pending_moderation"
+  | "rejected"
+  | "responded"
+  | "expired_7d";
+
 export interface EarlyOutreachRequestItem {
   id: string;
   school_name: string;
   profession_name: string;
-  status: "pending" | "responded" | "expired_7d";
+  status: EarlyOutreachRequestStatusValue;
+  rejection_reason: string;
   created_at: string;
 }
 
@@ -42,5 +50,20 @@ export async function createOutreachRequest(
   return apiFetch<EarlyOutreachRequestItem>(
     `/api/v1/schools/${encodeURIComponent(schoolSlug)}/outreach/`,
     { method: "POST", body: payload, csrfToken: readCsrfCookie() ?? undefined },
+  );
+}
+
+/** Story 5.5 — student corrects+resubmits a `rejected` motivation. */
+export async function resubmitOutreachRequest(
+  outreachId: string,
+  motivationText: string,
+): Promise<EarlyOutreachRequestItem> {
+  return apiFetch<EarlyOutreachRequestItem>(
+    `/api/v1/outreach/requests/${encodeURIComponent(outreachId)}/resubmit/`,
+    {
+      method: "POST",
+      body: { motivation_text: motivationText },
+      csrfToken: readCsrfCookie() ?? undefined,
+    },
   );
 }
