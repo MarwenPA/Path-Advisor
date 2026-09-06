@@ -128,6 +128,8 @@ urlpatterns = [
     path("api/v1/auth/", include("apps.establishments.auth_urls")),
     # Story 6.5 — public student-import-invitation accept (token is the auth proof).
     path("api/v1/students/", include("apps.establishments.student_urls")),
+    # Story 6.7 — counselor consent + (6.6/6.8/6.9) cohort dashboard/profile/export.
+    path("api/v1/establishments/", include("apps.establishments.cohort_urls")),
     # Story 5.1 — billing: checkout session (api/v1) + Stripe webhook (distinct
     # surface, CSRF-exempt, HMAC-verified — NOT under api/v1).
     path("api/v1/billing/", include("apps.billing.urls")),

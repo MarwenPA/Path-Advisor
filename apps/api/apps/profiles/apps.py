@@ -11,6 +11,8 @@ class ProfilesConfig(AppConfig):
         # Imported here (not at module top) to avoid AppRegistryNotReady — the
         # adapters reference `apps.accounts.models` which needs the app registry.
         from .access_list import registry
+        from .access_list.sources.counselor_consent import CounselorConsentSource
         from .access_list.sources.parental_consent import ParentalConsentSource
 
         registry.register(ParentalConsentSource())
+        registry.register(CounselorConsentSource())

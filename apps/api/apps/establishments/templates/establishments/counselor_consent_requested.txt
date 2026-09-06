@@ -1,0 +1,10 @@
+Salut,
+
+Ta conseillère d'orientation ({{ counselor_email }}) souhaite consulter ton
+profil pour préparer ton entretien.
+
+Connecte-toi à ton espace Path-Advisor pour accepter ou refuser — ce que
+la conseillère verra (et ce qui reste privé) t'est expliqué avant de
+confirmer. Tu peux révoquer cet accès à tout moment.
+
+L'équipe Path-Advisor

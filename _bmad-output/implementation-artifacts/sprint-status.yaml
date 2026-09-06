@@ -134,7 +134,7 @@ development_status:
   6-4-paiement-premium-par-parent: done
   6-5-onboarding-b2b-cohorte: done
   6-6-dashboard-cohorte-conseillere: backlog
-  6-7-consentement-conseillere-vue-profil: backlog
+  6-7-consentement-conseillere-vue-profil: done
   6-8-vue-profil-eleve-conseillere: backlog
   6-9-export-reporting-anonymise: backlog
   6-10-composant-cohort-dashboard: backlog

@@ -46,6 +46,49 @@ class CohortAlreadyExists(DomainError):
     default_detail = "Une cohorte avec ce nom existe déjà pour cet établissement et cette année."
 
 
+class StudentNotInCounselorsEstablishment(DomainError):
+    """Story 6.7 — a counselor tried to request consent for a student
+    outside their own establishment (`StudentImportInvitation.cohort.
+    establishment` must match the counselor's own `tenant_id`)."""
+
+    type = "https://path-advisor.fr/errors/student-not-in-establishment"
+    title = "Élève hors de ton établissement"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Cet élève n'appartient pas à ton établissement."
+
+
+class ConsentCooldownActive(DomainError):
+    """Story 6.7 AC — a counselor tried to re-request consent within 7 days
+    of a refusal."""
+
+    type = "https://path-advisor.fr/errors/consent-cooldown-active"
+    title = "Nouvelle demande impossible pour l'instant"
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    default_detail = (
+        "L'élève a refusé récemment — tu peux redemander le consentement dans quelques jours."
+    )
+
+
+class ConsentNotGranted(DomainError):
+    """Story 6.7/6.8 — a counselor tried to view an individual profile
+    without a `granted`, non-revoked `CounselorConsent`."""
+
+    type = "https://path-advisor.fr/errors/consent-not-granted"
+    title = "Consentement requis"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = "Cet élève n'a pas encore donné son accord pour que tu consultes son profil."
+
+
+class ConsentAlreadyDecided(DomainError):
+    """Story 6.7 — a student tried to decide a consent request that isn't
+    (or is no longer) pending."""
+
+    type = "https://path-advisor.fr/errors/consent-already-decided"
+    title = "Demande déjà traitée"
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Cette demande a déjà été traitée."
+
+
 class CounselorEmailAlreadyRegistered(DomainError):
     """Code-review fix (2026-09, closing out Story 6.5) — accepting a
     counselor invitation whose `invitation.email` already belongs to

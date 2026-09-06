@@ -54,6 +54,15 @@ def send_counselor_invitation(invitation) -> bool:
     )
 
 
+def send_counselor_consent_requested(*, student, counselor) -> bool:
+    """Story 6.7 AC — "Mme Dupont, ta conseillère, souhaite consulter ton profil"."""
+    return _send(
+        template_base="counselor_consent_requested",
+        to=student.email,
+        context={"counselor_email": counselor.email},
+    )
+
+
 def send_student_import_invitation(invitation) -> bool:
     invitation_url = f"{_site_url()}/auth/invitation-eleve/{invitation.token}"
     return _send(

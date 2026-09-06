@@ -8,6 +8,7 @@
 import type { Metadata } from "next";
 
 import { AccessListEmptyState } from "@/components/features/privacy/access-list-empty-state";
+import { PendingCounselorConsents } from "@/components/features/privacy/pending-counselor-consents";
 import { TierAccessCard } from "@/components/features/privacy/tier-access-card";
 import { fetchAccessList } from "@/lib/api/access-list";
 import { ACCESS_LIST_COPY } from "@/lib/i18n/fr/access-list";
@@ -36,6 +37,8 @@ export default async function AccesTiersPage() {
         </h1>
         <p className="text-body text-text-muted">{ACCESS_LIST_COPY.pageDescription}</p>
       </header>
+
+      <PendingCounselorConsents />
 
       <section aria-live="polite" className="flex flex-col gap-4">
         {results.length === 0 ? (
