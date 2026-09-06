@@ -15,6 +15,12 @@ vi.mock("@/components/features/outreach/resubmit-motivation-form", () => ({
   ),
 }));
 
+vi.mock("@/components/features/outreach/interview-response-form", () => ({
+  InterviewResponseForm: ({ proposedSlots }: { proposedSlots: string[] }) => (
+    <div data-testid="interview-form">{proposedSlots.join(",")}</div>
+  ),
+}));
+
 import MesEnvoisPage from "./page";
 
 describe("MesEnvoisPage", () => {
@@ -81,5 +87,36 @@ describe("MesEnvoisPage", () => {
     const list = screen.getByTestId("mes-envois-list");
     expect(list).toHaveTextContent("Motivation refusée");
     expect(screen.getByTestId("resubmit-form")).toHaveTextContent("Trop générique.");
+  });
+
+  it("shows the response and the interview form when the school proposes slots", async () => {
+    fetchOutreachRequestsMock.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: "reach_3",
+          school_name: "École Test",
+          profession_name: "Infirmier·ère",
+          status: "responded",
+          rejection_reason: "",
+          response: {
+            action: "interview_requested",
+            comment: "",
+            proposed_slots: ["2026-10-01T10:00:00Z"],
+            accepted_slot: "",
+            alternative_note: "",
+            created_at: "2026-09-10T00:00:00Z",
+          },
+          created_at: "2026-09-10T00:00:00Z",
+        },
+      ],
+    });
+
+    render(await MesEnvoisPage());
+
+    expect(screen.getByText(/demande d'entretien/i)).toBeInTheDocument();
+    expect(screen.getByTestId("interview-form")).toHaveTextContent("2026-10-01T10:00:00Z");
   });
 });

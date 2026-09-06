@@ -47,3 +47,35 @@ class OutreachModerationStateError(DomainError):
     title = "Action de modération impossible dans cet état"
     status_code = status.HTTP_409_CONFLICT
     default_detail = "Cette demande n'est pas dans un état permettant cette action."
+
+
+class OutreachAlreadyResponded(DomainError):
+    """Story 5.7 — a school tried to respond to a request that isn't
+    `pending` (already responded, expired, or never reached the school in
+    the first place — still `pending_moderation`/`rejected`)."""
+
+    type = "https://path-advisor.fr/errors/outreach-already-responded"
+    title = "Cette demande a déjà une réponse"
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Cette demande n'est plus en attente d'une réponse."
+
+
+class InterviewSlotNotProposed(DomainError):
+    """Story 5.7 — a student tried to accept a slot the school never
+    proposed (stale UI, or a tampered request body)."""
+
+    type = "https://path-advisor.fr/errors/interview-slot-not-proposed"
+    title = "Créneau invalide"
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Ce créneau ne fait pas partie des propositions de l'école."
+
+
+class NoInterviewToRespondTo(DomainError):
+    """Story 5.7 — a student tried to accept/counter-propose on a request
+    whose response isn't an `interview_requested`, or that already has an
+    accepted slot / alternative note."""
+
+    type = "https://path-advisor.fr/errors/no-interview-to-respond-to"
+    title = "Aucun entretien à traiter"
+    status_code = status.HTTP_409_CONFLICT
+    default_detail = "Il n'y a pas de proposition d'entretien en attente sur cette demande."

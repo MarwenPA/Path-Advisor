@@ -1,20 +1,20 @@
-"""Early-outreach API views — Stories 5.4 + 5.5 + 5.6.
+"""Early-outreach API views — Stories 5.4 + 5.5 + 5.6 + 5.7.
 
 Routes:
   POST /api/v1/schools/{slug}/outreach/       — create a request for that school (AC2/AC3/AC5)
   GET  /api/v1/outreach/requests/             — list current user's requests (AC4)
   GET  /api/v1/outreach/quota/                — current-month quota status (AC1/AC3)
   POST /api/v1/outreach/requests/{id}/resubmit/ — student corrects+resubmits a rejected motivation (5.5)
+  POST /api/v1/outreach/requests/{id}/interview/accept/  — student accepts a proposed slot (5.7)
+  POST /api/v1/outreach/requests/{id}/interview/alternative/ — student proposes another slot (5.7)
   GET  /api/v1/ecole/outreach/                — school's reception queue (5.6)
   GET  /api/v1/ecole/outreach/{id}/            — one request's detail, school-scoped (5.6)
+  POST /api/v1/ecole/outreach/{id}/respond/    — school's one-shot response (5.7)
 
 Moderation itself (approve/reject a `pending_moderation` motivation) is a
 `path_admin` action exposed via the Django admin (`apps/outreach/admin.py`),
 not a separate DRF endpoint — Story 9.4 (back-office admin) is the future
 home for a dedicated moderation queue UI; the admin is the interim tool.
-
-Responding to a request (Story 5.7's 3 actions) is out of scope here — 5.6
-is read-only reception + the RBAC/auth boundary.
 """
 
 from __future__ import annotations
@@ -34,9 +34,12 @@ from apps.outreach.models import EarlyOutreachRequest
 from apps.outreach.serializers import (
     EarlyOutreachCreateSerializer,
     EarlyOutreachListSerializer,
+    EarlyOutreachRespondSerializer,
     EarlyOutreachResubmitSerializer,
     EcoleOutreachDetailSerializer,
     EcoleOutreachListSerializer,
+    InterviewAcceptSerializer,
+    InterviewAlternativeSerializer,
 )
 from apps.outreach.services.early_outreach import (
     MONTHLY_QUOTA,
@@ -48,6 +51,11 @@ from apps.outreach.services.school_reception import (
     get_school_for_admin,
     get_school_outreach_request,
     list_school_outreach_requests,
+)
+from apps.outreach.services.school_response import (
+    accept_interview_slot,
+    propose_interview_alternative,
+    respond_to_outreach_request,
 )
 from apps.professions.models import Profession
 from apps.schools.models import School
@@ -99,7 +107,7 @@ class EarlyOutreachListView(APIView):
 
     def get(self, request: Request) -> Response:
         qs = EarlyOutreachRequest.objects.filter(student=request.user).select_related(
-            "school", "profession"
+            "school", "profession", "response"
         )
         paginator = _OutreachPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
@@ -196,3 +204,76 @@ class EcoleOutreachDetailView(APIView):
         except EarlyOutreachRequest.DoesNotExist as exc:
             raise Http404 from exc
         return Response(EcoleOutreachDetailSerializer(outreach).data)
+
+
+class EcoleOutreachRespondView(APIView):
+    """POST /api/v1/ecole/outreach/{id}/respond/ — Story 5.7 AC.
+
+    Body: `{action, comment?, proposed_slots?}`. 404s the same way the
+    detail view does for another school's/not-yet-receivable request;
+    `OutreachAlreadyResponded` (409, global RFC7807 handler) if it isn't
+    `pending` anymore.
+    """
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsSchoolAdmin]
+
+    def post(self, request: Request, outreach_id: str) -> Response:
+        school = get_school_for_admin(user=request.user)
+        try:
+            outreach = get_school_outreach_request(school=school, outreach_id=outreach_id)
+        except EarlyOutreachRequest.DoesNotExist as exc:
+            raise Http404 from exc
+
+        serializer = EarlyOutreachRespondSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        respond_to_outreach_request(
+            outreach=outreach,
+            action=serializer.validated_data["action"],
+            comment=serializer.validated_data["comment"],
+            proposed_slots=serializer.validated_data["proposed_slots"],
+        )
+        # Re-fetch (not `outreach.refresh_from_db()`) — that would clear the
+        # cached `student` FK (loaded under `bypass_rls` inside
+        # `get_school_outreach_request`) and force a fresh lookup outside
+        # any bypass, which Postgres RLS silently empties for a
+        # school-admin session (caught by the Postgres test pass, not
+        # SQLite).
+        outreach = get_school_outreach_request(school=school, outreach_id=outreach_id)
+        return Response(EcoleOutreachDetailSerializer(outreach).data, status=201)
+
+
+class InterviewAcceptView(APIView):
+    """POST /api/v1/outreach/requests/{id}/interview/accept/ — Story 5.7.
+
+    Student accepts one of the school's proposed slots. Scoped to
+    `student=request.user` (404, not 403, for someone else's request)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsStudent]
+
+    def post(self, request: Request, outreach_id: str) -> Response:
+        outreach = get_object_or_404(EarlyOutreachRequest, id=outreach_id, student=request.user)
+        serializer = InterviewAcceptSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        accept_interview_slot(outreach=outreach, slot=serializer.validated_data["slot"])
+        outreach.refresh_from_db()
+        return Response(EarlyOutreachListSerializer(outreach).data)
+
+
+class InterviewAlternativeView(APIView):
+    """POST /api/v1/outreach/requests/{id}/interview/alternative/ — Story 5.7.
+
+    Student can't make any proposed slot, suggests one instead. Scoped to
+    `student=request.user`."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsStudent]
+
+    def post(self, request: Request, outreach_id: str) -> Response:
+        outreach = get_object_or_404(EarlyOutreachRequest, id=outreach_id, student=request.user)
+        serializer = InterviewAlternativeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        propose_interview_alternative(outreach=outreach, note=serializer.validated_data["note"])
+        outreach.refresh_from_db()
+        return Response(EarlyOutreachListSerializer(outreach).data)

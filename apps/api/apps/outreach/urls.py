@@ -1,4 +1,4 @@
-"""URL patterns for early-outreach requests — Stories 5.4 + 5.5 + 5.6."""
+"""URL patterns for early-outreach requests — Stories 5.4 + 5.5 + 5.6 + 5.7."""
 
 from django.urls import path
 
@@ -7,6 +7,9 @@ from apps.outreach.views import (
     EarlyOutreachResubmitView,
     EcoleOutreachDetailView,
     EcoleOutreachQueueView,
+    EcoleOutreachRespondView,
+    InterviewAcceptView,
+    InterviewAlternativeView,
     OutreachQuotaView,
     SchoolOutreachCreateView,
 )
@@ -22,6 +25,16 @@ urlpatterns = [
         name="request-resubmit",
     ),
     path(
+        "outreach/requests/<str:outreach_id>/interview/accept/",
+        InterviewAcceptView.as_view(),
+        name="interview-accept",
+    ),
+    path(
+        "outreach/requests/<str:outreach_id>/interview/alternative/",
+        InterviewAlternativeView.as_view(),
+        name="interview-alternative",
+    ),
+    path(
         "schools/<slug:slug>/outreach/",
         SchoolOutreachCreateView.as_view(),
         name="school-outreach-create",
@@ -31,5 +44,10 @@ urlpatterns = [
         "ecole/outreach/<str:outreach_id>/",
         EcoleOutreachDetailView.as_view(),
         name="ecole-outreach-detail",
+    ),
+    path(
+        "ecole/outreach/<str:outreach_id>/respond/",
+        EcoleOutreachRespondView.as_view(),
+        name="ecole-outreach-respond",
     ),
 ]

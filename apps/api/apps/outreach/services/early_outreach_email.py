@@ -1,4 +1,4 @@
-"""Early-outreach moderation transactional emails — Story 5.5.
+"""Early-outreach transactional emails — Stories 5.5 + 5.6 + 5.7.
 
 Three templates, one per moderation transition, mirroring the
 `apps.accounts.services.account_deletion_email` pattern (`_send` helper +
@@ -80,4 +80,48 @@ def send_outreach_expired_email(*, outreach: EarlyOutreachRequest) -> None:
         template="outreach/email/outreach_expired",
         to=outreach.student.email,
         context={"outreach": outreach, "school": outreach.school},
+    )
+
+
+_RESPONSE_SUBJECTS = {
+    "interested": "[Path-Advisor] {school} a répondu — profil intéressant !",
+    "not_aligned": "[Path-Advisor] {school} a répondu à ton envoi",
+    "interview_requested": "[Path-Advisor] {school} te propose un entretien",
+}
+
+
+def send_school_responded_email(*, outreach: EarlyOutreachRequest, response) -> None:
+    """Story 5.7 — sent to the student the moment a school responds. The
+    admission-stat point value ("+14 pts") isn't computed yet (Story 5.8's
+    job) — this email is the "someone answered" signal, not the stat
+    update itself."""
+    _send(
+        subject=_RESPONSE_SUBJECTS[response.action].format(school=outreach.school.name),
+        template="outreach/email/school_responded",
+        to=outreach.student.email,
+        context={"outreach": outreach, "school": outreach.school, "response": response},
+    )
+
+
+def send_interview_slot_accepted_email(*, outreach: EarlyOutreachRequest, staff_email: str) -> None:
+    """Story 5.7 — sent to a school-admin email when the student accepts
+    one of the proposed interview slots."""
+    _send(
+        subject="[Path-Advisor] Créneau d'entretien accepté",
+        template="outreach/email/interview_slot_accepted",
+        to=staff_email,
+        context={"outreach": outreach},
+    )
+
+
+def send_interview_alternative_proposed_email(
+    *, outreach: EarlyOutreachRequest, staff_email: str
+) -> None:
+    """Story 5.7 — sent to a school-admin email when the student can't
+    make any proposed slot and suggests an alternative instead."""
+    _send(
+        subject="[Path-Advisor] L'élève propose un autre créneau",
+        template="outreach/email/interview_alternative_proposed",
+        to=staff_email,
+        context={"outreach": outreach},
     )

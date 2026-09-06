@@ -19,7 +19,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 
 from apps.outreach.exceptions import OutreachModerationStateError
-from apps.outreach.models import EarlyOutreachRequest
+from apps.outreach.models import EarlyOutreachRequest, EarlyOutreachResponse
 from apps.outreach.services.early_outreach import (
     approve_early_outreach_motivation,
     reject_early_outreach_motivation,
@@ -137,3 +137,36 @@ class EarlyOutreachRequestAdmin(admin.ModelAdmin):
             return HttpResponseRedirect(reverse("admin:outreach_earlyoutreachrequest_changelist"))
 
         return TemplateResponse(request, "admin/outreach/reject_motivation_confirm.html", context)
+
+
+@admin.register(EarlyOutreachResponse)
+class EarlyOutreachResponseAdmin(admin.ModelAdmin):
+    """Story 5.7 — read-only. `comment` isn't gated by an a-priori
+    moderation queue (see the model's docstring for why); this admin is
+    the reactive-moderation surface a path_admin can use if a comment is
+    ever reported as inappropriate — no bulk action needed for that, just
+    visibility."""
+
+    list_display = ("id", "request", "action", "created_at")
+    list_filter = ("action",)
+    search_fields = ("id", "request__id", "request__student__email")
+    readonly_fields = (
+        "id",
+        "request",
+        "action",
+        "comment",
+        "proposed_slots",
+        "accepted_slot",
+        "alternative_note",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request: HttpRequest) -> bool:  # type: ignore[override]
+        return False
+
+    def has_change_permission(self, request: HttpRequest, obj=None) -> bool:  # type: ignore[override]
+        return False
+
+    def has_delete_permission(self, request: HttpRequest, obj=None) -> bool:  # type: ignore[override]
+        return False

@@ -1,4 +1,4 @@
-"""Serializers for early-outreach requests — Stories 5.4 + 5.5 + 5.6."""
+"""Serializers for early-outreach requests — Stories 5.4 + 5.5 + 5.6 + 5.7."""
 
 from __future__ import annotations
 
@@ -6,7 +6,15 @@ from datetime import date
 
 from rest_framework import serializers
 
-from apps.outreach.models import EarlyOutreachRequest
+from apps.outreach.models import (
+    EarlyOutreachRequest,
+    EarlyOutreachResponse,
+    EarlyOutreachResponseAction,
+)
+
+COMMENT_MAX_WORDS = 200
+MIN_INTERVIEW_SLOTS = 2
+MAX_INTERVIEW_SLOTS = 3
 
 MOTIVATION_MIN_WORDS = 200
 MOTIVATION_MAX_WORDS = 500
@@ -59,10 +67,12 @@ class EarlyOutreachResubmitSerializer(serializers.Serializer):
 class EarlyOutreachListSerializer(serializers.ModelSerializer):
     """AC4 — flat list for `/mes-envois` (Story 5.9 will enrich). Includes
     `rejection_reason` (Story 5.5) so the front can show why + offer the
-    resubmit action without a second call."""
+    resubmit action without a second call. Story 5.7 adds `response` —
+    `null` until the school answers."""
 
     school_name = serializers.CharField(source="school.name", read_only=True)
     profession_name = serializers.CharField(source="profession.name", read_only=True)
+    response = serializers.SerializerMethodField()
 
     class Meta:
         model = EarlyOutreachRequest
@@ -72,9 +82,16 @@ class EarlyOutreachListSerializer(serializers.ModelSerializer):
             "profession_name",
             "status",
             "rejection_reason",
+            "response",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_response(self, obj: EarlyOutreachRequest) -> dict | None:
+        response = getattr(obj, "response", None)
+        if response is None:
+            return None
+        return EarlyOutreachResponseSerializer(response).data
 
 
 def _student_age(student) -> int | None:
@@ -120,9 +137,91 @@ class EcoleOutreachListSerializer(serializers.ModelSerializer):
         return _student_age(obj.student)
 
 
+class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
+    """Story 5.7 — read-only view of a school's response, nested wherever
+    a request is displayed (school detail, student list/detail)."""
+
+    class Meta:
+        model = EarlyOutreachResponse
+        fields = [
+            "action",
+            "comment",
+            "proposed_slots",
+            "accepted_slot",
+            "alternative_note",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
 class EcoleOutreachDetailSerializer(EcoleOutreachListSerializer):
-    """Story 5.6 AC — fiche détail: same fields + `motivation_text`."""
+    """Story 5.6 AC — fiche détail: same fields + `motivation_text` +
+    (Story 5.7) the response, once one exists."""
+
+    response = EarlyOutreachResponseSerializer(read_only=True)
 
     class Meta(EcoleOutreachListSerializer.Meta):
-        fields = [*EcoleOutreachListSerializer.Meta.fields, "motivation_text"]
+        fields = [*EcoleOutreachListSerializer.Meta.fields, "motivation_text", "response"]
         read_only_fields = fields
+
+
+class EarlyOutreachRespondSerializer(serializers.Serializer):
+    """Story 5.7 AC — the school's one-shot response form.
+
+    `comment` (≤200 words, no minimum) is the "Commentaire pour l'élève"
+    — §2 scope decision: not gated through Story 5.5's a-priori moderation
+    queue (see `EarlyOutreachResponse`'s docstring for why).
+    `proposed_slots` is required (2-3 ISO-8601 datetimes) only when
+    `action=interview_requested`, and must be empty otherwise — a
+    non-interview response proposing slots would be a UI bug, not silently
+    ignored data.
+    """
+
+    action = serializers.ChoiceField(choices=EarlyOutreachResponseAction.choices)
+    comment = serializers.CharField(max_length=2000, required=False, allow_blank=True, default="")
+    proposed_slots = serializers.ListField(
+        child=serializers.CharField(max_length=40), required=False, default=list
+    )
+
+    def validate_comment(self, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            return value
+        word_count = len(stripped.split())
+        if word_count > COMMENT_MAX_WORDS:
+            raise serializers.ValidationError(
+                f"Ton commentaire doit faire au plus {COMMENT_MAX_WORDS} mots "
+                f"(actuellement {word_count})."
+            )
+        return value
+
+    def validate(self, attrs: dict) -> dict:
+        action = attrs.get("action")
+        slots = attrs.get("proposed_slots") or []
+        if action == EarlyOutreachResponseAction.INTERVIEW_REQUESTED:
+            if not (MIN_INTERVIEW_SLOTS <= len(slots) <= MAX_INTERVIEW_SLOTS):
+                raise serializers.ValidationError(
+                    {
+                        "proposed_slots": (
+                            f"Propose entre {MIN_INTERVIEW_SLOTS} et "
+                            f"{MAX_INTERVIEW_SLOTS} créneaux."
+                        )
+                    }
+                )
+        elif slots:
+            raise serializers.ValidationError(
+                {"proposed_slots": "Uniquement pour une demande d'entretien."}
+            )
+        return attrs
+
+
+class InterviewAcceptSerializer(serializers.Serializer):
+    """Story 5.7 — student accepts one of the school's proposed slots."""
+
+    slot = serializers.CharField(max_length=40)
+
+
+class InterviewAlternativeSerializer(serializers.Serializer):
+    """Story 5.7 — student can't make any proposed slot, suggests one."""
+
+    note = serializers.CharField(max_length=2000, allow_blank=False)
