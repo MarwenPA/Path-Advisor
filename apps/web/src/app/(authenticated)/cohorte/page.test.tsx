@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 const fetchCohortDashboardMock = vi.fn();
 vi.mock("@/lib/api/cohort-dashboard", () => ({
   fetchCohortDashboard: () => fetchCohortDashboardMock(),
+  COHORT_REPORTING_EXPORT_URL: "/api/v1/establishments/cohort-dashboard/export.csv/",
 }));
 
 vi.mock("@/components/features/establishments/cohort-dashboard", () => ({
@@ -30,5 +31,6 @@ describe("CohortDashboardPage", () => {
     render(await CohortDashboardPage());
 
     expect(screen.getByTestId("cohort-dashboard")).toHaveTextContent("5 élèves");
+    expect(screen.getByText("Exporter le reporting (CSV)")).toBeInTheDocument();
   });
 });
