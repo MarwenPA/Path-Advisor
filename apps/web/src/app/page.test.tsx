@@ -127,3 +127,13 @@ describe("Home page", () => {
     );
   });
 });
+
+describe("Home page metadata (Story 7.5 AC — OG + Twitter Card)", () => {
+  it("exposes og:url/type and a Twitter summary_large_image card", async () => {
+    const { metadata } = await import("./page");
+
+    expect(metadata.openGraph?.url).toBe("https://path-advisor.fr");
+    expect(metadata.openGraph?.type).toBe("website");
+    expect(metadata.twitter?.card).toBe("summary_large_image");
+  });
+});

@@ -22,9 +22,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   try {
     const school = await fetchPublicSchool(slug);
+    const title = `${school.name} — Path Advisor`;
+    const description = school.description.slice(0, 155);
     return {
-      title: `${school.name} — Path Advisor`,
-      description: school.description.slice(0, 155),
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        url: `${SITE_ORIGIN}/formations/${slug}`,
+        type: "website",
+      },
+      twitter: { card: "summary_large_image", title, description },
     };
   } catch {
     return { title: "École — Path Advisor" };
