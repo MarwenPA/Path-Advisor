@@ -170,3 +170,40 @@ class CounselorNoteSerializer(serializers.ModelSerializer):
 
 class CounselorNoteCreateSerializer(serializers.Serializer):
     text = serializers.CharField(max_length=4000, allow_blank=False)
+
+
+# --- Story 6.6 — cohort dashboard --------------------------------------------
+
+
+class CohortDashboardKpisSerializer(serializers.Serializer):
+    nb_eleves = serializers.IntegerField()
+    taux_completion_profil = serializers.FloatField()
+    nb_eleves_mode_degrade = serializers.IntegerField()
+
+
+class CohortDashboardTopMetierSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    count = serializers.IntegerField()
+
+
+class CohortDashboardFiliereSerializer(serializers.Serializer):
+    filiere = serializers.CharField()
+    count = serializers.IntegerField()
+
+
+class CohortDashboardActivitySerializer(serializers.Serializer):
+    student_id = serializers.CharField()
+    derniere_connexion = serializers.DateTimeField()
+
+
+class CohortDashboardEleveSerializer(serializers.Serializer):
+    student_id = serializers.CharField()
+    cohort_name = serializers.CharField()
+
+
+class CohortDashboardSerializer(serializers.Serializer):
+    kpis = CohortDashboardKpisSerializer()
+    top_metiers = CohortDashboardTopMetierSerializer(many=True)
+    distribution_filiere = CohortDashboardFiliereSerializer(many=True)
+    activite_recente = CohortDashboardActivitySerializer(many=True)
+    eleves = CohortDashboardEleveSerializer(many=True)

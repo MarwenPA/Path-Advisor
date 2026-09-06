@@ -21,12 +21,14 @@ from apps.core.rls import bypass_rls
 from apps.establishments.exceptions import StudentNotInCounselorsEstablishment
 from apps.establishments.models import CounselorConsent, StudentImportInvitation
 from apps.establishments.serializers import (
+    CohortDashboardSerializer,
     ConsentDecisionSerializer,
     CounselorConsentSerializer,
     CounselorNoteCreateSerializer,
     CounselorNoteSerializer,
     CounselorStudentProfileSerializer,
 )
+from apps.establishments.services.cohort_dashboard import get_cohort_dashboard
 from apps.establishments.services.counselor_consent import (
     decide_consent,
     list_pending_consent_requests,
@@ -98,6 +100,17 @@ def student_decide_consent(request: Request, consent_id: str) -> Response:
         granted=serializer.validated_data["granted"],
     )
     return Response(CounselorConsentSerializer(decided).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsCounselor])
+def counselor_cohort_dashboard(request: Request) -> Response:
+    """GET /api/v1/establishments/cohort-dashboard/ — Story 6.6 AC. Combines
+    every accepted student across all of the counselor's own establishment's
+    cohorts (see `cohort_dashboard.py` module docstring for the "top métiers"
+    and "mode dégradé" scope decisions)."""
+    dashboard = get_cohort_dashboard(counselor=request.user)
+    return Response(CohortDashboardSerializer(dashboard).data)
 
 
 @api_view(["GET"])

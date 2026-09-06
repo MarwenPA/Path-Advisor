@@ -29,6 +29,12 @@ urlpatterns = [
         counselor_views.student_decide_consent,
         name="student-decide-consent",
     ),
+    # Story 6.6 — counselor cohort dashboard
+    path(
+        "cohort-dashboard/",
+        counselor_views.counselor_cohort_dashboard,
+        name="counselor-cohort-dashboard",
+    ),
     # Story 6.8 — counselor individual profile view
     path(
         "students/<str:student_id>/profile/",
