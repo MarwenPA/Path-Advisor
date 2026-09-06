@@ -110,7 +110,7 @@ development_status:
   epic-4-retrospective: optional
 
   # Epic 5 — Premium B2C & Envoi anticipé biface
-  epic-5: in-progress
+  epic-5: done
   5-1-integration-stripe: done
   5-2-tiers-abonnement-gating: done
   5-3-souscription-premium-eleve: done
@@ -122,7 +122,7 @@ development_status:
   5-9-historique-envois-anticipes: done
   5-10-reporting-interne-ecole: done
   5-11-composant-paywall-contextuel: done
-  5-12-composant-ecole-response-flow: backlog
+  5-12-composant-ecole-response-flow: done
   epic-5-retrospective: optional
 
   # Epic 6 — Espaces tiers (parent, conseillère B2B)

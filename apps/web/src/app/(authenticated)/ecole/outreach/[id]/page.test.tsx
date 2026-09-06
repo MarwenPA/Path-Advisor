@@ -1,5 +1,5 @@
 /**
- * `/ecole/outreach/[id]` page tests — Story 5.6.
+ * `/ecole/outreach/[id]` page tests — Story 5.6 + Story 5.12.
  */
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
@@ -10,10 +10,14 @@ vi.mock("@/lib/api/ecole-outreach", () => ({
 }));
 
 const notFoundMock = vi.fn();
-const routerMock = { refresh: vi.fn() };
 vi.mock("next/navigation", () => ({
   notFound: () => notFoundMock(),
-  useRouter: () => routerMock,
+}));
+
+vi.mock("@/components/features/outreach/ecole-response-flow", () => ({
+  EcoleResponseFlow: ({ outreach }: { outreach: { profession_name: string } }) => (
+    <div data-testid="ecole-response-flow">{outreach.profession_name}</div>
+  ),
 }));
 
 import { ApiError } from "@/lib/api/client";
@@ -21,7 +25,7 @@ import { ApiError } from "@/lib/api/client";
 import EcoleOutreachDetailPage from "./page";
 
 describe("EcoleOutreachDetailPage", () => {
-  it("shows the synthetic profile: age, métier, parcours, motivation, status", async () => {
+  it("fetches the detail and passes it to EcoleResponseFlow", async () => {
     fetchEcoleOutreachDetailMock.mockResolvedValue({
       id: "reach_1",
       student_age: 17,
@@ -35,11 +39,7 @@ describe("EcoleOutreachDetailPage", () => {
 
     render(await EcoleOutreachDetailPage({ params: Promise.resolve({ id: "reach_1" }) }));
 
-    expect(screen.getByText("17 ans")).toBeInTheDocument();
-    expect(screen.getByText("Infirmier·ère")).toBeInTheDocument();
-    expect(screen.getByText("Bac STI2D → BUT")).toBeInTheDocument();
-    expect(screen.getByText("Un texte de motivation détaillé.")).toBeInTheDocument();
-    expect(screen.getByText("En attente")).toBeInTheDocument();
+    expect(screen.getByTestId("ecole-response-flow")).toHaveTextContent("Infirmier·ère");
   });
 
   it("calls notFound() on a 404 (another school's request)", async () => {
