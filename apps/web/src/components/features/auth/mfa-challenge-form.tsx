@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -143,9 +144,9 @@ export function MfaChallengeForm() {
       </button>
 
       <p className="text-xs text-text-muted">
-        <a href="/auth/login" className="underline">
+        <Link href="/auth/login" className="underline">
           {COPY.backToLogin}
-        </a>
+        </Link>
       </p>
     </section>
   );

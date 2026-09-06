@@ -68,80 +68,130 @@ vi.mock("@/hooks/use-onboarding-step-2", async (importOriginal) => {
 describe("isDraftComplete", () => {
   it("returns false when level is null", () => {
     const draft: Step2Draft = {
-      level: null, filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: null,
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(false);
   });
 
   it("returns true for 3ème with intended_track", () => {
     const draft: Step2Draft = {
-      level: "college_3eme", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: "pro", postbac_year: null, postbac_formation_type: null,
+      level: "college_3eme",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: "pro",
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(true);
   });
 
   it("returns false for 3ème without intended_track", () => {
     const draft: Step2Draft = {
-      level: "college_3eme", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "college_3eme",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(false);
   });
 
   it("returns true for Terminale général with 2 specs", () => {
     const draft: Step2Draft = {
-      level: "lycee_terminale", filiere: "general", sous_filiere_techno: null,
-      specialites: ["mathematiques", "svt"], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_terminale",
+      filiere: "general",
+      sous_filiere_techno: null,
+      specialites: ["mathematiques", "svt"],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(true);
   });
 
   it("returns false for Terminale général with 1 spec", () => {
     const draft: Step2Draft = {
-      level: "lycee_terminale", filiere: "general", sous_filiere_techno: null,
-      specialites: ["mathematiques"], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_terminale",
+      filiere: "general",
+      sous_filiere_techno: null,
+      specialites: ["mathematiques"],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(false);
   });
 
   it("returns true for 1ère général with 3 specs", () => {
     const draft: Step2Draft = {
-      level: "lycee_1ere", filiere: "general", sous_filiere_techno: null,
-      specialites: ["mathematiques", "svt", "ses"], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_1ere",
+      filiere: "general",
+      sous_filiere_techno: null,
+      specialites: ["mathematiques", "svt", "ses"],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(true);
   });
 
   it("returns false for 1ère techno without sous_filiere", () => {
     const draft: Step2Draft = {
-      level: "lycee_1ere", filiere: "techno", sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_1ere",
+      filiere: "techno",
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(false);
   });
 
   it("returns true for 1ère techno with sous_filiere", () => {
     const draft: Step2Draft = {
-      level: "lycee_1ere", filiere: "techno", sous_filiere_techno: "STMG",
-      specialites: [], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_1ere",
+      filiere: "techno",
+      sous_filiere_techno: "STMG",
+      specialites: [],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(true);
   });
 
   it("returns true for postbac with both fields", () => {
     const draft: Step2Draft = {
-      level: "postbac", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: "pause", postbac_formation_type: "aucune",
+      level: "postbac",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: "pause",
+      postbac_formation_type: "aucune",
     };
     expect(isDraftComplete(draft)).toBe(true);
   });
 
   it("returns false for postbac without formation type", () => {
     const draft: Step2Draft = {
-      level: "postbac", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: "bac+1", postbac_formation_type: null,
+      level: "postbac",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: "bac+1",
+      postbac_formation_type: null,
     };
     expect(isDraftComplete(draft)).toBe(false);
   });
@@ -204,7 +254,7 @@ describe("SpecialitesPicker cap enforcement", () => {
         selected={["mathematiques", "svt"]}
         expectedCount={2}
         onToggle={onToggle}
-      />
+      />,
     );
     // All unselected chips should be disabled at cap
     const nsiButton = screen.getByRole("button", { name: /NSI/i });
@@ -218,7 +268,7 @@ describe("SpecialitesPicker cap enforcement", () => {
         selected={["mathematiques"]}
         expectedCount={2}
         onToggle={vi.fn()}
-      />
+      />,
     );
     expect(screen.getByText("1/2")).toBeInTheDocument();
   });
@@ -231,8 +281,13 @@ describe("SpecialitesPicker cap enforcement", () => {
 describe("RecapCard", () => {
   it("renders Sarah Terminale général recap", () => {
     const draft: Step2Draft = {
-      level: "lycee_terminale", filiere: "general", sous_filiere_techno: null,
-      specialites: ["mathematiques", "hggsp"], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_terminale",
+      filiere: "general",
+      sous_filiere_techno: null,
+      specialites: ["mathematiques", "hggsp"],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     render(<RecapCard draft={draft} onModify={vi.fn()} />);
     expect(screen.getByText(/Terminale/)).toBeInTheDocument();
@@ -243,8 +298,13 @@ describe("RecapCard", () => {
 
   it("renders Mehdi 3ème bac pro recap without encouragement", () => {
     const draft: Step2Draft = {
-      level: "college_3eme", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: "pro", postbac_year: null, postbac_formation_type: null,
+      level: "college_3eme",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: "pro",
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     render(<RecapCard draft={draft} onModify={vi.fn()} />);
     expect(screen.getByText(/3ème/)).toBeInTheDocument();
@@ -256,8 +316,13 @@ describe("RecapCard", () => {
 
   it("renders Léa post-bac en pause recap with dignified copy", () => {
     const draft: Step2Draft = {
-      level: "postbac", filiere: null, sous_filiere_techno: null,
-      specialites: [], intended_track: null, postbac_year: "pause", postbac_formation_type: "aucune",
+      level: "postbac",
+      filiere: null,
+      sous_filiere_techno: null,
+      specialites: [],
+      intended_track: null,
+      postbac_year: "pause",
+      postbac_formation_type: "aucune",
     };
     render(<RecapCard draft={draft} onModify={vi.fn()} />);
     expect(screen.getByText(/Post-bac/)).toBeInTheDocument();
@@ -269,8 +334,13 @@ describe("RecapCard", () => {
   it("calls onModify when Modifier is clicked", async () => {
     const onModify = vi.fn();
     const draft: Step2Draft = {
-      level: "lycee_terminale", filiere: "general", sous_filiere_techno: null,
-      specialites: ["mathematiques", "svt"], intended_track: null, postbac_year: null, postbac_formation_type: null,
+      level: "lycee_terminale",
+      filiere: "general",
+      sous_filiere_techno: null,
+      specialites: ["mathematiques", "svt"],
+      intended_track: null,
+      postbac_year: null,
+      postbac_formation_type: null,
     };
     render(<RecapCard draft={draft} onModify={onModify} />);
     await userEvent.click(screen.getByRole("button", { name: /Modifier/i }));

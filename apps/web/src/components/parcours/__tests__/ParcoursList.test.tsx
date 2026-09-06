@@ -110,7 +110,7 @@ describe("ParcoursList", () => {
 
   // Story 4.3 — renders school name
   it("renders the default parcours with school name", () => {
-    const p = makeParcours({ target_school_name: "IFSI Paris" });
+    const p = makeParcours({ label: "", target_school_name: "IFSI Paris" });
     render(<ParcoursList parcours={[p]} metiersSlug="infirmier-ssr" />);
     expect(screen.getByText("IFSI Paris")).toBeInTheDocument();
   });
@@ -176,6 +176,7 @@ describe("ParcoursList", () => {
     const p2 = makeParcours({
       id: "p2",
       is_default: false,
+      label: "",
       target_school_name: "École Alternative",
     });
     render(<ParcoursList parcours={[p1, p2]} metiersSlug="infirmier-ssr" />);

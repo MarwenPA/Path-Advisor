@@ -81,7 +81,7 @@ export function TooltipContent({ children, className, ...props }: TooltipContent
         "w-max max-w-xs rounded-md border border-border bg-card px-2.5 py-1.5",
         "text-caption text-text shadow-sm",
         "opacity-0 transition-opacity duration-instant",
-        "group-hover:opacity-100 group-focus-within:opacity-100",
+        "group-focus-within:opacity-100 group-hover:opacity-100",
         className,
       )}
       {...props}

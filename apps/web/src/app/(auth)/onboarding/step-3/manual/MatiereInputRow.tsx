@@ -53,14 +53,14 @@ export function MatiereInputRow({
   }
 
   return (
-    <fieldset className="py-3 border-b border-border last:border-0">
+    <fieldset className="border-b border-border py-3 last:border-0">
       <legend className="sr-only">{subject.label}</legend>
 
       <div className="flex items-center gap-3">
         <span className="flex-1 text-sm font-medium">{subject.label}</span>
 
         <div className="flex items-center gap-2">
-          <div className="w-[88px] relative">
+          <div className="relative w-[88px]">
             <Input
               type="text"
               inputMode="decimal"
@@ -70,10 +70,7 @@ export function MatiereInputRow({
               onBlur={handleBlur}
               aria-invalid={!!error}
               aria-describedby={error ? `${subject.id}-error` : undefined}
-              className={cn(
-                "text-right tabular-nums",
-                error && "border-destructive"
-              )}
+              className={cn("text-right tabular-nums", error && "border-destructive")}
             />
           </div>
 
@@ -84,7 +81,7 @@ export function MatiereInputRow({
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
             aria-label="Ajouter une appréciation"
-            className="text-xs text-muted-foreground gap-1 px-2"
+            className="gap-1 px-2 text-xs text-muted-foreground"
           >
             {expanded ? "▲" : "+"} Appréciation
             <ChevronDown
@@ -98,7 +95,7 @@ export function MatiereInputRow({
             type="button"
             aria-label={`Supprimer ${subject.label}`}
             onClick={() => onRemove(subject.id)}
-            className="text-muted-foreground hover:text-foreground p-1"
+            className="p-1 text-muted-foreground hover:text-foreground"
           >
             <X size={14} aria-hidden="true" />
           </button>
@@ -110,7 +107,7 @@ export function MatiereInputRow({
           id={`${subject.id}-error`}
           role="alert"
           aria-live="polite"
-          className="text-xs text-destructive mt-1 block"
+          className="mt-1 block text-xs text-destructive"
         >
           {error}
         </span>

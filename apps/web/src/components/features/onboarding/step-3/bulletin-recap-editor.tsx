@@ -5,7 +5,13 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -81,7 +87,7 @@ function NoteInput({
         }}
         aria-label="Note sur 20"
         aria-describedby={error ? errId : undefined}
-        className={cn("h-7 w-20 text-sm text-center", lowConf && "border-[var(--color-warning)]")}
+        className={cn("h-7 w-20 text-center text-sm", lowConf && "border-[var(--color-warning)]")}
       />
       {error && (
         <span id={errId} className="text-xs text-[var(--color-danger)]" role="alert">
@@ -140,7 +146,7 @@ function SubjectRow({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <AlertTriangle
-                    className="size-3.5 text-[var(--color-warning)] shrink-0"
+                    className="size-3.5 shrink-0 text-[var(--color-warning)]"
                     aria-describedby={warnId}
                   />
                 </TooltipTrigger>
@@ -160,16 +166,13 @@ function SubjectRow({
         </td>
 
         {/* Note */}
-        <td className="py-2 pr-2 align-top whitespace-nowrap">
+        <td className="whitespace-nowrap py-2 pr-2 align-top">
           {note ? (
             <span className="flex items-center gap-1">
               {noteLowConf && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <AlertTriangle
-                      className="size-3.5 text-[var(--color-warning)]"
-                      aria-hidden
-                    />
+                    <AlertTriangle className="size-3.5 text-[var(--color-warning)]" aria-hidden />
                   </TooltipTrigger>
                   <TooltipContent>À vérifier — l&apos;OCR a un doute sur cette note</TooltipContent>
                 </Tooltip>
@@ -194,9 +197,9 @@ function SubjectRow({
             aria-label={`Supprimer ${matiere.value}`}
             onClick={onRemove}
             className={cn(
-              "p-1 rounded text-[var(--color-text-muted)] hover:text-[var(--color-text)]",
+              "rounded p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text)]",
               "focus-visible:outline-2 focus-visible:outline-[var(--color-brand)]",
-              "min-h-[44px] min-w-[44px] flex items-center justify-center"
+              "flex min-h-[44px] min-w-[44px] items-center justify-center",
             )}
           >
             <Trash2 className="size-4" aria-hidden />
@@ -213,7 +216,7 @@ function SubjectRow({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <AlertTriangle
-                      className="size-3.5 text-[var(--color-warning)] mt-1.5 shrink-0"
+                      className="mt-1.5 size-3.5 shrink-0 text-[var(--color-warning)]"
                       aria-hidden
                     />
                   </TooltipTrigger>
@@ -227,8 +230,8 @@ function SubjectRow({
                 onChange={(e) => onAppreciationChange(e.target.value)}
                 rows={2}
                 className={cn(
-                  "text-sm resize-none flex-1",
-                  apprLowConf && "border-[var(--color-warning)]"
+                  "flex-1 resize-none text-sm",
+                  apprLowConf && "border-[var(--color-warning)]",
                 )}
                 aria-label={`Appréciation de ${matiere.value}`}
               />
@@ -321,12 +324,7 @@ function AddSubjectRow({
             <Button size="sm" className="h-7 px-2 text-xs" onClick={handleConfirm}>
               OK
             </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 px-2 text-xs"
-              onClick={onCancel}
-            >
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onCancel}>
               Annuler
             </Button>
           </span>
@@ -370,7 +368,7 @@ export function BulletinRecapEditor({
   const [undoEntry, setUndoEntry] = useState<UndoEntry | null>(null);
 
   const lowConfCount = activeFields.filter(
-    (f) => f.confidence < LOW_CONF_THRESHOLD || f.isLowConfidence
+    (f) => f.confidence < LOW_CONF_THRESHOLD || f.isLowConfidence,
   ).length;
 
   const matieres = activeFields.filter((f) => f.key === "matiere");
@@ -413,6 +411,7 @@ export function BulletinRecapEditor({
   }
 
   function handleMatiereChange(matiereIndex: number, newValue: string) {
+    if (!recap) return;
     let mIdx = -1;
     const newFields = activeFields.map((f) => {
       if (f.key === "matiere") {
@@ -425,6 +424,7 @@ export function BulletinRecapEditor({
   }
 
   function handleNoteChange(matiereIndex: number, newValue: string) {
+    if (!recap) return;
     let mIdx = -1;
     let captured = false;
     const newFields = activeFields.map((f) => {
@@ -443,6 +443,7 @@ export function BulletinRecapEditor({
   }
 
   function handleAppreciationChange(matiereIndex: number, newValue: string) {
+    if (!recap) return;
     let mIdx = -1;
     let captured = false;
     const newFields = activeFields.map((f) => {
@@ -461,6 +462,7 @@ export function BulletinRecapEditor({
   }
 
   function handleRemoveMatiere(matiereIndex: number) {
+    if (!recap) return;
     let mIdx = -1;
     let skip = false;
     const removed: NormalizedField[] = [];
@@ -468,7 +470,10 @@ export function BulletinRecapEditor({
       if (f.key === "matiere") {
         mIdx++;
         skip = mIdx === matiereIndex;
-        if (skip) { removed.push(f); return false; }
+        if (skip) {
+          removed.push(f);
+          return false;
+        }
       }
       if (skip && (f.key === "note" || f.key === "appreciation")) {
         removed.push(f);
@@ -487,6 +492,7 @@ export function BulletinRecapEditor({
   }
 
   function handleUndo() {
+    if (!recap) return;
     if (!undoEntry) return;
     clearTimeout(undoEntry.timeoutId);
     // Restore: append removed fields back
@@ -496,6 +502,7 @@ export function BulletinRecapEditor({
   }
 
   function handleAddSubject(name: string, canonicalId?: string) {
+    if (!recap) return;
     const newFields: NormalizedField[] = [
       ...activeFields,
       {
@@ -514,10 +521,10 @@ export function BulletinRecapEditor({
 
   return (
     <section aria-label="Récapitulatif des bulletins" className="flex flex-col gap-4">
-      <h2 className="text-[var(--text-h2)] font-semibold text-[var(--color-text)]">
+      <h2 className="font-semibold text-[var(--color-text)] text-[var(--text-h2)]">
         Voilà ce qu&apos;on a lu
       </h2>
-      <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
+      <p className="text-[var(--color-text-muted)] text-[var(--text-body)]">
         Corrige si besoin — on peut se tromper. Toi seul·e sais ce qui est juste.
       </p>
 
@@ -530,7 +537,7 @@ export function BulletinRecapEditor({
           <button
             type="button"
             onClick={scrollToFirstWarning}
-            className="ml-1 underline underline-offset-2 text-[var(--color-brand)]"
+            className="ml-1 text-[var(--color-brand)] underline underline-offset-2"
           >
             Voir les champs
           </button>
@@ -538,10 +545,7 @@ export function BulletinRecapEditor({
       )}
 
       {recaps.length > 1 && (
-        <Tabs
-          value={String(activeIndex)}
-          onValueChange={(v) => onActiveChange(Number(v))}
-        >
+        <Tabs value={String(activeIndex)} onValueChange={(v) => onActiveChange(Number(v))}>
           <TabsList>
             {recaps.map((r, i) => (
               <TabsTrigger key={r.bulletinId} value={String(i)}>
@@ -562,13 +566,19 @@ export function BulletinRecapEditor({
 
       {/* Subject table — valid HTML: no <ul> inside <tbody> */}
       <div className="overflow-x-auto">
-        <table ref={tableRef} className="w-full text-sm border-collapse">
+        <table ref={tableRef} className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th scope="col" className="text-left text-xs font-medium text-[var(--color-text-muted)] pb-1">
+              <th
+                scope="col"
+                className="pb-1 text-left text-xs font-medium text-[var(--color-text-muted)]"
+              >
                 Matière
               </th>
-              <th scope="col" className="text-left text-xs font-medium text-[var(--color-text-muted)] pb-1">
+              <th
+                scope="col"
+                className="pb-1 text-left text-xs font-medium text-[var(--color-text-muted)]"
+              >
                 Note
               </th>
               <th scope="col">
@@ -579,10 +589,7 @@ export function BulletinRecapEditor({
           <tbody>
             {matieres.length === 0 && !isAddingSubject && (
               <tr>
-                <td
-                  colSpan={3}
-                  className="text-center text-[var(--color-text-muted)] py-6 text-sm"
-                >
+                <td colSpan={3} className="py-6 text-center text-sm text-[var(--color-text-muted)]">
                   Aucune matière — commence par en ajouter une ci-dessous.
                 </td>
               </tr>
@@ -622,14 +629,14 @@ export function BulletinRecapEditor({
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] bg-[var(--color-bg-subtle)] border border-[var(--color-border)] rounded-md px-3 py-2"
+          className="flex items-center gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-bg-subtle)] px-3 py-2 text-sm text-[var(--color-text-muted)]"
         >
           <Undo2 className="size-4 shrink-0" aria-hidden />
           <span>« {undoEntry.label} » supprimé</span>
           <button
             type="button"
             onClick={handleUndo}
-            className="ml-auto text-[var(--color-brand)] underline underline-offset-2 text-xs focus-visible:outline-[var(--color-brand)]"
+            className="ml-auto text-xs text-[var(--color-brand)] underline underline-offset-2 focus-visible:outline-[var(--color-brand)]"
           >
             Annuler
           </button>
@@ -643,23 +650,23 @@ export function BulletinRecapEditor({
         onClick={() => setIsAddingSubject(true)}
         disabled={isAddingSubject}
       >
-        <Plus className="size-4 mr-1" aria-hidden />
+        <Plus className="mr-1 size-4" aria-hidden />
         Ajouter une matière manquante
       </Button>
 
-      <div className="sticky bottom-0 bg-[var(--color-bg)] pt-4 pb-6 border-t border-[var(--color-border)]">
+      <div className="sticky bottom-0 border-t border-[var(--color-border)] bg-[var(--color-bg)] pb-6 pt-4">
         {allValidated ? (
           <Button onClick={onAllValidated} className="w-full" size="lg">
             Terminer l&apos;onboarding →
           </Button>
         ) : (
           <Button
-            onClick={() => onValidate(recap.bulletinId)}
-            disabled={recap.validated || matieres.length === 0}
+            onClick={() => recap && onValidate(recap.bulletinId)}
+            disabled={!recap || recap.validated || matieres.length === 0}
             className="w-full"
             size="lg"
           >
-            {recap.validated ? "✓ Trimestre validé" : "Valider ce trimestre →"}
+            {recap?.validated ? "✓ Trimestre validé" : "Valider ce trimestre →"}
           </Button>
         )}
       </div>

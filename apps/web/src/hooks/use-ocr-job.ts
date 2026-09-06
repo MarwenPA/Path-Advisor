@@ -23,10 +23,9 @@ export type OCRStatusResponse = {
 };
 
 async function fetchOCRStatus(bulletinId: string): Promise<OCRStatusResponse> {
-  const res = await fetch(
-    `/api/v1/students/me/bulletins/ocr/status?bulletin_id=${bulletinId}`,
-    { credentials: "include" }
-  );
+  const res = await fetch(`/api/v1/students/me/bulletins/ocr/status?bulletin_id=${bulletinId}`, {
+    credentials: "include",
+  });
   if (!res.ok) throw new Error(`OCR status fetch failed: ${res.status}`);
   return res.json();
 }
@@ -63,12 +62,10 @@ export function useOCRJobs(bulletinIds: string[]) {
     })),
   });
 
-  const allDone =
-    queries.length > 0 && queries.every((q) => isTerminal(q.data?.status));
-  const allSucceeded =
-    queries.length > 0 && queries.every((q) => q.data?.status === "succeeded");
+  const allDone = queries.length > 0 && queries.every((q) => isTerminal(q.data?.status));
+  const allSucceeded = queries.length > 0 && queries.every((q) => q.data?.status === "succeeded");
   const anyFailed = queries.some(
-    (q) => q.data?.status === "failed" || q.data?.status === "timeout"
+    (q) => q.data?.status === "failed" || q.data?.status === "timeout",
   );
   const firstStatus = queries[0]?.data?.status;
 

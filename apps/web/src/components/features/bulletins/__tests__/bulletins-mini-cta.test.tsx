@@ -24,12 +24,7 @@ describe("BulletinsMiniCTA", () => {
       isLoading: false,
     } as unknown as MockReturn);
 
-    wrap(
-      <BulletinsMiniCTA
-        context="graph"
-        onAddClick={vi.fn()}
-      />
-    );
+    wrap(<BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />);
 
     expect(screen.getByRole("complementary")).toBeInTheDocument();
     expect(screen.getByText(/ajoute tes bulletins/i)).toBeInTheDocument();
@@ -41,12 +36,7 @@ describe("BulletinsMiniCTA", () => {
       isLoading: false,
     } as unknown as MockReturn);
 
-    wrap(
-      <BulletinsMiniCTA
-        context="graph"
-        onAddClick={vi.fn()}
-      />
-    );
+    wrap(<BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />);
 
     expect(screen.queryByRole("complementary")).toBeNull();
   });
@@ -93,9 +83,7 @@ describe("BulletinsMiniCTA", () => {
       isLoading: false,
     } as unknown as MockReturn);
 
-    const { container } = wrap(
-      <BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />
-    );
+    const { container } = wrap(<BulletinsMiniCTA context="graph" onAddClick={vi.fn()} />);
 
     const text = container.textContent?.toLowerCase() ?? "";
     const forbidden = ["incomplet", "débloque", "vraies stats", "profil dégradé", "%"];

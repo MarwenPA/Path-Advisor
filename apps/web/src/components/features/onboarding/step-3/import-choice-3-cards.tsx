@@ -51,7 +51,7 @@ type Props = {
 export function ImportChoice3Cards({ onSelect, className }: Props) {
   return (
     <nav aria-label="Options d'import bulletins" className={cn("flex flex-col gap-4", className)}>
-      <ul className="flex flex-col gap-4 list-none p-0 m-0">
+      <ul className="m-0 flex list-none flex-col gap-4 p-0">
         {CARDS.map((card) => (
           <li key={card.id}>
             <button
@@ -60,23 +60,23 @@ export function ImportChoice3Cards({ onSelect, className }: Props) {
               onClick={() => onSelect(card.id)}
               className={cn(
                 // Identical visual treatment for all 3 cards — no ribbon, no color distinction (AC1)
-                "w-full text-left rounded-[var(--radius-lg)] border border-[var(--color-border)]",
-                "bg-[var(--color-bg-2)] p-6 min-h-[80px]",
+                "w-full rounded-[var(--radius-lg)] border border-[var(--color-border)] text-left",
+                "min-h-[80px] bg-[var(--color-bg-2)] p-6",
                 "flex items-start gap-4",
-                "focus-visible:outline-2 focus-visible:outline-[var(--color-brand)] focus-visible:outline-offset-2",
-                "hover:bg-[var(--color-bg-3)] transition-colors duration-150",
-                "cursor-pointer"
+                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)]",
+                "transition-colors duration-150 hover:bg-[var(--color-bg-3)]",
+                "cursor-pointer",
               )}
             >
               <span className="mt-0.5 shrink-0">{card.icon}</span>
               <span className="flex flex-col gap-1">
-                <span className="text-[var(--text-h3)] font-semibold text-[var(--color-text)]">
+                <span className="font-semibold text-[var(--color-text)] text-[var(--text-h3)]">
                   {card.title}
                 </span>
-                <span className="text-[var(--text-body)] text-[var(--color-text-muted)]">
+                <span className="text-[var(--color-text-muted)] text-[var(--text-body)]">
                   {card.description}
                 </span>
-                <span className="text-[var(--text-caption)] text-[var(--color-text-subtle)]">
+                <span className="text-[var(--color-text-subtle)] text-[var(--text-caption)]">
                   {card.timing}
                 </span>
               </span>

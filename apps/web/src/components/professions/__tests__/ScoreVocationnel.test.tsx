@@ -352,9 +352,7 @@ describe("AC6 — accessibilité", () => {
 
   it("les chips signaux ont role=button et aria-label", () => {
     setup({ variant: "expanded" });
-    expect(
-      screen.getByRole("button", { name: "Signal contributif : SVT" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Signal contributif : SVT" })).toBeInTheDocument();
   });
 
   it("le bouton copier n'a pas de role=button redondant (ARIA-in-HTML)", () => {

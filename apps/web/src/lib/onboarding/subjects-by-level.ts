@@ -35,7 +35,12 @@ const TRONC_LYCEE_2NDE: MatiereDef[] = [
   { id: "anglais_lv1", label: "Anglais LV1", is_specialite: false, is_optional: false },
   { id: "lv2", label: "LV2", is_specialite: false, is_optional: false },
   { id: "eps", label: "EPS", is_specialite: false, is_optional: false },
-  { id: "enseignement_scientifique", label: "Enseignement scientifique", is_specialite: false, is_optional: false },
+  {
+    id: "enseignement_scientifique",
+    label: "Enseignement scientifique",
+    is_specialite: false,
+    is_optional: false,
+  },
 ];
 
 const TRONC_LYCEE_GENERAL_1ERE_TLE: MatiereDef[] = [
@@ -45,15 +50,30 @@ const TRONC_LYCEE_GENERAL_1ERE_TLE: MatiereDef[] = [
   { id: "anglais_lv1", label: "Anglais LV1", is_specialite: false, is_optional: false },
   { id: "lv2", label: "LV2", is_specialite: false, is_optional: false },
   { id: "eps", label: "EPS", is_specialite: false, is_optional: false },
-  { id: "enseignement_scientifique", label: "Enseignement scientifique", is_specialite: false, is_optional: false },
+  {
+    id: "enseignement_scientifique",
+    label: "Enseignement scientifique",
+    is_specialite: false,
+    is_optional: false,
+  },
 ];
 
 // ─── Spécialités lycée général ─────────────────────────────────────────────
 
 const GENERAL_SPECIALITES: Record<string, MatiereDef> = {
-  mathematiques: { id: "mathematiques", label: "Mathématiques", is_specialite: true, is_optional: false },
+  mathematiques: {
+    id: "mathematiques",
+    label: "Mathématiques",
+    is_specialite: true,
+    is_optional: false,
+  },
   svt: { id: "svt", label: "SVT", is_specialite: true, is_optional: false },
-  physique_chimie: { id: "physique_chimie", label: "Physique-Chimie", is_specialite: true, is_optional: false },
+  physique_chimie: {
+    id: "physique_chimie",
+    label: "Physique-Chimie",
+    is_specialite: true,
+    is_optional: false,
+  },
   hggsp: { id: "hggsp", label: "HGGSP", is_specialite: true, is_optional: false },
   ses: { id: "ses", label: "SES", is_specialite: true, is_optional: false },
   humanites_litterature_philosophie: {
@@ -96,7 +116,12 @@ const TRONC_TECHNO_STMG: MatiereDef[] = [
   { id: "management", label: "Management", is_specialite: false, is_optional: false },
   { id: "gestion_finance", label: "Gestion-Finance", is_specialite: false, is_optional: false },
   { id: "mercatique", label: "Mercatique", is_specialite: false, is_optional: false },
-  { id: "systemes_info_gestion", label: "Systèmes d'information de gestion", is_specialite: false, is_optional: false },
+  {
+    id: "systemes_info_gestion",
+    label: "Systèmes d'information de gestion",
+    is_specialite: false,
+    is_optional: false,
+  },
   { id: "anglais_lv1", label: "Anglais LV1", is_specialite: false, is_optional: false },
   { id: "eps", label: "EPS", is_specialite: false, is_optional: false },
   { id: "histoire_geo", label: "Histoire-Géographie", is_specialite: false, is_optional: false },
@@ -104,7 +129,12 @@ const TRONC_TECHNO_STMG: MatiereDef[] = [
 ];
 
 const TRONC_TECHNO_STI2D: MatiereDef[] = [
-  { id: "innovation_technologique", label: "Innovation technologique", is_specialite: false, is_optional: false },
+  {
+    id: "innovation_technologique",
+    label: "Innovation technologique",
+    is_specialite: false,
+    is_optional: false,
+  },
   { id: "physique_chimie", label: "Physique-Chimie", is_specialite: false, is_optional: false },
   { id: "mathematiques", label: "Mathématiques", is_specialite: false, is_optional: false },
   { id: "anglais_lv1", label: "Anglais LV1", is_specialite: false, is_optional: false },
@@ -117,12 +147,27 @@ const TRONC_TECHNO_STI2D: MatiereDef[] = [
 const OPTIONAL_LYCEE: MatiereDef[] = [
   { id: "latin", label: "Latin", is_specialite: false, is_optional: true },
   { id: "grec", label: "Grec", is_specialite: false, is_optional: true },
-  { id: "maths_complementaires", label: "Maths complémentaires", is_specialite: false, is_optional: true },
+  {
+    id: "maths_complementaires",
+    label: "Maths complémentaires",
+    is_specialite: false,
+    is_optional: true,
+  },
   { id: "maths_expertes", label: "Maths expertes", is_specialite: false, is_optional: true },
-  { id: "section_europeenne", label: "Section européenne", is_specialite: false, is_optional: true },
+  {
+    id: "section_europeenne",
+    label: "Section européenne",
+    is_specialite: false,
+    is_optional: true,
+  },
   { id: "lv3", label: "LV3", is_specialite: false, is_optional: true },
   { id: "arts_plastiques", label: "Arts plastiques", is_specialite: false, is_optional: true },
-  { id: "cinema_audiovisuel", label: "Cinéma-Audiovisuel", is_specialite: false, is_optional: true },
+  {
+    id: "cinema_audiovisuel",
+    label: "Cinéma-Audiovisuel",
+    is_specialite: false,
+    is_optional: true,
+  },
   { id: "musique", label: "Éducation musicale", is_specialite: false, is_optional: true },
   { id: "theatre", label: "Théâtre", is_specialite: false, is_optional: true },
 ];
@@ -148,7 +193,7 @@ export function getSubjectsForLevel(
   level: string,
   filiere?: string,
   specialites: string[] = [],
-  sousFiliereTechno?: string
+  sousFiliereTechno?: string,
 ): MatiereDef[] {
   if (level === "college_3eme") {
     return TRONC_COLLEGE_3EME;
@@ -183,10 +228,7 @@ export function getSubjectsForLevel(
   return [];
 }
 
-export function getOptionalSubjectsForLevel(
-  level: string,
-  _filiere?: string
-): MatiereDef[] {
+export function getOptionalSubjectsForLevel(level: string, _filiere?: string): MatiereDef[] {
   if (level.startsWith("lycee_") || level === "lycee_2nde") {
     return OPTIONAL_LYCEE;
   }

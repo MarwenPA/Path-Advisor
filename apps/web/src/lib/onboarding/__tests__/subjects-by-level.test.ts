@@ -8,19 +8,13 @@ import {
 
 describe("getSubjectsForLevel", () => {
   it("returns non-empty list for lycee_terminale general", () => {
-    const subjects = getSubjectsForLevel("lycee_terminale", "general", [
-      "mathematiques",
-      "svt",
-    ]);
+    const subjects = getSubjectsForLevel("lycee_terminale", "general", ["mathematiques", "svt"]);
     expect(subjects.length).toBeGreaterThan(0);
     expect(subjects.every((s) => s.id && s.label)).toBe(true);
   });
 
   it("includes declared specialites in the list for terminale general", () => {
-    const subjects = getSubjectsForLevel("lycee_terminale", "general", [
-      "mathematiques",
-      "svt",
-    ]);
+    const subjects = getSubjectsForLevel("lycee_terminale", "general", ["mathematiques", "svt"]);
     const ids = subjects.map((s) => s.id);
     expect(ids).toContain("mathematiques");
     expect(ids).toContain("svt");
@@ -37,12 +31,7 @@ describe("getSubjectsForLevel", () => {
   });
 
   it("returns non-empty list for lycee_terminale techno (STMG)", () => {
-    const subjects = getSubjectsForLevel(
-      "lycee_terminale",
-      "technologique",
-      [],
-      "STMG"
-    );
+    const subjects = getSubjectsForLevel("lycee_terminale", "technologique", [], "STMG");
     expect(subjects.length).toBeGreaterThan(0);
   });
 
@@ -52,17 +41,13 @@ describe("getSubjectsForLevel", () => {
   });
 
   it("marks specialites with is_specialite=true", () => {
-    const subjects = getSubjectsForLevel("lycee_terminale", "general", [
-      "mathematiques",
-    ]);
+    const subjects = getSubjectsForLevel("lycee_terminale", "general", ["mathematiques"]);
     const maths = subjects.find((s) => s.id === "mathematiques");
     expect(maths?.is_specialite).toBe(true);
   });
 
   it("marks tronc commun subjects with is_specialite=false", () => {
-    const subjects = getSubjectsForLevel("lycee_terminale", "general", [
-      "mathematiques",
-    ]);
+    const subjects = getSubjectsForLevel("lycee_terminale", "general", ["mathematiques"]);
     const philo = subjects.find((s) => s.id === "philosophie");
     expect(philo?.is_specialite).toBe(false);
   });

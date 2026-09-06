@@ -4,10 +4,7 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import {
-  ProfileMaturityIndicator,
-  type MaturityNextAction,
-} from "../profile-maturity-indicator";
+import { ProfileMaturityIndicator, type MaturityNextAction } from "../profile-maturity-indicator";
 
 const BASE_ACTIONS: MaturityNextAction[] = [
   {
@@ -61,18 +58,10 @@ describe("ProfileMaturityIndicator — API contract (AC1)", () => {
 describe("ProfileMaturityIndicator variant profile-header (AC3)", () => {
   it("shows description and CTA button for non-complete levels", () => {
     render(
-      <ProfileMaturityIndicator
-        level="base"
-        nextActions={BASE_ACTIONS}
-        variant="profile-header"
-      />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
-    expect(
-      screen.getByText(/Tu as l'essentiel pour des recos indicatives/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Voir comment compléter/i })
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Tu as l'essentiel pour des recos indicatives/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Voir comment compléter/i })).toBeInTheDocument();
   });
 
   it("does not show CTA button when level is complete", () => {
@@ -82,10 +71,10 @@ describe("ProfileMaturityIndicator variant profile-header (AC3)", () => {
         nextActions={[]}
         variant="profile-header"
         showCallToAction={false}
-      />
+      />,
     );
     expect(
-      screen.queryByRole("button", { name: /Voir comment compléter/i })
+      screen.queryByRole("button", { name: /Voir comment compléter/i }),
     ).not.toBeInTheDocument();
   });
 });
@@ -97,11 +86,7 @@ describe("ProfileMaturityIndicator variant profile-header (AC3)", () => {
 describe("ProfileMaturityIndicator — nextActions expand (AC4)", () => {
   it("expands list on CTA click and shows actions", () => {
     render(
-      <ProfileMaturityIndicator
-        level="base"
-        nextActions={BASE_ACTIONS}
-        variant="profile-header"
-      />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Voir comment compléter/i }));
     expect(screen.getByText("Ajoute un bulletin")).toBeInTheDocument();
@@ -114,7 +99,7 @@ describe("ProfileMaturityIndicator — nextActions expand (AC4)", () => {
       { icon: "bulletins", label: "Ajoute un bulletin", benefit: "Tes stats", onClick: handler },
     ];
     render(
-      <ProfileMaturityIndicator level="base" nextActions={actions} variant="profile-header" />
+      <ProfileMaturityIndicator level="base" nextActions={actions} variant="profile-header" />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Voir comment compléter/i }));
     fireEvent.click(screen.getByText("Ajoute un bulletin"));
@@ -123,11 +108,7 @@ describe("ProfileMaturityIndicator — nextActions expand (AC4)", () => {
 
   it("collapses list on Plier click", () => {
     render(
-      <ProfileMaturityIndicator
-        level="base"
-        nextActions={BASE_ACTIONS}
-        variant="profile-header"
-      />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Voir comment compléter/i }));
     expect(screen.getByText("Ajoute un bulletin")).toBeInTheDocument();
@@ -147,21 +128,17 @@ describe("ProfileMaturityIndicator variant dashboard-card (AC5)", () => {
         level="enriched"
         nextActions={ENRICHED_ACTIONS}
         variant="dashboard-card"
-      />
+      />,
     );
     expect(screen.getByText(/Profil enrichi/i)).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Voir comment compléter/i })
+      screen.queryByRole("button", { name: /Voir comment compléter/i }),
     ).not.toBeInTheDocument();
   });
 
   it("returns null when level is complete (anti-noise AC5)", () => {
     const { container } = render(
-      <ProfileMaturityIndicator
-        level="complete"
-        nextActions={[]}
-        variant="dashboard-card"
-      />
+      <ProfileMaturityIndicator level="complete" nextActions={[]} variant="dashboard-card" />,
     );
     expect(container.firstChild).toBeNull();
   });
@@ -178,11 +155,11 @@ describe("ProfileMaturityIndicator variant inline-compact (AC6)", () => {
         level="enriched"
         nextActions={ENRICHED_ACTIONS}
         variant="inline-compact"
-      />
+      />,
     );
     expect(screen.getByText("Profil enrichi")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /Voir comment compléter/i })
+      screen.queryByRole("button", { name: /Voir comment compléter/i }),
     ).not.toBeInTheDocument();
   });
 });
@@ -202,7 +179,9 @@ describe("ProfileMaturityIndicator — forbidden words runtime check (AC3)", () 
         onClick: vi.fn(),
       },
     ];
-    render(<ProfileMaturityIndicator level="base" nextActions={badActions} variant="profile-header" />);
+    render(
+      <ProfileMaturityIndicator level="base" nextActions={badActions} variant="profile-header" />,
+    );
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
@@ -215,7 +194,7 @@ describe("ProfileMaturityIndicator — forbidden words runtime check (AC3)", () 
 describe("ProfileMaturityIndicator — accessibility (AC7)", () => {
   it("CTA button has aria-expanded false initially", () => {
     render(
-      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
     const btn = screen.getByRole("button", { name: /Voir comment compléter/i });
     expect(btn).toHaveAttribute("aria-expanded", "false");
@@ -223,7 +202,7 @@ describe("ProfileMaturityIndicator — accessibility (AC7)", () => {
 
   it("CTA button has aria-expanded true after click", () => {
     render(
-      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
     const btn = screen.getByRole("button", { name: /Voir comment compléter/i });
     fireEvent.click(btn);
@@ -232,7 +211,7 @@ describe("ProfileMaturityIndicator — accessibility (AC7)", () => {
 
   it("container has role region with label", () => {
     render(
-      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />
+      <ProfileMaturityIndicator level="base" nextActions={BASE_ACTIONS} variant="profile-header" />,
     );
     expect(screen.getByRole("region")).toBeInTheDocument();
   });

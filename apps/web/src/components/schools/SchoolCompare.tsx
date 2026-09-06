@@ -33,7 +33,7 @@ function renderFieldValue(school: School, key: keyof School): string {
 export function SchoolCompare({ schools }: SchoolCompareProps) {
   const [selected, setSelected] = useState<string[]>([]);
 
-  const comparing = schools.filter((s) => selected.includes(s.id));
+  const comparing = schools.filter((s) => !!s.id && selected.includes(s.id));
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -59,7 +59,7 @@ export function SchoolCompare({ schools }: SchoolCompareProps) {
             key={s.id}
             school={s}
             variant="compare"
-            isSelected={selected.includes(s.id)}
+            isSelected={!!s.id && selected.includes(s.id)}
             onSelect={toggleSelect}
           />
         ))}

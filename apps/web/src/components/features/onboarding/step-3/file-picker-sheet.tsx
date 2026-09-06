@@ -4,13 +4,7 @@ import { FileText, Image as ImageIcon, X } from "lucide-react";
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const MAX_FILES = 6;
@@ -86,17 +80,25 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
   const hasError = files.some((f) => f.error);
 
   return (
-    <Sheet open={open} onOpenChange={(isOpen) => { if (!isOpen) onCancel(); }}>
-      <SheetContent side="bottom" className="rounded-t-[var(--radius-lg)] max-h-[90dvh] overflow-y-auto">
+    <Sheet
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onCancel();
+      }}
+    >
+      <SheetContent
+        side="bottom"
+        className="max-h-[90dvh] overflow-y-auto rounded-t-[var(--radius-lg)]"
+      >
         <SheetHeader>
           <SheetTitle className="text-[var(--text-h3)]">Tes bulletins</SheetTitle>
-          <p className="text-[var(--text-body)] text-[var(--color-text-muted)]">
+          <p className="text-[var(--color-text-muted)] text-[var(--text-body)]">
             Jusqu&apos;à 6 fichiers. PDF, JPEG, PNG ou HEIC.
           </p>
         </SheetHeader>
 
         {/* Input controls */}
-        <div className="flex flex-col gap-3 mt-6">
+        <div className="mt-6 flex flex-col gap-3">
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="secondary"
@@ -137,7 +139,7 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
 
         {/* File list */}
         {files.length > 0 && (
-          <ul className="mt-6 flex flex-col gap-2 list-none p-0" aria-label="Fichiers sélectionnés">
+          <ul className="mt-6 flex list-none flex-col gap-2 p-0" aria-label="Fichiers sélectionnés">
             {files.map((entry) => (
               <li
                 key={entry.id}
@@ -145,12 +147,12 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
                   "flex items-center gap-3 rounded-[var(--radius-md)] border p-3",
                   entry.error
                     ? "border-[var(--color-warning)] bg-[var(--color-warning-bg)]"
-                    : "border-[var(--color-border)] bg-[var(--color-bg-2)]"
+                    : "border-[var(--color-border)] bg-[var(--color-bg-2)]",
                 )}
               >
                 <span className="shrink-0">{fileIcon(entry.file)}</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-sm font-medium text-[var(--color-text)] truncate">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-[var(--color-text)]">
                     {truncate(entry.file.name)}
                   </span>
                   {entry.error ? (
@@ -166,16 +168,16 @@ export function FilePickerSheet({ open, files, onFilesChange, onLaunch, onCancel
                   aria-label={`Supprimer ${entry.file.name}`}
                   onClick={() => removeFile(entry.id)}
                   className={cn(
-                    "shrink-0 p-2 rounded-[var(--radius-sm)]",
+                    "shrink-0 rounded-[var(--radius-sm)] p-2",
                     "text-[var(--color-text-muted)] hover:text-[var(--color-text)]",
-                    "focus-visible:outline-2 focus-visible:outline-[var(--color-brand)]"
+                    "focus-visible:outline-2 focus-visible:outline-[var(--color-brand)]",
                   )}
                 >
                   <X className="size-4" aria-hidden />
                 </button>
               </li>
             ))}
-            <p className="text-xs text-right text-[var(--color-text-subtle)]">
+            <p className="text-right text-xs text-[var(--color-text-subtle)]">
               {validFiles.length}/{MAX_FILES}
             </p>
           </ul>

@@ -11,7 +11,14 @@ import {
   type OnboardingStep2Patch,
   type OnboardingStep2Snapshot,
 } from "@/lib/api/onboarding";
-import type { NiveauId, FiliereId, Track3emeId, SousFiliereId, PostbacYearId, PostbacFormationId } from "@/lib/onboarding/levels";
+import type {
+  NiveauId,
+  FiliereId,
+  Track3emeId,
+  SousFiliereId,
+  PostbacYearId,
+  PostbacFormationId,
+} from "@/lib/onboarding/levels";
 import { REF_VERSION, expectedSpecCount, requiresSousFiliere } from "@/lib/onboarding/levels";
 
 const DRAFT_STORAGE_PREFIX = "onboarding_step2_draft";
@@ -101,13 +108,22 @@ function snapshotToDraft(snapshot: OnboardingStep2Snapshot): Step2Draft {
 
 /** Whether the draft satisfies completion requirements for its branch. */
 export function isDraftComplete(draft: Step2Draft): boolean {
-  const { level, filiere, sous_filiere_techno, specialites, intended_track, postbac_year, postbac_formation_type } = draft;
+  const {
+    level,
+    filiere,
+    sous_filiere_techno,
+    specialites,
+    intended_track,
+    postbac_year,
+    postbac_formation_type,
+  } = draft;
   if (!level) return false;
   if (level === "college_3eme") return !!intended_track;
   if (level === "postbac") return !!postbac_year && !!postbac_formation_type;
   // lycee
   if (!filiere) return false;
-  if (filiere === "techno" && requiresSousFiliere(level, filiere) && !sous_filiere_techno) return false;
+  if (filiere === "techno" && requiresSousFiliere(level, filiere) && !sous_filiere_techno)
+    return false;
   const expected = expectedSpecCount(level, filiere);
   if (expected !== null && specialites.length !== expected) return false;
   return true;
@@ -136,11 +152,17 @@ export type UseOnboardingStep2Return = {
   isDraftComplete: boolean;
 };
 
-export function useOnboardingStep2({ userId }: UseOnboardingStep2Options): UseOnboardingStep2Return {
+export function useOnboardingStep2({
+  userId,
+}: UseOnboardingStep2Options): UseOnboardingStep2Return {
   const queryClient = useQueryClient();
   const draftKey = draftKeyFor(userId);
 
-  const { data: snapshot, isLoading, isError } = useQuery({
+  const {
+    data: snapshot,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["onboarding", "step2", userId],
     queryFn: ({ signal }) => fetchOnboardingStep2Snapshot(signal),
     enabled: !!userId,

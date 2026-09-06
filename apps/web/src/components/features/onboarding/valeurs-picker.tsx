@@ -64,9 +64,7 @@ export function ValeursPicker({ selected, onChange }: ValeursPickerProps) {
                   "flex w-full items-start gap-3 rounded-md border bg-bg-2 px-4 py-4 text-left",
                   "min-h-14 transition-colors duration-instant ease-standard",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  isSelected
-                    ? "border-brand bg-brand/5"
-                    : "border-border hover:bg-bg-3",
+                  isSelected ? "border-brand bg-brand/5" : "border-border hover:bg-bg-3",
                   isDisabled && "cursor-not-allowed opacity-60",
                 )}
               >
@@ -90,11 +88,7 @@ export function ValeursPicker({ selected, onChange }: ValeursPickerProps) {
       {/* Pass 1 M4 — dedicated warning helper next to the list when the
           5-max is reached. */}
       {isAtMax ? (
-        <p
-          role="note"
-          className="text-caption text-warning"
-          data-testid="valeurs-max-helper"
-        >
+        <p role="note" className="text-caption text-warning" data-testid="valeurs-max-helper">
           Maximum {MAX_VALEURS} — désélectionne pour en changer.
         </p>
       ) : null}

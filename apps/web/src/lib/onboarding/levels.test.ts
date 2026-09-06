@@ -35,7 +35,7 @@ describe("LEVELS referential", () => {
 describe("TRACKS_3EME referential", () => {
   it("has exactly 4 items", () => expect(TRACKS_3EME).toHaveLength(4));
   it("includes undecided as last item", () => {
-    expect(TRACKS_3EME[TRACKS_3EME.length - 1].id).toBe("undecided");
+    expect(TRACKS_3EME[TRACKS_3EME.length - 1]?.id).toBe("undecided");
   });
 });
 
@@ -87,7 +87,7 @@ describe("POSTBAC_YEARS referential", () => {
 describe("POSTBAC_FORMATIONS referential", () => {
   it("has exactly 9 items", () => expect(POSTBAC_FORMATIONS).toHaveLength(9));
   it("includes aucune as last", () => {
-    expect(POSTBAC_FORMATIONS[POSTBAC_FORMATIONS.length - 1].id).toBe("aucune");
+    expect(POSTBAC_FORMATIONS[POSTBAC_FORMATIONS.length - 1]?.id).toBe("aucune");
   });
 });
 

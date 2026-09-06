@@ -9,6 +9,8 @@
  * TODO(story-4-12): replace with <ParcoursCard> once Story 4.12 ships.
  */
 
+import Link from "next/link";
+
 import { apiFetch } from "@/lib/api/client";
 import { FicheEcole } from "@/components/schools/FicheEcole";
 import type { School } from "@/lib/api/schools";
@@ -32,12 +34,12 @@ export default async function MesParisPage() {
             Tu n&apos;as pas encore exploré tes premiers paris. Va voir tes métiers recommandés et
             clique sur &laquo;&nbsp;Voir le parcours&nbsp;&raquo;.
           </p>
-          <a
+          <Link
             href="/mes-metiers"
             className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             Voir mes métiers
-          </a>
+          </Link>
         </div>
       ) : (
         <ul className="space-y-4">

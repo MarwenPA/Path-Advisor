@@ -31,9 +31,7 @@ export interface BadgeProps
 const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "span";
-    return (
-      <Comp ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />
-    );
+    return <Comp ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />;
   },
 );
 Badge.displayName = "Badge";

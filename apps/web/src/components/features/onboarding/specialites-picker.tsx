@@ -31,17 +31,13 @@ export function SpecialitesPicker({
       const isNowSelected = !selected.includes(id);
       const newCount = isNowSelected ? count + 1 : count - 1;
       announcerRef.current.textContent = isNowSelected
-        ? `${item.shortLabel ?? item.label} sélectionné, ${newCount} sur ${expectedCount} spécialité${expectedCount > 1 ? "s" : ""} à choisir.`
-        : `${item.shortLabel ?? item.label} désélectionné, ${newCount} sur ${expectedCount}.`;
+        ? `${"shortLabel" in item ? item.shortLabel : item.label} sélectionné, ${newCount} sur ${expectedCount} spécialité${expectedCount > 1 ? "s" : ""} à choisir.`
+        : `${"shortLabel" in item ? item.shortLabel : item.label} désélectionné, ${newCount} sur ${expectedCount}.`;
     }
   };
 
   return (
-    <div
-      role="group"
-      aria-labelledby="spes-heading"
-      className="flex flex-col gap-3"
-    >
+    <div role="group" aria-labelledby="spes-heading" className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <p id="spes-heading" className="text-body-sm text-text-muted">
           {filiere === "pro"
@@ -76,8 +72,8 @@ export function SpecialitesPicker({
                 isSelected
                   ? "border-brand bg-brand text-white"
                   : atCap
-                  ? "cursor-not-allowed border-border text-text-subtle opacity-40"
-                  : "border-border bg-bg-2 text-text hover:border-brand",
+                    ? "cursor-not-allowed border-border text-text-subtle opacity-40"
+                    : "border-border bg-bg-2 text-text hover:border-brand",
               ].join(" ")}
             >
               {"shortLabel" in item ? (item as { shortLabel: string }).shortLabel : item.label}

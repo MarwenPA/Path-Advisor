@@ -84,7 +84,7 @@ beforeEach(() => {
     observe = vi.fn();
     unobserve = vi.fn();
     disconnect = vi.fn();
-     
+
     constructor(..._: unknown[]) {}
   }
   vi.stubGlobal("IntersectionObserver", MockIO);

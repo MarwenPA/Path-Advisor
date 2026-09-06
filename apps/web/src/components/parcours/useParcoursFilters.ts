@@ -43,7 +43,8 @@ export function useParcoursFilters(parcoursList: Parcours[], filters: ParcoursFi
       // ── Selectivity filter ──────────────────────────────────────────────────
       if (filters.selectivity !== "all") {
         const allowed = SELECTIVITY_MAP[filters.selectivity];
-        if (!allowed.includes(p.target_school_selectivity)) return false;
+        if (p.target_school_selectivity === null || !allowed.includes(p.target_school_selectivity))
+          return false;
       }
 
       // ── Mode filter (multi-select — both can be active simultaneously) ──────

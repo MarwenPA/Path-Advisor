@@ -7,14 +7,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOnboardingStep1 } from "@/hooks/use-onboarding-step-1";
-import {
-  getOnboardingCopy,
-  type SchoolLevel,
-} from "@/lib/onboarding/level-adapter";
-import {
-  MIN_PASSIONS,
-  MIN_VALEURS,
-} from "@/lib/onboarding/referentials";
+import { getOnboardingCopy, type SchoolLevel } from "@/lib/onboarding/level-adapter";
+import { MIN_PASSIONS, MIN_VALEURS } from "@/lib/onboarding/referentials";
 import { ApiError } from "@/lib/api/client";
 import type { OnboardingInterets } from "@/lib/api/onboarding";
 import { cn } from "@/lib/utils";
@@ -61,14 +55,8 @@ export type OnboardingStep1Props = {
 
 export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   const router = useRouter();
-  const {
-    snapshot,
-    isLoading,
-    submit,
-    isSubmitting,
-    submitError,
-    submitErrorKind,
-  } = useOnboardingStep1(userId);
+  const { snapshot, isLoading, submit, isSubmitting, submitError, submitErrorKind } =
+    useOnboardingStep1(userId);
 
   const copy = React.useMemo(() => getOnboardingCopy(SCHOOL_LEVEL), []);
 
@@ -78,15 +66,15 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   // Pass 1 M14 — clone the array on init to break the reference shared with
   // the snapshot. A snapshot mutation upstream (TanStack structural-sharing
   // edge case, or a foot-gun caller) would otherwise leak into the draft.
-  const [passionsDraft, setPassionsDraft] = React.useState<readonly string[]>(
-    () => [...snapshot.passions],
-  );
-  const [valeursDraft, setValeursDraft] = React.useState<readonly string[]>(
-    () => [...snapshot.valeurs],
-  );
-  const [interetsDraft, setInteretsDraft] = React.useState<OnboardingInterets>(
-    () => ({ ...snapshot.interets }),
-  );
+  const [passionsDraft, setPassionsDraft] = React.useState<readonly string[]>(() => [
+    ...snapshot.passions,
+  ]);
+  const [valeursDraft, setValeursDraft] = React.useState<readonly string[]>(() => [
+    ...snapshot.valeurs,
+  ]);
+  const [interetsDraft, setInteretsDraft] = React.useState<OnboardingInterets>(() => ({
+    ...snapshot.interets,
+  }));
 
   // Substep state — derived from snapshot status on first render, then
   // owned by local state. `prevSnapshotStatus` tracks the last value we
@@ -216,7 +204,10 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
   // the one-tick-behind race that made Pass 1's M6 a no-op for the very
   // first 4xx.
   const isClientError = (err: unknown): boolean =>
-    err instanceof ApiError && typeof err.status === "number" && err.status >= 400 && err.status < 500;
+    err instanceof ApiError &&
+    typeof err.status === "number" &&
+    err.status >= 400 &&
+    err.status < 500;
 
   const handleContinuePassions = async () => {
     if (passionsDraft.length < MIN_PASSIONS) return;
@@ -290,7 +281,8 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
       ? "Impossible d'enregistrer. Recharge la page et réessaye."
       : submitError && submitErrorKind === "network" && substep !== 3
         ? "Pas de réseau ? Pas grave, on enregistre quand tu reviens."
-        : substep === 3 && [interetsDraft["1"], interetsDraft["2"], interetsDraft["3"]].every((v) => !v)
+        : substep === 3 &&
+            [interetsDraft["1"], interetsDraft["2"], interetsDraft["3"]].every((v) => !v)
           ? "Tu pourras compléter plus tard depuis ton profil."
           : substep === 1 && passionsDraft.length < MIN_PASSIONS
             ? "Sélectionne au moins 3 propositions."
@@ -301,11 +293,7 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
                 : "Tu peux continuer quand tu veux";
 
   const title =
-    substep === 1
-      ? copy.passionsTitle
-      : substep === 2
-        ? copy.valeursTitle
-        : copy.interetsTitle;
+    substep === 1 ? copy.passionsTitle : substep === 2 ? copy.valeursTitle : copy.interetsTitle;
   const subtitle =
     substep === 1
       ? copy.passionsSubtitle
@@ -399,8 +387,11 @@ export function OnboardingStep1({ userId }: OnboardingStep1Props = {}) {
             key={helperBelowCta}
             className={cn(
               "animate-fade-in text-center text-caption sm:text-right",
-              submitError && submitErrorKind === "client" ? "text-danger" :
-              submitError ? "text-warning" : "text-text-subtle",
+              submitError && submitErrorKind === "client"
+                ? "text-danger"
+                : submitError
+                  ? "text-warning"
+                  : "text-text-subtle",
             )}
             data-testid="onboarding-helper"
           >

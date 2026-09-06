@@ -76,192 +76,186 @@ export const initialContext: Step3Context = {
   navigateTo: null,
 };
 
-export const onboardingStep3Machine = createMachine(
-  {
-    id: "onboardingStep3",
-    initial: "idle",
-    types: {} as { context: Step3Context; events: Step3Event },
-    context: initialContext,
+export const onboardingStep3Machine = createMachine({
+  id: "onboardingStep3",
+  initial: "idle",
+  types: {} as { context: Step3Context; events: Step3Event },
+  context: initialContext,
 
-    states: {
-      idle: {
-        on: {
-          SELECT_SCAN: "picking_files",
-          SELECT_MANUAL: {
-            actions: assign({ navigateTo: () => "manual" as const }),
-          },
-          SELECT_LATER: {
-            actions: assign({ navigateTo: () => "later" as const }),
-          },
-          HYDRATE: [
-            {
-              guard: ({ event }) => event.serverState === "ocr_running",
-              target: "ocr_running",
-              actions: assign({
-                bulletinIds: ({ event }) => event.bulletinIds ?? [],
-              }),
-            },
-            {
-              guard: ({ event }) => event.serverState === "recap_editing",
-              target: "recap_editing",
-              actions: assign({
-                bulletinIds: ({ event }) => event.bulletinIds ?? [],
-                recaps: ({ event }) => event.recaps ?? [],
-              }),
-            },
-            {
-              guard: ({ event }) => event.serverState === "fallback",
-              target: "fallback",
-              actions: assign({
-                bulletinIds: ({ event }) => event.bulletinIds ?? [],
-                ocrError: ({ event }) => event.ocrError ?? null,
-              }),
-            },
-          ],
+  states: {
+    idle: {
+      on: {
+        SELECT_SCAN: "picking_files",
+        SELECT_MANUAL: {
+          actions: assign({ navigateTo: () => "manual" as const }),
         },
-      },
-
-      picking_files: {
-        on: {
-          CANCEL_PICKER: "idle",
-          FILES_SELECTED: {
-            actions: assign({
-              files: ({ event }) =>
-                event.files.map((f) => ({
-                  id: crypto.randomUUID(),
-                  file: f,
-                  progress: 0,
-                  status: "pending" as const,
-                })),
-            }),
-          },
-          UPLOAD_START: {
-            // Guard: files must have been selected via FILES_SELECTED (#26)
-            guard: ({ context }) => context.files.length > 0,
-            target: "uploading",
-          },
+        SELECT_LATER: {
+          actions: assign({ navigateTo: () => "later" as const }),
         },
-      },
-
-      uploading: {
-        on: {
-          FILE_PROGRESS: {
-            actions: assign({
-              files: ({ context, event }) =>
-                context.files.map((f) =>
-                  f.id === event.fileId ? { ...f, progress: event.progress } : f
-                ),
-            }),
-          },
-          FILE_DONE: {
-            actions: assign({
-              files: ({ context, event }) =>
-                context.files.map((f) =>
-                  f.id === event.fileId
-                    ? { ...f, status: "done" as const, bulletinId: event.bulletinId, progress: 100 }
-                    : f
-                ),
-            }),
-          },
-          FILE_FAILED: {
-            actions: assign({
-              files: ({ context, event }) =>
-                context.files.map((f) =>
-                  f.id === event.fileId
-                    ? { ...f, status: "failed" as const, error: event.error }
-                    : f
-                ),
-            }),
-          },
-          UPLOADS_COMPLETE: {
+        HYDRATE: [
+          {
+            guard: ({ event }) => event.serverState === "ocr_running",
             target: "ocr_running",
             actions: assign({
-              bulletinIds: ({ event }) => event.bulletinIds,
+              bulletinIds: ({ event }) => event.bulletinIds ?? [],
             }),
           },
-        },
-      },
-
-      ocr_running: {
-        on: {
-          OCR_STARTED: {
-            actions: assign({
-              estimatedSeconds: ({ event }) => event.estimatedSeconds,
-            }),
-          },
-          OCR_SUCCESS: {
+          {
+            guard: ({ event }) => event.serverState === "recap_editing",
             target: "recap_editing",
             actions: assign({
-              recaps: ({ event }) => event.recaps,
-              activeRecapIndex: () => 0,
+              bulletinIds: ({ event }) => event.bulletinIds ?? [],
+              recaps: ({ event }) => event.recaps ?? [],
             }),
           },
-          OCR_FAILED: {
+          {
+            guard: ({ event }) => event.serverState === "fallback",
             target: "fallback",
-            actions: assign({ ocrError: ({ event }) => event.error }),
-          },
-          MANUAL_FALLBACK: {
-            actions: assign({ navigateTo: () => "manual" as const }),
-          },
-        },
-      },
-
-      recap_editing: {
-        on: {
-          FIELD_EDITED: {
             actions: assign({
-              recaps: ({ context, event }) =>
-                context.recaps.map((r) =>
-                  r.bulletinId === event.bulletinId
-                    ? { ...r, draftFields: event.fields }
-                    : r
-                ),
+              bulletinIds: ({ event }) => event.bulletinIds ?? [],
+              ocrError: ({ event }) => event.ocrError ?? null,
             }),
           },
-          VALIDATE_BULLETIN: {
-            actions: assign({
-              recaps: ({ context, event }) =>
-                context.recaps.map((r) =>
-                  r.bulletinId === event.bulletinId ? { ...r, validated: true } : r
-                ),
-              activeRecapIndex: ({ context, event }) => {
-                // Find first unvalidated recap that isn't the one just validated (#13: removed i > 0)
-                const updatedRecaps = context.recaps.map((r) =>
-                  r.bulletinId === event.bulletinId ? { ...r, validated: true } : r
-                );
-                const next = updatedRecaps.findIndex((r) => !r.validated);
-                return next >= 0 ? next : context.activeRecapIndex;
-              },
-            }),
-          },
-          ACTIVATE_TAB: {
-            actions: assign({
-              activeRecapIndex: ({ event }) => event.index,
-            }),
-          },
-          ALL_VALIDATED: "validated",
-        },
-      },
-
-      fallback: {
-        on: {
-          MANUAL_FALLBACK: {
-            actions: assign({ navigateTo: () => "manual" as const }),
-          },
-          RETRY_SCAN: {
-            target: "picking_files",
-            // #9: use function form for assign in XState v5
-            actions: assign(() => ({ ...initialContext })),
-          },
-          SELECT_LATER: {
-            actions: assign({ navigateTo: () => "later" as const }),
-          },
-        },
-      },
-
-      validated: {
-        type: "final",
+        ],
       },
     },
-  }
-);
+
+    picking_files: {
+      on: {
+        CANCEL_PICKER: "idle",
+        FILES_SELECTED: {
+          actions: assign({
+            files: ({ event }) =>
+              event.files.map((f) => ({
+                id: crypto.randomUUID(),
+                file: f,
+                progress: 0,
+                status: "pending" as const,
+              })),
+          }),
+        },
+        UPLOAD_START: {
+          // Guard: files must have been selected via FILES_SELECTED (#26)
+          guard: ({ context }) => context.files.length > 0,
+          target: "uploading",
+        },
+      },
+    },
+
+    uploading: {
+      on: {
+        FILE_PROGRESS: {
+          actions: assign({
+            files: ({ context, event }) =>
+              context.files.map((f) =>
+                f.id === event.fileId ? { ...f, progress: event.progress } : f,
+              ),
+          }),
+        },
+        FILE_DONE: {
+          actions: assign({
+            files: ({ context, event }) =>
+              context.files.map((f) =>
+                f.id === event.fileId
+                  ? { ...f, status: "done" as const, bulletinId: event.bulletinId, progress: 100 }
+                  : f,
+              ),
+          }),
+        },
+        FILE_FAILED: {
+          actions: assign({
+            files: ({ context, event }) =>
+              context.files.map((f) =>
+                f.id === event.fileId ? { ...f, status: "failed" as const, error: event.error } : f,
+              ),
+          }),
+        },
+        UPLOADS_COMPLETE: {
+          target: "ocr_running",
+          actions: assign({
+            bulletinIds: ({ event }) => event.bulletinIds,
+          }),
+        },
+      },
+    },
+
+    ocr_running: {
+      on: {
+        OCR_STARTED: {
+          actions: assign({
+            estimatedSeconds: ({ event }) => event.estimatedSeconds,
+          }),
+        },
+        OCR_SUCCESS: {
+          target: "recap_editing",
+          actions: assign({
+            recaps: ({ event }) => event.recaps,
+            activeRecapIndex: () => 0,
+          }),
+        },
+        OCR_FAILED: {
+          target: "fallback",
+          actions: assign({ ocrError: ({ event }) => event.error }),
+        },
+        MANUAL_FALLBACK: {
+          actions: assign({ navigateTo: () => "manual" as const }),
+        },
+      },
+    },
+
+    recap_editing: {
+      on: {
+        FIELD_EDITED: {
+          actions: assign({
+            recaps: ({ context, event }) =>
+              context.recaps.map((r) =>
+                r.bulletinId === event.bulletinId ? { ...r, draftFields: event.fields } : r,
+              ),
+          }),
+        },
+        VALIDATE_BULLETIN: {
+          actions: assign({
+            recaps: ({ context, event }) =>
+              context.recaps.map((r) =>
+                r.bulletinId === event.bulletinId ? { ...r, validated: true } : r,
+              ),
+            activeRecapIndex: ({ context, event }) => {
+              // Find first unvalidated recap that isn't the one just validated (#13: removed i > 0)
+              const updatedRecaps = context.recaps.map((r) =>
+                r.bulletinId === event.bulletinId ? { ...r, validated: true } : r,
+              );
+              const next = updatedRecaps.findIndex((r) => !r.validated);
+              return next >= 0 ? next : context.activeRecapIndex;
+            },
+          }),
+        },
+        ACTIVATE_TAB: {
+          actions: assign({
+            activeRecapIndex: ({ event }) => event.index,
+          }),
+        },
+        ALL_VALIDATED: "validated",
+      },
+    },
+
+    fallback: {
+      on: {
+        MANUAL_FALLBACK: {
+          actions: assign({ navigateTo: () => "manual" as const }),
+        },
+        RETRY_SCAN: {
+          target: "picking_files",
+          // #9: use function form for assign in XState v5
+          actions: assign(() => ({ ...initialContext })),
+        },
+        SELECT_LATER: {
+          actions: assign({ navigateTo: () => "later" as const }),
+        },
+      },
+    },
+
+    validated: {
+      type: "final",
+    },
+  },
+});

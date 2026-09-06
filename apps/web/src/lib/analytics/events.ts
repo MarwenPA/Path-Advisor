@@ -70,7 +70,10 @@ export type AnalyticsEvent =
       success_count: number;
       failed_count: number;
     }
-  | { name: "onboarding_step3_ocr_manual_fallback"; trigger: "overrun_button" | "graceful_fallback_cta" }
+  | {
+      name: "onboarding_step3_ocr_manual_fallback";
+      trigger: "overrun_button" | "graceful_fallback_cta";
+    }
   | { name: "onboarding_step3_bulletin_finalized"; bulletin_id: string; corrections_made: number }
   | { name: "onboarding_step3_completed"; bulletin_count: number };
 

@@ -15,11 +15,7 @@ interface FicheMetierTOCProps {
   onSectionClick: (key: string) => void;
 }
 
-export function FicheMetierTOC({
-  sections,
-  activeSection,
-  onSectionClick,
-}: FicheMetierTOCProps) {
+export function FicheMetierTOC({ sections, activeSection, onSectionClick }: FicheMetierTOCProps) {
   return (
     <nav
       aria-label="Sections de la fiche"

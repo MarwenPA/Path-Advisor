@@ -12,12 +12,17 @@ type Branche3emeProps = {
 
 export function Branche3eme({ value, onChange }: Branche3emeProps) {
   return (
-    <section aria-labelledby="branche-3eme-heading" className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
+    <section
+      aria-labelledby="branche-3eme-heading"
+      className="flex flex-col gap-4 duration-200 animate-in fade-in slide-in-from-bottom-2"
+    >
       <div>
         <h3 id="branche-3eme-heading" className="text-h3 font-semibold text-text">
           Et après la 3ème, tu vises plutôt quoi ?
         </h3>
-        <p className="mt-1 text-body-sm text-text-muted">Tu peux changer plus tard, t&apos;inquiète.</p>
+        <p className="mt-1 text-body-sm text-text-muted">
+          Tu peux changer plus tard, t&apos;inquiète.
+        </p>
       </div>
 
       <fieldset>

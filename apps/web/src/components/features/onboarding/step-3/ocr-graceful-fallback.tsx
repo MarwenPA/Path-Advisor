@@ -28,15 +28,15 @@ export function OCRGracefulFallback({ onManual, onRetry }: Props) {
       context="ocr"
       title="Ton bulletin a un format qu'on connaît pas encore"
       description="Pas grave. Saisis-le à la main — 5 champs et c'est bon. Tu pourras retenter avec une photo plus nette si tu veux."
-      primary={{
+      primaryAction={{
         label: "Saisir à la main",
         onClick: handleManual,
       }}
-      secondary={{
+      secondaryAction={{
         label: "Réessayer avec une autre photo",
         onClick: onRetry,
       }}
-      tertiary={{
+      tertiaryLink={{
         label: "Plus tard, je préfère explorer d'abord",
         onClick: handleLater,
       }}

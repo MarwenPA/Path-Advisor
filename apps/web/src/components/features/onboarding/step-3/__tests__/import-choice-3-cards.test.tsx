@@ -20,21 +20,21 @@ describe("ImportChoice3Cards — AC1", () => {
   it("calls onSelect with 'scan' when camera card clicked", async () => {
     const onSelect = vi.fn();
     render(<ImportChoice3Cards onSelect={onSelect} />);
-    await userEvent.click(screen.getAllByRole("button")[0]);
+    await userEvent.click(screen.getAllByRole("button")[0]!);
     expect(onSelect).toHaveBeenCalledWith("scan");
   });
 
   it("calls onSelect with 'manual' when pen card clicked", async () => {
     const onSelect = vi.fn();
     render(<ImportChoice3Cards onSelect={onSelect} />);
-    await userEvent.click(screen.getAllByRole("button")[1]);
+    await userEvent.click(screen.getAllByRole("button")[1]!);
     expect(onSelect).toHaveBeenCalledWith("manual");
   });
 
   it("calls onSelect with 'later' when arrow card clicked", async () => {
     const onSelect = vi.fn();
     render(<ImportChoice3Cards onSelect={onSelect} />);
-    await userEvent.click(screen.getAllByRole("button")[2]);
+    await userEvent.click(screen.getAllByRole("button")[2]!);
     expect(onSelect).toHaveBeenCalledWith("later");
   });
 

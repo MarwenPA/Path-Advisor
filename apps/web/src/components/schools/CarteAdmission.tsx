@@ -224,7 +224,7 @@ export function CarteAdmission({
 
   const colors = getSemanticColor(expected_proba);
   const labelText = getLabelText(label);
-  const ariaLabel = buildAriaLabel(expected_proba, schoolName, label, action_lever);
+  const ariaLabel = buildAriaLabel(expected_proba, schoolName, label, action_lever ?? null);
 
   const isExport = variant === "export";
 

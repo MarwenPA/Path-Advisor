@@ -35,13 +35,7 @@ describe("PassionsPicker", () => {
 
   it("atténues non-selected chips once the 8-max cap is reached", () => {
     const fullSelection = PASSIONS_CATEGORIES.slice(0, 8).map((c) => c.id);
-    render(
-      <PassionsPicker
-        selected={fullSelection}
-        onChange={vi.fn()}
-        searchDebounceMs={0}
-      />,
-    );
+    render(<PassionsPicker selected={fullSelection} onChange={vi.fn()} searchDebounceMs={0} />);
     const nineth = screen.getByRole("checkbox", { name: PASSIONS_CATEGORIES[8]!.label });
     expect(nineth).toBeDisabled();
     expect(nineth).toHaveAttribute("aria-disabled", "true");

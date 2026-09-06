@@ -19,7 +19,7 @@ function getStepIndex(pathname: string): number {
 
 function getBackHref(stepIndex: number): string {
   if (stepIndex <= 0) return "/dashboard";
-  return STEPS[stepIndex - 1].path;
+  return STEPS[stepIndex - 1]?.path ?? "/dashboard";
 }
 
 export default function OnboardingLayout({ children }: { children: ReactNode }) {
@@ -32,17 +32,17 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
   const backHref = getBackHref(stepIndex);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-4 pb-2 max-w-lg mx-auto w-full">
+      <header className="mx-auto flex w-full max-w-lg items-center justify-between px-4 pb-2 pt-4">
         <Link
           href={backHref}
           aria-label="Retour"
           className={cn(
-            "p-2 rounded-md text-[var(--color-text-muted)]",
-            "hover:text-[var(--color-text)] hover:bg-[var(--color-bg-subtle)]",
+            "rounded-md p-2 text-[var(--color-text-muted)]",
+            "hover:bg-[var(--color-bg-subtle)] hover:text-[var(--color-text)]",
             "focus-visible:outline-2 focus-visible:outline-[var(--color-brand)]",
-            "min-h-[44px] min-w-[44px] flex items-center justify-center"
+            "flex min-h-[44px] min-w-[44px] items-center justify-center",
           )}
         >
           <ChevronLeft className="size-5" aria-hidden />
@@ -57,10 +57,10 @@ export default function OnboardingLayout({ children }: { children: ReactNode }) 
               className={cn(
                 "rounded-full transition-all",
                 i === stepIndex
-                  ? "w-5 h-2 bg-[var(--color-brand)]"
+                  ? "h-2 w-5 bg-[var(--color-brand)]"
                   : i < stepIndex
-                  ? "w-2 h-2 bg-[var(--color-brand)] opacity-60"
-                  : "w-2 h-2 bg-[var(--color-border)]"
+                    ? "h-2 w-2 bg-[var(--color-brand)] opacity-60"
+                    : "h-2 w-2 bg-[var(--color-border)]",
               )}
             />
           ))}

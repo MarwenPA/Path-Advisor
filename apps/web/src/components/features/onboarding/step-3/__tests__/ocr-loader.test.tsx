@@ -2,6 +2,11 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+// Mock next/navigation for useRouter (OCRLoader navigates on completion)
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 // Mock ScenarioLoader (Story 2.8 component)
 vi.mock("@/components/ui/scenario-loader", () => ({
   ScenarioLoader: ({
@@ -14,9 +19,7 @@ vi.mock("@/components/ui/scenario-loader", () => ({
   }) => (
     <div data-testid="scenario-loader">
       <span>{phrases[0]}</span>
-      {onComplete && (
-        <button onClick={onComplete}>Complete</button>
-      )}
+      {onComplete && <button onClick={onComplete}>Complete</button>}
     </div>
   ),
 }));
@@ -27,13 +30,14 @@ describe("OCRLoader — AC4", () => {
   it("renders ScenarioLoader placeholder", () => {
     render(
       <OCRLoader
-        bulletinId="b1"
+        bulletinIds={["b1"]}
         estimatedSeconds={8}
         ocrStatus="pending"
         isComplete={false}
         isError={false}
+        isNetworkError={false}
         onManualFallback={vi.fn()}
-      />
+      />,
     );
     expect(screen.getByTestId("scenario-loader")).toBeTruthy();
   });
@@ -41,13 +45,14 @@ describe("OCRLoader — AC4", () => {
   it("shows OCR-themed phrases", () => {
     render(
       <OCRLoader
-        bulletinId="b1"
+        bulletinIds={["b1"]}
         estimatedSeconds={8}
         ocrStatus="running"
         isComplete={false}
         isError={false}
+        isNetworkError={false}
         onManualFallback={vi.fn()}
-      />
+      />,
     );
     // Should show an OCR-related phrase
     const loader = screen.getByTestId("scenario-loader");
@@ -58,13 +63,14 @@ describe("OCRLoader — AC4", () => {
     const onManualFallback = vi.fn();
     render(
       <OCRLoader
-        bulletinId="b1"
+        bulletinIds={["b1"]}
         estimatedSeconds={8}
         ocrStatus="running"
         isComplete={false}
         isError={false}
+        isNetworkError={false}
         onManualFallback={onManualFallback}
-      />
+      />,
     );
     const fallbackLink = screen.queryByRole("button", { name: /main|saisir|manuel/i });
     if (fallbackLink) {

@@ -122,7 +122,9 @@ describe("Zod — passionsArraySchema", () => {
 
 describe("Zod — valeursArraySchema", () => {
   it("accepts 3 valeurs", () => {
-    expect(valeursArraySchema.safeParse(["justice-sociale", "creativite", "sens-utilite"]).success).toBe(true);
+    expect(
+      valeursArraySchema.safeParse(["justice-sociale", "creativite", "sens-utilite"]).success,
+    ).toBe(true);
   });
 
   it("rejects > 5 valeurs", () => {
@@ -141,7 +143,8 @@ describe("Zod — interetsRecordSchema", () => {
 
   it("accepts mixed strings + nulls", () => {
     expect(
-      interetsRecordSchema.safeParse({ "1": "Podcast Choses à savoir", "2": null, "3": "TP SVT" }).success,
+      interetsRecordSchema.safeParse({ "1": "Podcast Choses à savoir", "2": null, "3": "TP SVT" })
+        .success,
     ).toBe(true);
   });
 

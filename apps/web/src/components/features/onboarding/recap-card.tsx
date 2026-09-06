@@ -30,8 +30,11 @@ export function RecapCard({ draft, onModify }: RecapCardProps) {
   const sousFiliereItem = SOUS_FILIERES_TECHNO.find((sf) => sf.id === draft.sous_filiere_techno);
 
   const allSpecs = [...SPECIALITES_LYCEE, ...SPECIALITES_BAC_PRO];
-  const specItems = draft.specialites
-    .map((id) => ({ id, label: allSpecs.find((s) => s.id === id)?.shortLabel ?? id }));
+  const specItems = draft.specialites.map((id) => {
+    const spec = allSpecs.find((s) => s.id === id);
+    const label = (spec && "shortLabel" in spec ? spec.shortLabel : spec?.label) ?? id;
+    return { id, label };
+  });
 
   const hint = draft.level ? calendarHint(draft.level, draft.intended_track) : "";
 
@@ -59,7 +62,9 @@ export function RecapCard({ draft, onModify }: RecapCardProps) {
         <p className="text-body font-semibold text-text">{headline}</p>
 
         {sousFiliereItem && (
-          <p className="text-body text-text">{sousFiliereItem.id} — {sousFiliereItem.description}</p>
+          <p className="text-body text-text">
+            {sousFiliereItem.id} — {sousFiliereItem.description}
+          </p>
         )}
 
         {specItems.length > 0 && (
@@ -67,7 +72,9 @@ export function RecapCard({ draft, onModify }: RecapCardProps) {
             <p className="text-body-sm text-text-muted">Tes spécialités :</p>
             <ul className="ml-4 list-disc">
               {specItems.map(({ id, label }) => (
-                <li key={id} className="text-body">{label}</li>
+                <li key={id} className="text-body">
+                  {label}
+                </li>
               ))}
             </ul>
           </div>
