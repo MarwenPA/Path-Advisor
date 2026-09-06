@@ -93,3 +93,19 @@ export const REVOKE_DIALOG_COPY = {
     errorMessage: string;
   }
 >;
+
+/**
+ * Story 6.7 — `<ConsentDialog>` copy for a counselor's consent *request*
+ * (distinct from `REVOKE_DIALOG_COPY.counselor`, which is for revoking an
+ * already-granted access).
+ */
+export const COUNSELOR_CONSENT_REQUEST_COPY = {
+  title: "Ta conseillère souhaite consulter ton profil",
+  description:
+    "Si tu acceptes, ta conseillère verra tes métiers explorés, tes parcours sauvegardés, tes recommandations, tes vœux Parcoursup et tes bulletins détaillés — pour préparer ton entretien d'orientation. Ta lettre de motivation (réservée aux écoles) reste privée.",
+  duration: "Jusqu'à ce que tu révoques l'accès",
+  acceptLabel: "Accepter",
+  refuseLabel: "Refuser",
+  errorMessage:
+    "Ta réponse n'a pas pu être enregistrée. Réessaie dans un instant ou contacte le support.",
+} as const;

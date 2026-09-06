@@ -260,3 +260,73 @@ class CounselorInvitation(models.Model):
     @property
     def is_expired(self) -> bool:
         return self.expires_at <= timezone.now()
+
+
+_CONSENT_COOLDOWN_DAYS = 7
+
+
+class CounselorConsentStatus(models.TextChoices):
+    PENDING = "pending", "En attente"
+    GRANTED = "granted", "Accordé"
+    REFUSED = "refused", "Refusé"
+
+
+def _default_counselor_consent_id() -> str:
+    return generate_id("cnc")
+
+
+class CounselorConsent(models.Model):
+    """Story 6.7 — student consent gating a counselor's individual profile
+    view (Story 6.8). One row per (student, counselor) pair — re-requesting
+    after a refusal reuses the same row (`status` flips back to `pending`,
+    subject to the 7-day cooldown below) rather than accumulating a history
+    of rows.
+
+    Deliberately NOT a `TenantScopedModel`/RLS-protected table: unlike
+    `Cohort` (referential establishment data), this row's authorization is
+    entirely captured by its own `student`/`counselor` FKs — the same "plain
+    FK + app-layer check" choice already made for `ParentStudentLink`
+    (Story 6.1) and `EarlyOutreachRequest` (Story 5.4), for the same reason
+    (no shared/aggregate data at stake, just a 1:1 grant).
+
+    `source_name = "counselor_consent"` in `apps.profiles.access_list` is a
+    pre-existing seam (the visibility matrix + revoker's tier-type map
+    already reference it) — this model is what plugs into it.
+    """
+
+    id = models.CharField(
+        primary_key=True, max_length=32, default=_default_counselor_consent_id, editable=False
+    )
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="counselor_consents")
+    counselor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="requested_consents")
+    cohort = models.ForeignKey(Cohort, on_delete=models.CASCADE, related_name="counselor_consents")
+    status = models.CharField(
+        max_length=10,
+        choices=CounselorConsentStatus.choices,
+        default=CounselorConsentStatus.PENDING,
+    )
+    requested_at = models.DateTimeField(default=timezone.now)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    # Story 6.11 — surfaced to the student as "dernière consultation".
+    last_accessed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "counselor_consents"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "counselor"], name="unique_consent_per_student_counselor"
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - debug helper
+        return f"CounselorConsent({self.id}, {self.student_id}, {self.status})"
+
+    @property
+    def cooldown_active(self) -> bool:
+        """AC — after a refusal, the counselor may re-request once 7 days
+        have passed. `decided_at` is only set on a decision, so a fresh
+        (never-decided) `pending` row never triggers this."""
+        if self.status != CounselorConsentStatus.REFUSED or self.decided_at is None:
+            return False
+        return timezone.now() < self.decided_at + timedelta(days=_CONSENT_COOLDOWN_DAYS)

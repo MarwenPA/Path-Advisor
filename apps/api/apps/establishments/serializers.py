@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from apps.establishments.models import (
     CohortImportJob,
+    CounselorConsent,
     CounselorInvitation,
     Establishment,
     EstablishmentType,
@@ -104,3 +105,27 @@ class StudentInvitationAcceptSerializer(serializers.Serializer):
     def validate_password(self, value: str) -> str:
         validate_password(value)
         return value
+
+
+# --- Story 6.7 — counselor consent -------------------------------------------
+
+
+class CounselorConsentSerializer(serializers.ModelSerializer):
+    """A pending/decided consent request, as seen by the student."""
+
+    counselor_email = serializers.EmailField(source="counselor.email", read_only=True)
+
+    class Meta:
+        model = CounselorConsent
+        fields = [
+            "id",
+            "counselor_email",
+            "status",
+            "requested_at",
+            "decided_at",
+        ]
+        read_only_fields = fields
+
+
+class ConsentDecisionSerializer(serializers.Serializer):
+    granted = serializers.BooleanField()
