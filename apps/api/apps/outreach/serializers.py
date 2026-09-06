@@ -1,6 +1,8 @@
-"""Serializers for early-outreach requests — Stories 5.4 + 5.5."""
+"""Serializers for early-outreach requests — Stories 5.4 + 5.5 + 5.6."""
 
 from __future__ import annotations
+
+from datetime import date
 
 from rest_framework import serializers
 
@@ -72,4 +74,55 @@ class EarlyOutreachListSerializer(serializers.ModelSerializer):
             "rejection_reason",
             "created_at",
         ]
+        read_only_fields = fields
+
+
+def _student_age(student) -> int | None:
+    """A student's age is the one "profil scolaire synthétique" datum this
+    story can build without new work — a full synthesis of bulletins/niveau
+    (Epic 2/4 territory) is explicitly out of scope for 5.6. No name, no
+    email: NFR-S4 keeps identity minimal on the school side."""
+    if not student.birth_date:
+        return None
+    today = date.today()
+    return (
+        today.year
+        - student.birth_date.year
+        - ((today.month, today.day) < (student.birth_date.month, student.birth_date.day))
+    )
+
+
+class EcoleOutreachListSerializer(serializers.ModelSerializer):
+    """Story 5.6 AC — reception queue row. Deliberately does NOT expose
+    `student.email` or any name (the User model has none anyway) — only
+    what's needed to triage: age, métier visé, parcours, date, status.
+    `student_age` intentionally NOT `student_id`/`student` — leaking the
+    student's internal id would let a curious school admin correlate rows
+    across schools, defeating the "no other schools" boundary in spirit."""
+
+    profession_name = serializers.CharField(source="profession.name", read_only=True)
+    parcours_label = serializers.CharField(source="parcours.label", read_only=True, default=None)
+    student_age = serializers.SerializerMethodField()
+
+    class Meta:
+        model = EarlyOutreachRequest
+        fields = [
+            "id",
+            "student_age",
+            "profession_name",
+            "parcours_label",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_student_age(self, obj: EarlyOutreachRequest) -> int | None:
+        return _student_age(obj.student)
+
+
+class EcoleOutreachDetailSerializer(EcoleOutreachListSerializer):
+    """Story 5.6 AC — fiche détail: same fields + `motivation_text`."""
+
+    class Meta(EcoleOutreachListSerializer.Meta):
+        fields = [*EcoleOutreachListSerializer.Meta.fields, "motivation_text"]
         read_only_fields = fields

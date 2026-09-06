@@ -23,6 +23,20 @@ class MonthlyOutreachQuotaExceeded(DomainError):
     )
 
 
+class SchoolStaffNotLinked(DomainError):
+    """Story 5.6 — a `SCHOOL_ADMIN` user with no `SchoolStaff` row (should
+    not normally happen: the account is only ever created alongside the
+    link by a path_admin, but defensive since the admin can also delete
+    the link independently)."""
+
+    type = "https://path-advisor.fr/errors/school-staff-not-linked"
+    title = "Compte école non rattaché"
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = (
+        "Ton compte n'est rattaché à aucune école partenaire — contacte l'équipe Path-Advisor."
+    )
+
+
 class OutreachModerationStateError(DomainError):
     """Story 5.5 — a moderation action (approve/reject/resubmit) was
     attempted on a request that isn't in the state it requires (e.g.

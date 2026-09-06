@@ -70,3 +70,14 @@ def send_motivation_rejected_email(*, outreach: EarlyOutreachRequest, reason: st
         to=outreach.student.email,
         context={"outreach": outreach, "school": outreach.school, "reason": reason},
     )
+
+
+def send_outreach_expired_email(*, outreach: EarlyOutreachRequest) -> None:
+    """Story 5.6 — sent when a `pending` request crosses 7 days without a
+    school response and auto-transitions to `expired_7d`."""
+    _send(
+        subject="[Path-Advisor] Pas de réponse de l'école — ta stat est inchangée",
+        template="outreach/email/outreach_expired",
+        to=outreach.student.email,
+        context={"outreach": outreach, "school": outreach.school},
+    )

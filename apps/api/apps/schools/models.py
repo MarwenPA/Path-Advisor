@@ -8,9 +8,12 @@ admission probability range for a (school, user) pair (Story 4.2).
 (Story 4.3 base, Story 4.7 adds NiveauScolaire enum, label, nullable school,
 partial unique constraint for is_default).
 `FavoriteSchool` records which schools a user has bookmarked as "mes paris"
-(Story 4.8).
+(Story 4.8). `SchoolStaff` links a `SCHOOL_ADMIN` user to the one partner
+school they represent (Story 5.6) — the tenant-boundary anchor for the
+"école only sees requests sent to *its* school" RBAC scoping.
 
-Data classification: public reference data, no PHI.
+Data classification: public reference data, no PHI. `SchoolStaff` is the
+exception — it's an access-control link, not referential data.
 RLS: read-only for authenticated users; full CRUD for admins.
 """
 
@@ -286,3 +289,40 @@ class FavoriteSchool(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user} ♥ {self.school.name}"
+
+
+class SchoolStaff(models.Model):
+    """Links a `SCHOOL_ADMIN` user to the one partner school they represent
+    (Story 5.6). One row per user — a school-admin account represents
+    exactly one school in the MVP (§2 scope decision: no multi-school
+    staff, no self-serve invitation; the Path-Advisor team creates this
+    link manually via the Django admin when onboarding a partner school,
+    matching the epic's own wording — "j'ai été onboardée par l'équipe
+    Path-Advisor").
+
+    This is the object the `has_object_permission` boundary on
+    `EarlyOutreachRequest` reception views checks against: a school admin
+    may only see/act on requests where `request.school_id ==
+    school_staff.school_id` (NFR-S4).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid4)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="school_staff_profile",
+    )
+    school = models.ForeignKey(
+        School,
+        on_delete=models.CASCADE,
+        related_name="staff",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "School Staff"
+        verbose_name_plural = "School Staff"
+
+    def __str__(self) -> str:
+        return f"{self.user_id} @ {self.school.name}"

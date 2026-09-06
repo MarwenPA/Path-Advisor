@@ -69,6 +69,12 @@ app.conf.beat_schedule = {
         "task": "billing.process_dunning",
         "schedule": crontab(hour=4, minute=40),
     },
+    # Story 5.6 — expire `pending` early-outreach requests 7 days without a
+    # school response. 04:45 (staggered after the other daily jobs above).
+    "outreach-expire-stale-requests": {
+        "task": "outreach.expire_stale_requests",
+        "schedule": crontab(hour=4, minute=45),
+    },
 }
 
 
