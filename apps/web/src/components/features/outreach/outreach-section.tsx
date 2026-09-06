@@ -1,12 +1,11 @@
 "use client";
 
 /**
- * <OutreachSection> — Story 5.4 §AC1/AC3.
+ * <OutreachSection> — Story 5.4 §AC1/AC3 (+ Story 5.11 paywall).
  *
  * Client wrapper on `/schools/[slug]` that decides, based on the current
  * user's subscription + monthly quota:
- * - not premium → a link to `/premium` (simplified paywall — the real
- *   `PaywallContextuel` component is Story 5.11, not built here).
+ * - not premium → `<PaywallContextuel>` (Story 5.11's generic component).
  * - premium, quota available → <SendOutreachButton>.
  * - premium, quota exhausted → the non-anxiogenic AC3 copy, no button.
  *
@@ -14,9 +13,9 @@
  * (already Server Component) school page simple, and this section degrades
  * to "nothing" on any fetch error rather than blocking the page render.
  */
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { PaywallContextuel } from "@/components/features/premium/paywall-contextuel";
 import { fetchCurrentUser, type CurrentUser } from "@/lib/api/auth";
 import { fetchOutreachQuota, type OutreachQuota } from "@/lib/api/outreach";
 import { fetchRecommendations, type ScoredProfession } from "@/lib/api/recommendations";
@@ -67,12 +66,23 @@ export function OutreachSection({ schoolSlug, schoolName }: OutreachSectionProps
 
   if (!user.is_premium) {
     return (
-      <p className="text-body-sm text-text-muted">
-        <Link href="/premium" className="text-primary hover:underline">
+      <PaywallContextuel
+        feature="envoi-anticipe"
+        title="Envoyer ton profil aux écoles est une feature premium"
+        description="Les élèves premium peuvent envoyer leur profil en avant-première aux écoles partenaires, avant les résultats Parcoursup."
+        benefits={[
+          "5 envois par mois vers les écoles de ton choix",
+          "Un retour direct de l'école (intéressant, entretien...)",
+          "Un impact potentiel sur ta stat d'admission",
+        ]}
+      >
+        <span className="cursor-pointer text-body-sm text-primary hover:underline">
           Passe en premium
-        </Link>{" "}
-        pour envoyer ton profil à cette école en avant-première.
-      </p>
+        </span>{" "}
+        <span className="text-body-sm text-text-muted">
+          pour envoyer ton profil à cette école en avant-première.
+        </span>
+      </PaywallContextuel>
     );
   }
 

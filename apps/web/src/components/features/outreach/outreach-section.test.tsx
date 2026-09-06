@@ -34,15 +34,12 @@ beforeEach(() => {
 });
 
 describe("OutreachSection", () => {
-  it("shows a premium upsell link for a freemium student", async () => {
+  it("shows the PaywallContextuel trigger for a freemium student", async () => {
     fetchCurrentUserMock.mockResolvedValue({ id: "u1", is_premium: false });
 
     render(<OutreachSection schoolSlug="ecole-test" schoolName="École Test" />);
 
-    expect(await screen.findByRole("link", { name: /passe en premium/i })).toHaveAttribute(
-      "href",
-      "/premium",
-    );
+    expect(await screen.findByRole("button", { name: /passe en premium/i })).toBeInTheDocument();
   });
 
   it("shows the send button for a premium student with quota remaining and recommendations", async () => {
