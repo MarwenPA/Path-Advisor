@@ -12,6 +12,7 @@ from apps.schools.views import (
     SchoolDetailView,
     SchoolFavoriteView,
     SchoolListView,
+    SchoolPublicSeoDetailView,
 )
 
 app_name = "schools"
@@ -24,6 +25,12 @@ urlpatterns = [
     path("admin/", include(admin_router.urls)),
     path("schools/", SchoolListView.as_view(), name="school-list"),
     path("schools/<slug:slug>/", SchoolDetailView.as_view(), name="school-detail"),
+    # Story 7.2 — anonymous SEO fiche école/formation (AllowAny)
+    path(
+        "public/schools/<slug:slug>/",
+        SchoolPublicSeoDetailView.as_view(),
+        name="public-seo-school-detail",
+    ),
     path(
         "schools/<slug:slug>/admission-stat/",
         AdmissionStatView.as_view(),

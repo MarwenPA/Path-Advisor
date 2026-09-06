@@ -196,6 +196,80 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
             return None
 
 
+class SchoolPublicSeoSerializer(serializers.ModelSerializer):
+    """Fields exposed to ANONYMOUS visitors — Story 7.2 (SEO SSR fiches
+    école/formation). No `admission_stat` field at all — AC2 requires
+    "sélectivité brute (anonyme, pas personnalisée)", not the
+    personalized-or-baseline probability `SchoolDetailSerializer` resolves
+    via `get_admission_stat`. `selectivity_index` (a plain 1-5 star rating,
+    not a computed probability) stays — that IS the "brute" figure the AC
+    asks for. No `id` (internal PK, never rendered by `<FicheEcole>`).
+    """
+
+    formations = FormationInlineSerializer(many=True, read_only=True)
+    metiers_cibles = serializers.SerializerMethodField()
+    similar_schools = serializers.SerializerMethodField()
+
+    class Meta:
+        model = School
+        fields = (
+            "slug",
+            "name",
+            "type",
+            "city",
+            "region",
+            "postal_code",
+            "tuition_min_eur",
+            "tuition_max_eur",
+            "apprenticeship",
+            "internship",
+            "selectivity_index",
+            "public_private",
+            "description",
+            "top_debouches",
+            "parcoursup_dates",
+            "affelnet_dates",
+            "official_url",
+            "formations",
+            "metiers_cibles",
+            "similar_schools",
+        )
+        read_only_fields = fields
+
+    def get_metiers_cibles(self, school: School) -> list[dict]:
+        """AC2 cross-linking — "liens internes vers les métiers cible".
+
+        No FK from `School`/`top_debouches` (free-text strings) to
+        `Profession` exists — best-effort case-insensitive name match
+        against the profession catalog. Unmatched `top_debouches` entries
+        are simply omitted here (still rendered as plain text by the
+        frontend from `top_debouches` itself); documented limitation, not
+        a silent data loss (nothing is hidden — the frontend has the raw
+        list too).
+        """
+        from apps.professions.models import Profession
+
+        if not school.top_debouches:
+            return []
+        wanted_lower = {n.lower() for n in school.top_debouches}
+        matches = Profession.objects.filter(is_active=True).values("slug", "name")
+        return [m for m in matches if m["name"].lower() in wanted_lower][:10]
+
+    def get_similar_schools(self, school: School) -> list[dict]:
+        """AC2 cross-linking — "écoles similaires". No similarity/
+        recommendation model exists — heuristic: same `type`, excluding
+        self, ordered by name, capped at 4. Documented as a proxy, not a
+        real similarity engine.
+        """
+        similar = (
+            School.objects.filter(type=school.type)
+            .exclude(id=school.id)
+            .order_by("name")
+            .values("slug", "name", "city")[:4]
+        )
+        return list(similar)
+
+
 class ParcoursSerializer(serializers.ModelSerializer):
     """Serializer for Parcours — Story 4.3 + 4.5 inline stats + 4.6 filter metadata + 4.7 dates.
 

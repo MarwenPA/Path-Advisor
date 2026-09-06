@@ -312,3 +312,117 @@ class TestPublicSchoolDetail:
         url = reverse("schools:school-detail", kwargs={"slug": school.slug})
         response = client.get(url)
         assert response.status_code in (401, 403)
+
+
+# ── Anonymous SEO detail endpoint — Story 7.2 ────────────────────────────────
+
+
+class TestSchoolPublicSeoDetail:
+    @pytest.mark.django_db
+    def test_anonymous_can_access_seo_detail(self, school):
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        assert response.status_code == 200
+
+    @pytest.mark.django_db
+    def test_seo_detail_excludes_admission_stat(self, school):
+        """§2 scope decision: AC2 requires "sélectivité brute (anonyme, pas
+        personnalisée)" — no admission_stat field at all."""
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        assert "admission_stat" not in response.json()
+
+    @pytest.mark.django_db
+    def test_seo_detail_excludes_internal_id(self, school):
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        assert "id" not in response.json()
+
+    @pytest.mark.django_db
+    def test_seo_detail_has_expected_public_fields(self, school):
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        data = response.json()
+        for field in (
+            "slug",
+            "name",
+            "type",
+            "city",
+            "selectivity_index",
+            "description",
+            "top_debouches",
+            "parcoursup_dates",
+            "official_url",
+            "formations",
+        ):
+            assert field in data, f"SEO detail missing field '{field}'"
+
+    @pytest.mark.django_db
+    def test_seo_detail_includes_formations(self, school, formation):
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        data = response.json()
+        assert isinstance(data["formations"], list)
+        assert len(data["formations"]) == 1
+
+    @pytest.mark.django_db
+    def test_seo_detail_unknown_slug_returns_404(self):
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": "ecole-inexistante"})
+        response = client.get(url)
+        assert response.status_code == 404
+
+    @pytest.mark.django_db
+    def test_seo_detail_cross_links_matching_metiers(self, school):
+        from apps.professions.models import Profession
+
+        Profession.objects.create(
+            slug="ingenieur-test",
+            name="Ingénieur",
+            description="Desc " * 10,
+            daily_routine="Routine " * 10,
+            prospects_text="Prospects",
+            median_salary_eur=45000,
+            is_active=True,
+        )
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        data = response.json()
+        assert {"slug": "ingenieur-test", "name": "Ingénieur"} in data["metiers_cibles"]
+
+    @pytest.mark.django_db
+    def test_seo_detail_similar_schools_excludes_self_and_other_types(self, school):
+        same_type = School.objects.create(
+            slug="autre-ecole-ingenieur",
+            name="Autre École Ingénieur",
+            type=School.Type.ECOLE_INGENIEUR,
+            city="Lyon",
+            region="Auvergne-Rhône-Alpes",
+            postal_code="69000",
+            selectivity_index=2,
+            public_private=School.PublicPrivate.PUBLIC,
+            official_url="https://test.example",
+        )
+        School.objects.create(
+            slug="ecole-bts",
+            name="Une École BTS",
+            type=School.Type.BTS,
+            city="Paris",
+            region="Île-de-France",
+            postal_code="75000",
+            selectivity_index=3,
+            public_private=School.PublicPrivate.PUBLIC,
+            official_url="https://test.example",
+        )
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        data = response.json()
+        similar_slugs = {s["slug"] for s in data["similar_schools"]}
+        assert similar_slugs == {same_type.slug}
