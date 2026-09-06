@@ -9,6 +9,7 @@ from apps.establishments.models import (
     CohortImportJob,
     CounselorConsent,
     CounselorInvitation,
+    CounselorNote,
     Establishment,
     EstablishmentType,
     LicenseType,
@@ -129,3 +130,43 @@ class CounselorConsentSerializer(serializers.ModelSerializer):
 
 class ConsentDecisionSerializer(serializers.Serializer):
     granted = serializers.BooleanField()
+
+
+# --- Story 6.8 — counselor individual profile view --------------------------
+
+
+class CounselorProfileProfessionSerializer(serializers.Serializer):
+    metier_id = serializers.CharField(allow_null=True)
+    slug = serializers.CharField(allow_null=True)
+    name = serializers.CharField(allow_null=True)
+    sector = serializers.CharField(allow_null=True)
+    score = serializers.IntegerField()
+    confidence_level = serializers.CharField()
+
+
+class CounselorProfileEcoleSerializer(serializers.Serializer):
+    school_id = serializers.CharField()
+    slug = serializers.CharField()
+    name = serializers.CharField()
+    city = serializers.CharField()
+    type = serializers.CharField()
+
+
+class CounselorStudentProfileSerializer(serializers.Serializer):
+    student_id = serializers.CharField()
+    cohort_name = serializers.CharField(allow_null=True)
+    metiers_top_recos = CounselorProfileProfessionSerializer(many=True)
+    mes_paris = CounselorProfileEcoleSerializer(many=True)
+    activite_recente = serializers.DictField()
+    voeux_en_construction = serializers.ListField()
+
+
+class CounselorNoteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CounselorNote
+        fields = ["id", "text", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class CounselorNoteCreateSerializer(serializers.Serializer):
+    text = serializers.CharField(max_length=4000, allow_blank=False)

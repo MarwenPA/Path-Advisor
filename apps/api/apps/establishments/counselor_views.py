@@ -8,6 +8,7 @@ Mounted at `api/v1/` via `apps.establishments.cohort_urls` (distinct from
 
 from __future__ import annotations
 
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status as drf_status
 from rest_framework.decorators import api_view, permission_classes
@@ -19,11 +20,23 @@ from apps.core.permissions import IsCounselor, IsStudent
 from apps.core.rls import bypass_rls
 from apps.establishments.exceptions import StudentNotInCounselorsEstablishment
 from apps.establishments.models import CounselorConsent, StudentImportInvitation
-from apps.establishments.serializers import ConsentDecisionSerializer, CounselorConsentSerializer
+from apps.establishments.serializers import (
+    ConsentDecisionSerializer,
+    CounselorConsentSerializer,
+    CounselorNoteCreateSerializer,
+    CounselorNoteSerializer,
+    CounselorStudentProfileSerializer,
+)
 from apps.establishments.services.counselor_consent import (
     decide_consent,
     list_pending_consent_requests,
     request_consent,
+)
+from apps.establishments.services.counselor_profile import (
+    add_counselor_note,
+    export_interview_sheet_pdf,
+    get_student_profile_for_counselor,
+    list_counselor_notes,
 )
 
 
@@ -85,3 +98,46 @@ def student_decide_consent(request: Request, consent_id: str) -> Response:
         granted=serializer.validated_data["granted"],
     )
     return Response(CounselorConsentSerializer(decided).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsCounselor])
+def counselor_student_profile(request: Request, student_id: str) -> Response:
+    """GET /api/v1/establishments/students/{student_id}/profile/ — Story 6.8
+    AC1. `ConsentNotGranted` (403, global RFC7807 handler) if the counselor
+    doesn't have a granted, non-revoked consent — the caller (Story 6.6's
+    dashboard) is responsible for offering "Demander le consentement"
+    instead of retrying this endpoint blindly."""
+    profile = get_student_profile_for_counselor(counselor=request.user, student_id=student_id)
+    return Response(CounselorStudentProfileSerializer(profile).data)
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsCounselor])
+def counselor_student_notes(request: Request, student_id: str) -> Response:
+    """GET/POST /api/v1/establishments/students/{student_id}/notes/ — Story
+    6.8 AC2. Private to the authoring counselor — never readable by the
+    student or any other counselor."""
+    if request.method == "POST":
+        serializer = CounselorNoteCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        note = add_counselor_note(
+            counselor=request.user,
+            student_id=student_id,
+            text=serializer.validated_data["text"],
+        )
+        return Response(CounselorNoteSerializer(note).data, status=drf_status.HTTP_201_CREATED)
+
+    notes = list_counselor_notes(counselor=request.user, student_id=student_id)
+    return Response(CounselorNoteSerializer(notes, many=True).data)
+
+
+@api_view(["GET"])
+@permission_classes([IsCounselor])
+def counselor_interview_sheet_pdf(request: Request, student_id: str) -> HttpResponse:
+    """GET /api/v1/establishments/students/{student_id}/interview-sheet.pdf/
+    — Story 6.8 AC2 (export)."""
+    pdf_bytes = export_interview_sheet_pdf(counselor=request.user, student_id=student_id)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="fiche-entretien-{student_id}.pdf"'
+    return response
