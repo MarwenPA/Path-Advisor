@@ -1,16 +1,19 @@
 /**
  * /parent/enfants/[studentId]/ecoles/[slug] — dedicated parent-scoped école
- * detail (AC2, code review 2026-08).
+ * detail (Story 6.2 AC2, code review 2026-08 + Story 6.3 AC3).
  *
  * Server Component: fetches the detail (forwarding the session cookie). A 403
  * (parent not linked) or 404 (unknown école) redirects — the backend is the
- * authority. Deliberately does NOT show the child's personal AdmissionStat
- * probability (bulletin-adjacent computed figure) — only public referential
- * school/formation data, per the same boundary as the dashboard (AC2/AC3).
+ * authority. Story 6.3 shows the child's admission probability
+ * (`<CarteAdmission>`, a derived result — the epic's own framing) but the
+ * backend never sends `action_lever` (it names a subject + grade delta,
+ * indirectly a bulletin figure) — passed as `null` here, which is exactly
+ * what makes `<CarteAdmission>` skip rendering that line.
  */
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { CarteAdmission } from "@/components/schools/CarteAdmission";
 import { ApiError } from "@/lib/api/client";
 import { fetchChildEcoleDetail } from "@/lib/api/parent";
 import { PARENT_COPY } from "@/lib/i18n/fr/parent";
@@ -37,9 +40,11 @@ export default async function ParentChildEcoleDetailPage({
   } catch (err) {
     if (err instanceof ApiError && err.status === 403) {
       redirect(`/auth/forbidden?from=/parent/enfants/${encodeURIComponent(studentId)}`);
+      return null;
     }
     if (err instanceof ApiError && err.status === 404) {
       notFound();
+      return null;
     }
     throw err;
   }
@@ -59,6 +64,21 @@ export default async function ParentChildEcoleDetailPage({
       </p>
 
       {ecole.description && <p className="mt-6 text-body text-text">{ecole.description}</p>}
+
+      {ecole.admission_stat ? (
+        <section className="mt-6" aria-label="Chances d'admission">
+          <CarteAdmission
+            admissionStat={{
+              ...ecole.admission_stat,
+              previous_proba: ecole.admission_stat.previous_proba ?? undefined,
+              action_lever: null,
+            }}
+            variant="medium"
+            schoolName={ecole.name}
+            schoolSlug={ecole.slug}
+          />
+        </section>
+      ) : null}
 
       <p className="mt-6 text-body-sm text-text-subtle">
         {COPY.costLabel} :{" "}

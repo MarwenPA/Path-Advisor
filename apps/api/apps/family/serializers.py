@@ -164,8 +164,24 @@ class ParentEcoleFormationSerializer(serializers.Serializer):
     affelnet_open = serializers.BooleanField()
 
 
+class ParentAdmissionStatSerializer(serializers.Serializer):
+    """Story 6.3 §AC3 — every `AdmissionStat` field except `action_lever`
+    (deliberately absent: it names a subject + grade delta, indirectly
+    revealing a bulletin figure the parent surface otherwise withholds)."""
+
+    min_proba = serializers.IntegerField()
+    expected_proba = serializers.IntegerField()
+    max_proba = serializers.IntegerField()
+    label = serializers.CharField()
+    context_line = serializers.CharField()
+    previous_proba = serializers.IntegerField(allow_null=True)
+    updated_at = serializers.DateTimeField()
+
+
 class ParentEcoleDetailSerializer(serializers.Serializer):
-    """Story 6.2 AC2 (code review, 2026-08) — dedicated parent école detail."""
+    """Story 6.2 AC2 (code review, 2026-08) — dedicated parent école detail.
+    Story 6.3 adds `admission_stat` (null if the child never generated one
+    for this school)."""
 
     school_id = serializers.CharField()
     slug = serializers.CharField()
@@ -177,3 +193,4 @@ class ParentEcoleDetailSerializer(serializers.Serializer):
     tuition_min_eur = serializers.IntegerField(allow_null=True)
     tuition_max_eur = serializers.IntegerField(allow_null=True)
     formations = ParentEcoleFormationSerializer(many=True)
+    admission_stat = ParentAdmissionStatSerializer(allow_null=True)

@@ -1,4 +1,4 @@
-"""Parent read-only view service — Story 6.2 §T2.
+"""Parent read-only view service — Story 6.2 §T2 + Story 6.3.
 
 Owns every read a linked parent performs on a child's data. The invariant is
 that authorization comes ONLY from a non-revoked `ParentStudentLink` (Story
@@ -11,11 +11,21 @@ Data-access rationale (RLS, Story 1.8):
     the link check — the business authorization is the link, not the RLS
     policy (same rationale as `ParentLinkSource`, Story 6.1).
 
-Confidentiality frontier (FR41 / AC2 / AC3):
+Confidentiality frontier (FR41 / Story 6.2 AC2 / Story 6.3):
     Nothing in this module exposes a bulletin field. `compute_recommendations`
     reads a bulletin *summary* internally but returns only id/slug/name/
     sector/score/confidence/signals. `get_child_mes_paris` returns public
     School referential rows. No teacher appreciation / raw grade ever leaves.
+
+    Story 6.3 §AC3 revisits `get_child_ecole_detail`'s earlier (2026-08)
+    all-or-nothing call on `AdmissionStat`: the epic's own AC is explicit
+    that a parent CAN see the probability itself ("un résultat dérivé, pas
+    une donnée brute bulletins") but must NOT see `action_lever` (e.g.
+    "+ 2 points en maths → 58 %" — it names a subject grade, indirectly
+    revealing a bulletin figure the parent is otherwise denied). This
+    module now reads an *existing* `AdmissionStat` row (never recomputes
+    one — that would require bulletin averages this parent-scoped path has
+    no business touching) and returns every field except `action_lever`.
 """
 
 from __future__ import annotations
@@ -37,7 +47,7 @@ from apps.family.models import ParentStudentLink
 from apps.professions.models import Profession
 from apps.recommendations.services.ai_client import AIServiceUnavailableError
 from apps.recommendations.services.recommendation_service import compute_recommendations
-from apps.schools.models import School
+from apps.schools.models import AdmissionStat, School
 
 log = logging.getLogger(__name__)
 
@@ -250,18 +260,35 @@ def get_child_metier_detail(parent: User, student_id: str, slug: str) -> dict[st
     }
 
 
-def get_child_ecole_detail(parent: User, student_id: str, slug: str) -> dict[str, Any]:
-    """AC2 (code review, 2026-08) — dedicated parent-scoped école detail.
+def _parent_admission_stat_view(stat: AdmissionStat | None) -> dict[str, Any] | None:
+    """Story 6.3 §AC3 — every `AdmissionStat` field except `action_lever`,
+    which names a subject + grade delta (e.g. "+ 2 points en maths → 58 %")
+    and so indirectly reveals a bulletin figure the parent doesn't get to
+    see directly. `None` when the student has never generated a stat for
+    this school (this path never triggers `upsert_stat` itself — no
+    bulletin averages to feed it from a parent-scoped request)."""
+    if stat is None:
+        return None
+    return {
+        "min_proba": stat.min_proba,
+        "expected_proba": stat.expected_proba,
+        "max_proba": stat.max_proba,
+        "label": stat.label,
+        "context_line": stat.context_line,
+        "previous_proba": stat.previous_proba,
+        "updated_at": stat.updated_at,
+    }
 
-    Reuses `School`'s public referential fields (Story 4.1) — deliberately
-    does NOT include the child's personal `AdmissionStat` probability (that
-    figure is derived from the student's bulletin averages; keeping it out of
-    the parent surface avoids reintroducing bulletin-adjacent content through
-    a computed aggregate). The parent already sees this school's cost figures
-    on the dashboard (`couts_estimes`) — this view adds the general
-    description + formations, nothing new/personal.
+
+def get_child_ecole_detail(parent: User, student_id: str, slug: str) -> dict[str, Any]:
+    """Story 6.2 AC2 (code review, 2026-08) — dedicated parent-scoped école
+    detail. Reuses `School`'s public referential fields (Story 4.1). The
+    parent already sees this school's cost figures on the dashboard
+    (`couts_estimes`) — this view adds the general description +
+    formations + (Story 6.3) the child's admission probability for this
+    school, minus `action_lever` (see `_parent_admission_stat_view`).
     """
-    resolve_linked_child(parent, student_id)
+    student = resolve_linked_child(parent, student_id)
     with bypass_rls(reason="parent_view.child_ecole_detail"):
         school = School.objects.prefetch_related("formations").filter(slug=slug).first()
         if school is None:
@@ -275,6 +302,7 @@ def get_child_ecole_detail(parent: User, student_id: str, slug: str) -> dict[str
             }
             for f in school.formations.all()
         ]
+        stat = AdmissionStat.objects.filter(school=school, user=student).first()
     return {
         "school_id": str(school.id),
         "slug": school.slug,
@@ -286,6 +314,7 @@ def get_child_ecole_detail(parent: User, student_id: str, slug: str) -> dict[str
         "tuition_min_eur": school.tuition_min_eur,
         "tuition_max_eur": school.tuition_max_eur,
         "formations": formations,
+        "admission_stat": _parent_admission_stat_view(stat),
     }
 
 

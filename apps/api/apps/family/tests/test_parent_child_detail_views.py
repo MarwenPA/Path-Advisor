@@ -189,9 +189,46 @@ def test_ecole_detail_returns_school_and_formations():
     assert body["name"] == "École bts-a"
     assert len(body["formations"]) == 1
     assert body["formations"][0]["name"] == "BTS SIO"
-    # Deliberately no personal AdmissionStat probability field.
-    assert "admission_stat" not in body
-    assert "probability" not in body
+    # Story 6.3 §AC3 — no AdmissionStat row exists yet for this
+    # (school, student) pair, so the field is present but null (this view
+    # never triggers a recompute itself).
+    assert body["admission_stat"] is None
+
+
+def test_ecole_detail_exposes_admission_stat_without_action_lever():
+    """Story 6.3 §AC3 — the parent sees the derived probability but never
+    the action_lever (it names a subject + grade delta)."""
+    from apps.schools.models import AdmissionStat
+
+    parent, student = _linked_pair()
+    school = _school("bts-b")
+    with bypass_rls(reason="test_setup.create_admission_stat"):
+        AdmissionStat.objects.create(
+            school=school,
+            user=student,
+            min_proba=30,
+            expected_proba=45,
+            max_proba=60,
+            label=AdmissionStat.Label.REALISTE,
+            context_line="Tu as de bonnes chances d'être admis·e.",
+            action_lever="+ 2 points en maths feraient passer à 58 %",
+        )
+
+    client = APIClient()
+    client.force_authenticate(user=parent)
+    resp = client.get(
+        reverse(
+            "family:parent-child-ecole-detail",
+            kwargs={"student_id": student.id, "slug": "bts-b"},
+        )
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["admission_stat"]["expected_proba"] == 45
+    assert body["admission_stat"]["label"] == "realiste"
+    assert "action_lever" not in body["admission_stat"]
+    assert "action_lever" not in resp.content.decode()
 
 
 def test_ecole_detail_404_for_unknown_slug():
