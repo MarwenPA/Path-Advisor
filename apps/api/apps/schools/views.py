@@ -37,6 +37,7 @@ from apps.schools.models import AdmissionStat, FavoriteSchool, Formation, Parcou
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
+    ParcoursPublicSeoSerializer,
     ParcoursSerializer,
     SchoolAdminSerializer,
     SchoolCatalogSerializer,
@@ -166,6 +167,41 @@ class ParcoursListView(ListAPIView):
         # request is already included by GenericAPIView.get_serializer_context,
         # but we document it explicitly for reviewers (Story 4.5 T2).
         return context
+
+
+class ParcoursPublicSeoListView(ListAPIView):
+    """GET /api/v1/public/metiers/{slug}/parcours/ — Story 7.3 AC. `AllowAny`
+    — feeds the "Quels bacs / formations choisir ?" panel + "écoles cibles"
+    links on the long-tail SEO landing pages. Same niveau_scolaire filter
+    semantics as `ParcoursListView` (exact match, else terminale_generale
+    fallback, else all) but the narrower `ParcoursPublicSeoSerializer`
+    (no nodes/edges graph, no personalized admission_stat).
+    """
+
+    serializer_class = ParcoursPublicSeoSerializer
+    permission_classes: ClassVar = [AllowAny]
+    pagination_class = None
+
+    def get_queryset(self):
+        slug = self.kwargs["slug"]
+        try:
+            profession = Profession.objects.get(slug=slug, is_active=True)
+        except Profession.DoesNotExist:
+            return Parcours.objects.none()
+
+        qs = Parcours.objects.filter(profession=profession).select_related("target_school")
+
+        niveau = self.request.query_params.get("niveau_scolaire", "")
+        if niveau:
+            exact = qs.filter(niveau_scolaire=niveau)
+            if exact.exists():
+                return exact.order_by("-is_default", "niveau_scolaire")
+            fallback = qs.filter(niveau_scolaire=Parcours.NiveauScolaire.TERMINALE_GENERALE)
+            if fallback.exists():
+                return fallback.order_by("-is_default")
+            return qs.order_by("-is_default", "niveau_scolaire")
+
+        return qs.order_by("-is_default", "niveau_scolaire")
 
 
 class AdmissionStatView(APIView):

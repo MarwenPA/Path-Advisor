@@ -9,6 +9,7 @@ from apps.schools.views import (
     AdmissionStatView,
     MesParisListView,
     ParcoursListView,
+    ParcoursPublicSeoListView,
     SchoolDetailView,
     SchoolFavoriteView,
     SchoolListView,
@@ -52,5 +53,11 @@ urlpatterns = [
         "metiers/<slug:slug>/parcours/",
         ParcoursListView.as_view(),
         name="metier-parcours-list",
+    ),
+    # Story 7.3 — anonymous SEO parcours summary (AllowAny)
+    path(
+        "public/metiers/<slug:slug>/parcours/",
+        ParcoursPublicSeoListView.as_view(),
+        name="public-seo-metier-parcours-list",
     ),
 ]
