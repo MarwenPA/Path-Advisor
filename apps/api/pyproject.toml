@@ -107,6 +107,8 @@ ignore = [
 # DJ001: nullable onboarding text fields (niveau/filiere/specialites) are
 # intentional — NULL means "not yet answered", distinct from an empty string.
 "apps/students/**" = ["RUF012", "DJ001"]
+# Django convention: permission_classes / Meta fields are class-level lists (Story 5.4).
+"apps/outreach/**" = ["RUF012", "DJ001"]
 
 [tool.ruff.format]
 quote-style = "double"

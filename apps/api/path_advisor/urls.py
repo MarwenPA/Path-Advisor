@@ -132,6 +132,8 @@ urlpatterns = [
     # surface, CSRF-exempt, HMAC-verified — NOT under api/v1).
     path("api/v1/billing/", include("apps.billing.urls")),
     path("webhooks/stripe/", stripe_webhook_view, name="stripe-webhook"),
+    # Story 5.4 — early-outreach requests (élève -> école).
+    path("api/v1/", include("apps.outreach.urls")),
     # OpenAPI / docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path(
