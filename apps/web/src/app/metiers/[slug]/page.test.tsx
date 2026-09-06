@@ -110,4 +110,15 @@ describe("MetierDetailPage (public)", () => {
 
     expect(notFoundMock).toHaveBeenCalled();
   });
+
+  it("falls back to a generic description when the profession has none (Story 7.6 SEO fix)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue({ ...PROFESSION, description: "" });
+
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ slug: "infirmier-test" }),
+    });
+
+    expect(metadata.description).toBeTruthy();
+    expect(metadata.description).toContain("Infirmier·ère");
+  });
 });

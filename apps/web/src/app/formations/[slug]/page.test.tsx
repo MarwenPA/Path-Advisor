@@ -23,7 +23,7 @@ vi.mock("@/components/schools/FicheEcole", () => ({
 
 import { ApiError } from "@/lib/api/client";
 
-import PublicFormationPage from "./page";
+import PublicFormationPage, { generateMetadata } from "./page";
 
 const SCHOOL = {
   slug: "insa-lyon",
@@ -101,5 +101,25 @@ describe("PublicFormationPage", () => {
     await PublicFormationPage({ params: Promise.resolve({ slug: "ecole-inexistante" }) });
 
     expect(notFoundMock).toHaveBeenCalled();
+  });
+});
+
+describe("generateMetadata", () => {
+  it("uses the school description when present", async () => {
+    fetchPublicSchoolMock.mockResolvedValue(SCHOOL);
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "insa-lyon" }) });
+
+    expect(metadata.description).toBe("École d'ingénieurs généraliste.");
+  });
+
+  it("falls back to a generic description when the school has none (Story 7.6 SEO fix)", async () => {
+    fetchPublicSchoolMock.mockResolvedValue({ ...SCHOOL, description: "" });
+
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "insa-lyon" }) });
+
+    expect(metadata.description).toBeTruthy();
+    expect(metadata.description).toContain("INSA Lyon");
+    expect(metadata.description).toContain("Lyon");
   });
 });
