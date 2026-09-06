@@ -17,6 +17,10 @@ export interface AccessListEntry {
   visible_data: readonly string[];
   masked_data: readonly string[];
   revocable: boolean;
+  /** Story 6.11 — "date dernière consultation". `null` when the source
+   * doesn't track per-access timestamps (e.g. a parental consent granted
+   * before the parent had a Path-Advisor account). */
+  last_accessed_at: string | null;
 }
 
 export interface AccessListResponse {
@@ -46,4 +50,22 @@ export async function revokeAccessListEntry(
     method: "POST",
     body: { content_hash: contentHash },
   });
+}
+
+/** Story 6.11 — one row of a 90-day access-history log. */
+export interface AccessHistoryEntry {
+  consulted_at: string; // ISO 8601
+  metadata: Record<string, unknown>;
+}
+
+export async function fetchAccessHistory(id: string): Promise<{ results: AccessHistoryEntry[] }> {
+  return apiFetch<{ results: AccessHistoryEntry[] }>(
+    `/api/v1/profile/access-list/${encodeURIComponent(id)}/history/`,
+  );
+}
+
+/** CSV export URL (a plain link, not a fetch — same pattern as
+ * `ECOLE_REPORTING_EXPORT_URL`/`COHORT_REPORTING_EXPORT_URL`). */
+export function buildAccessHistoryExportUrl(id: string): string {
+  return `/api/v1/profile/access-list/${encodeURIComponent(id)}/history.csv/`;
 }

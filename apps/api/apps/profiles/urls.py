@@ -13,4 +13,15 @@ urlpatterns = [
         views.revoke_access_list_entry,
         name="profile-access-revoke",
     ),
+    # Story 6.11 — access history modal + CSV export
+    path(
+        "access-list/<str:entry_id>/history/",
+        views.access_list_entry_history,
+        name="profile-access-history",
+    ),
+    path(
+        "access-list/<str:entry_id>/history.csv/",
+        views.access_list_entry_history_export,
+        name="profile-access-history-export",
+    ),
 ]

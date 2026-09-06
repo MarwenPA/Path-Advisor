@@ -17,3 +17,4 @@ class AccessListEntrySerializer(serializers.Serializer):
     visible_data = serializers.ListField(child=serializers.CharField(), read_only=True)
     masked_data = serializers.ListField(child=serializers.CharField(), read_only=True)
     revocable = serializers.BooleanField(read_only=True)
+    last_accessed_at = serializers.DateTimeField(read_only=True, allow_null=True)

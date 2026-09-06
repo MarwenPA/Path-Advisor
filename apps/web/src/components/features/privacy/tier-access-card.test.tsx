@@ -25,6 +25,7 @@ const _entry = (over: Partial<AccessListEntry> = {}): AccessListEntry => ({
   visible_data: ["metiers_explores", "parcours_sauvegardes"],
   masked_data: ["bulletins_detailles", "appreciations_enseignants"],
   revocable: true,
+  last_accessed_at: null,
   ...over,
 });
 
@@ -70,5 +71,27 @@ describe("TierAccessCard", () => {
     expect(screen.getByLabelText(/type d'accès : école/i)).toBeInTheDocument();
     rerender(<TierAccessCard entry={_entry({ tier_type: "counselor" })} />);
     expect(screen.getByLabelText(/type d'accès : conseillère/i)).toBeInTheDocument();
+  });
+
+  it("shows 'Jamais consulté' when last_accessed_at is null (Story 6.11)", () => {
+    render(<TierAccessCard entry={_entry({ last_accessed_at: null })} />);
+    expect(
+      screen.getByText(
+        (_, node) => node?.textContent === "Dernière consultation : Jamais consulté",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the relative last-accessed time when set (Story 6.11)", () => {
+    const iso = new Date(Date.now() - 60_000).toISOString();
+    render(<TierAccessCard entry={_entry({ last_accessed_at: iso })} />);
+    expect(screen.queryByText("Jamais consulté")).not.toBeInTheDocument();
+    const times = document.querySelectorAll("time");
+    expect(Array.from(times).some((t) => t.getAttribute("datetime") === iso)).toBe(true);
+  });
+
+  it("renders a 'Voir l'historique d'accès' button (Story 6.11)", () => {
+    render(<TierAccessCard entry={_entry()} />);
+    expect(screen.getByRole("button", { name: /voir l'historique d'accès/i })).toBeInTheDocument();
   });
 });

@@ -1,10 +1,8 @@
 """``CounselorConsentSource`` — Story 6.7/6.11.
 
 Wraps `CounselorConsent` (Story 6.7) to expose granted, non-revoked
-counselor access as `AccessListEntry` rows. `last_accessed_at` (Story 6.11)
-rides along in `metadata`-free form via the DTO's existing fields — the
-revoker's audit metadata (not this DTO) is where richer detail belongs;
-here we only need what `AccessListEntry` already models.
+counselor access as `AccessListEntry` rows, including `last_accessed_at`
+(Story 6.11) straight from the model field `touch_last_accessed` stamps.
 """
 
 from __future__ import annotations
@@ -61,6 +59,7 @@ class CounselorConsentSource:
                     revocable=True,
                     source_name=self.name,
                     source_pk=str(row.id),
+                    last_accessed_at=row.last_accessed_at,
                 )
             )
         return entries

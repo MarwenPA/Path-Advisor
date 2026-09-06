@@ -29,6 +29,14 @@ export const ACCESS_LIST_COPY = {
   grantedAtLabel: "Accès accordé",
   revokeButtonLabel: "Révoquer l'accès",
   revokeNotYetAvailable: "Révocation à venir",
+  // Story 6.11
+  lastAccessedLabel: "Dernière consultation",
+  lastAccessedNever: "Jamais consulté",
+  viewHistoryButtonLabel: "Voir l'historique d'accès",
+  historyModalTitle: "Historique d'accès (90 derniers jours)",
+  historyEmptyState: "Aucune consultation sur les 90 derniers jours.",
+  historyExportCsvLabel: "Exporter en CSV",
+  historyCloseLabel: "Fermer",
   dataAreaLabels: {
     metiers_explores: "Métiers explorés",
     parcours_sauvegardes: "Parcours sauvegardés",

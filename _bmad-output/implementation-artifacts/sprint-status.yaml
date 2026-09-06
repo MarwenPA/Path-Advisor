@@ -127,7 +127,7 @@ development_status:
 
   # Epic 6 — Espaces tiers (parent, conseillère B2B)
   # Lancé en parallèle d'Epic 5 : 6-4 dépend de l'infra Stripe/subscriptions (5-1/5-2), reste indépendant.
-  epic-6: in-progress
+  epic-6: done
   6-1-invitation-parent-creation-compte: done
   6-2-vue-parent-metiers-parcours-couts: done
   6-3-frontieres-confidentialite-parent: done
@@ -138,7 +138,7 @@ development_status:
   6-8-vue-profil-eleve-conseillere: done
   6-9-export-reporting-anonymise: done
   6-10-composant-cohort-dashboard: done
-  6-11-composant-permission-list-etendu: backlog
+  6-11-composant-permission-list-etendu: done
   epic-6-retrospective: optional
 
   # Epic 7 — Découverte publique & SEO
