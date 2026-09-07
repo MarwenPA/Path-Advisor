@@ -48,6 +48,12 @@ dev = [
     "django-stubs[compatible-mypy]>=5.1,<6.0",
     "djangorestframework-stubs[compatible-mypy]>=3.15,<4.0",
     "coverage>=7.14.1",
+    # Used by ci-lighthouse: `manage.py runserver` is a single-process dev
+    # server whose TTFB inflated LCP enough that the Core Web Vitals budget
+    # was raised to 3000ms to compensate. Serving the CI backend through
+    # gunicorn removes that systematic penalty so the gate can hold the real
+    # product target (2500ms).
+    "gunicorn>=23.0,<24.0",
 ]
 
 [build-system]

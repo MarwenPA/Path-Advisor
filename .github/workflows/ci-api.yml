@@ -74,7 +74,11 @@ jobs:
         working-directory: apps/api
     services:
       postgres:
-        image: postgres:16
+        # Must be pgvector, not plain `postgres:16`: `core.0001_init_extensions`
+        # runs `CREATE EXTENSION IF NOT EXISTS vector`, which plain postgres
+        # cannot satisfy. Same defect as ci-lighthouse.yml had — mirror the
+        # image `infra/docker-compose.yml` actually uses.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres_bootstrap
@@ -120,8 +124,11 @@ jobs:
           DO $$
           BEGIN
               IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'path_advisor_test') THEN
+                  -- CREATEDB is required for Django's test runner to create
+                  -- `test_path_advisor_test`; it grants no RLS escape, so
+                  -- NOSUPERUSER/NOBYPASSRLS (what makes FORCE RLS bite) hold.
                   CREATE ROLE path_advisor_test
-                      LOGIN NOSUPERUSER NOBYPASSRLS
+                      LOGIN NOSUPERUSER NOBYPASSRLS CREATEDB
                       PASSWORD 'ci_test_role';
               END IF;
           END
@@ -130,6 +137,14 @@ jobs:
           WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'path_advisor_test')\gexec
           GRANT CREATE, USAGE ON SCHEMA public TO path_advisor_test;
           SQL
+
+          # `CREATE EXTENSION vector` needs superuser, which the test role
+          # deliberately is not. Installing it into `template1` as the
+          # bootstrap superuser means every database created afterwards —
+          # including Django's `test_path_advisor_test` — already has it, so
+          # the migration's IF NOT EXISTS becomes a no-op.
+          psql -h localhost -U postgres -d template1 -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
       - name: Pytest (RLS + postgresql_only)
         run: |
