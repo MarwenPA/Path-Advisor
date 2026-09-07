@@ -1,6 +1,8 @@
 {
   "common": {
-    "legalMentionsLink": "Mentions légales & RGPD"
+    "legalMentionsLink": "Mentions légales & RGPD",
+    "rootMetaTitle": "Path-Advisor",
+    "rootMetaDescription": "Plateforme d'orientation continue pour les jeunes, du collège aux premières années d'études supérieures."
   },
   "onboarding": {
     "niveauPicker": {
@@ -96,7 +98,30 @@
     "faqTitle": "Questions fréquentes",
     "signupCtaTitle": "Découvre si ce métier te correspond",
     "signupCtaBody": "Crée ton compte gratuit pour voir ton score de compatibilité avec {name} et tes chances réelles d'admission.",
-    "signupCta": "Créer mon compte gratuit"
+    "signupCta": "Créer mon compte gratuit",
+    "niveauPagesTitle": "Quel bac choisir selon ton niveau ?",
+    "niveauPageLink": "Quel bac pour devenir {name} depuis la {niveauLabel} ?"
+  },
+  "ficheEcole": {
+    "ficheAria": "Fiche de {name}",
+    "selectivityAria": "Sélectivité : {index} sur 5",
+    "selectAria": "Sélectionner {name} pour comparer",
+    "duration": "{count, plural, one {# an} other {# ans}}",
+    "typeLabel": "Type",
+    "accessLabel": "Accès",
+    "selectivityLabel": "Sélectivité",
+    "tuitionLabel": "Frais",
+    "tuitionFree": "Gratuit",
+    "tuitionRange": "{min}–{max} €/an",
+    "apprenticeshipLabel": "Alternance",
+    "apprenticeshipAvailable": "Disponible",
+    "formationsAria": "Formations disponibles",
+    "formationsTitle": "Formations",
+    "debouchesAria": "Débouchés principaux",
+    "debouchesTitle": "Débouchés",
+    "admissionAria": "Statistique d'admission",
+    "admissionTitle": "Tes chances d'admission",
+    "admissionUnavailable": "Données d'admission non disponibles"
   },
   "formationPage": {
     "metaTitleFallback": "École — Path Advisor",

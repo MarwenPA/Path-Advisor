@@ -84,12 +84,22 @@ jobs:
       - name: Start Django API (background)
         working-directory: apps/api
         run: |
-          uv run python manage.py runserver 0.0.0.0:8000 &
-          echo $! > /tmp/django.pid
+          # gunicorn, NOT `manage.py runserver`: the dev server is
+          # single-process and its TTFB inflated LCP by a few hundred ms —
+          # a systematic penalty that was originally papered over by raising
+          # the LCP budget to 3000ms instead of fixing the cause.
+          uv run gunicorn path_advisor.wsgi:application \
+            --bind 0.0.0.0:8000 --workers 3 --timeout 60 &
           for i in $(seq 1 30); do
             curl -sf http://localhost:8000/api/v1/public/professions/technicien-aeronautique/ && break
             sleep 1
           done
+          # The readiness loop above cannot fail the step on its own (the
+          # last command is `sleep`), so assert explicitly — otherwise a
+          # dead backend lets Lighthouse audit error pages and report
+          # meaningless scores.
+          curl -sf http://localhost:8000/api/v1/public/professions/technicien-aeronautique/ >/dev/null \
+            || { echo "::error::Django failed to start"; exit 1; }
 
       - uses: actions/setup-node@v4
         with:
@@ -113,10 +123,23 @@ jobs:
         working-directory: apps/web
         run: |
           npm run start -- -p 3000 &
-          echo $! > /tmp/next.pid
           for i in $(seq 1 30); do
             curl -sf http://localhost:3000/ && break
             sleep 1
+          done
+          # Same reasoning as the Django step: assert, don't just poll.
+          # Then pre-flight every audited URL — a renamed seed slug would
+          # otherwise have Lighthouse score a 404 page (which is fast, so it
+          # can even pass the perf budget) instead of failing clearly. This
+          # exact confusion already cost a CI cycle on this story.
+          for url in \
+            "http://localhost:3000/" \
+            "http://localhost:3000/metiers/technicien-aeronautique" \
+            "http://localhost:3000/formations/lycee-pro-aviation" \
+            "http://localhost:3000/devenir-technicien-aeronautique" \
+            "http://localhost:3000/3eme/quel-bac-pour-technicien-aeronautique"; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
+            [ "$code" = "200" ] || { echo "::error::$url returned $code, expected 200"; exit 1; }
           done
         env:
           API_URL_SERVER: http://localhost:8000

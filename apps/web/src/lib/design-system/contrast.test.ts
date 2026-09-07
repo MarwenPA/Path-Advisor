@@ -26,7 +26,12 @@ const PAIRS: Array<{
 }> = [
   { fg: "#1A1A1A", bg: "#FAFAF7", name: "text on bg", minRatio: 7 },
   { fg: "#666660", bg: "#FAFAF7", name: "text-muted on bg", minRatio: 4.5 },
-  { fg: "#8C8C86", bg: "#FAFAF7", name: "text-subtle on bg (large only)", minRatio: 3 },
+  // Review adversariale 2026-09-06 : #8C8C86 ne faisait que 3.19:1, sous le
+  // 4.5:1 requis pour du texte normal — or ce token sert au lien légal du
+  // footer et aux "— {ville}" en petit corps sur les pages publiques, pas à
+  // du grand texte. Assoupli à tort en "large only" à l'origine ; le token
+  // a été assombri en #71716A et l'exigence remonte à AA texte normal.
+  { fg: "#71716A", bg: "#FAFAF7", name: "text-subtle on bg", minRatio: 4.5 },
   { fg: "#C8312D", bg: "#FAFAF7", name: "brand on bg", minRatio: 4.5 },
   { fg: "#C8312D", bg: "#F4F1ED", name: "brand on bg-2", minRatio: 4.5 },
   { fg: "#9E2A24", bg: "#FAFAF7", name: "danger on bg", minRatio: 4.5 },

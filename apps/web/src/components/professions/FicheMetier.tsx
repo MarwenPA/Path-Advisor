@@ -453,15 +453,20 @@ function FicheMetierMobile({
         Tout afficher
       </button>
 
-      {/* Pied de fiche — boutons signalement (hors print) */}
-      <div className="mt-4 flex flex-wrap justify-center gap-3">
-        <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
-        <ReviewRequestButton
-          professionSlug={profession.slug}
-          professionName={profession.name}
-          hasScore={score !== undefined}
-        />
-      </div>
+      {/* Pied de fiche — boutons signalement (hors print). Masqués sur le
+          payload SEO anonyme (`id` absent, cf. `Profession`) : l'endpoint de
+          signalement exige un élève authentifié, les boutons ne pourraient
+          que 403 pour un visiteur anonyme. */}
+      {profession.id !== undefined && (
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
+          <ReviewRequestButton
+            professionSlug={profession.slug}
+            professionName={profession.name}
+            hasScore={score !== undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -552,15 +557,18 @@ function FicheMetierDesktop({
         </div>
       </div>
 
-      {/* Pied de fiche — boutons signalement (hors print) */}
-      <div className="mx-auto mt-8 flex max-w-4xl flex-wrap justify-end gap-3 px-6">
-        <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
-        <ReviewRequestButton
-          professionSlug={profession.slug}
-          professionName={profession.name}
-          hasScore={score !== undefined}
-        />
-      </div>
+      {/* Pied de fiche — boutons signalement (hors print). Masqués sur le
+          payload SEO anonyme (`id` absent) — voir le layout mobile. */}
+      {profession.id !== undefined && (
+        <div className="mx-auto mt-8 flex max-w-4xl flex-wrap justify-end gap-3 px-6">
+          <ReportErrorButton professionSlug={profession.slug} professionName={profession.name} />
+          <ReviewRequestButton
+            professionSlug={profession.slug}
+            professionName={profession.name}
+            hasScore={score !== undefined}
+          />
+        </div>
+      )}
     </div>
   );
 }

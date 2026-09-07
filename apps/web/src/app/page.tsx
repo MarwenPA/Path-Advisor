@@ -30,6 +30,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title,
     description,
+    // Epic 7 review fix — explicit canonical (relative, resolved against
+    // the root layout's `metadataBase`).
+    alternates: { canonical: "/" },
     openGraph: { title, description, url: SITE_ORIGIN, type: "website" },
     twitter: { card: "summary_large_image", title, description },
   };

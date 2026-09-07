@@ -1,8 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 
 // jsdom does not implement Element.scrollIntoView, which Radix UI Select uses
-// to scroll the selected item into view when the dropdown opens.
-if (typeof Element.prototype.scrollIntoView !== "function") {
+// to scroll the selected item into view when the dropdown opens. `Element`
+// itself is absent under `// @vitest-environment node` files (e.g. the
+// server-side `apiFetch` cookie tests, Epic 7 review) — guard for that too.
+if (typeof Element !== "undefined" && typeof Element.prototype.scrollIntoView !== "function") {
   Element.prototype.scrollIntoView = () => {};
 }
 

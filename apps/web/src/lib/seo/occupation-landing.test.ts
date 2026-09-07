@@ -65,6 +65,51 @@ describe("buildOccupationJsonLd", () => {
     expect(jsonLd.name).toBe("Infirmier·ère");
     expect(jsonLd.url).toBe("https://path-advisor.fr/devenir-infirmier");
   });
+
+  it("emits estimatedSalary with the required duration (Epic 7 review — Google rich results)", () => {
+    const jsonLd = buildOccupationJsonLd(PROFESSION, "https://path-advisor.fr/devenir-infirmier");
+    const salary = (jsonLd.estimatedSalary as Record<string, unknown>[])[0]!;
+    expect(salary["@type"]).toBe("MonetaryAmountDistribution");
+    expect(salary.duration).toBe("P1Y");
+    expect(salary.median).toBe(32000);
+    expect(salary.currency).toBe("EUR");
+  });
+
+  it("falls back to salary_range_json when median_salary_eur is absent (Epic 7 review)", () => {
+    const jsonLd = buildOccupationJsonLd(
+      { ...PROFESSION, median_salary_eur: null, salary_range_json: { min: 28000, max: 40000 } },
+      "https://path-advisor.fr/devenir-infirmier",
+    );
+    const salary = (jsonLd.estimatedSalary as Record<string, unknown>[])[0]!;
+    expect(salary.duration).toBe("P1Y");
+    expect(salary.median).toBeUndefined();
+    expect(salary.percentile10).toBe(28000);
+    expect(salary.percentile90).toBe(40000);
+  });
+
+  it("omits estimatedSalary entirely when no salary data exists", () => {
+    const jsonLd = buildOccupationJsonLd(
+      { ...PROFESSION, median_salary_eur: null, salary_range_json: null },
+      "https://path-advisor.fr/devenir-infirmier",
+    );
+    expect(jsonLd.estimatedSalary).toBeUndefined();
+  });
+
+  it("omits an empty description instead of emitting '' (Epic 7 review)", () => {
+    const jsonLd = buildOccupationJsonLd(
+      { ...PROFESSION, description: "" },
+      "https://path-advisor.fr/devenir-infirmier",
+    );
+    expect("description" in jsonLd).toBe(false);
+  });
+
+  it("emits industry but no Country-granularity occupationLocation (Epic 7 review)", () => {
+    const jsonLd = buildOccupationJsonLd(PROFESSION, "https://path-advisor.fr/devenir-infirmier");
+    expect(jsonLd.industry).toBe("santé");
+    // Google requires City granularity, which we don't have — a
+    // non-compliant Country value is worse than none.
+    expect(jsonLd.occupationLocation).toBeUndefined();
+  });
 });
 
 describe("buildFaqPageJsonLd", () => {

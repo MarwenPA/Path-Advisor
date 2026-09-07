@@ -63,10 +63,21 @@ export class ApiError extends Error {
 export interface ApiRequestInit extends Omit<RequestInit, "body"> {
   body?: unknown;
   csrfToken?: string;
+  /**
+   * Set to `false` for anonymous `AllowAny` endpoints (the Epic 7 public
+   * SEO fetchers). Epic 7 review fix: `getServerCookieHeader()` calls
+   * `cookies()`, and merely CALLING `cookies()` opts the whole route into
+   * dynamic rendering (the surrounding try/catch does not undo it) — which
+   * silently made `export const revalidate = 3600` inert on every public
+   * page (proof: none of them appeared in `.next/prerender-manifest.json`).
+   * Authenticated fetchers keep the default (`true`): they genuinely need
+   * the `sessionid`/`csrftoken` pass-through.
+   */
+  forwardCookies?: boolean;
 }
 
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
-  const { body, csrfToken, headers, signal, ...rest } = init;
+  const { body, csrfToken, headers, signal, forwardCookies = true, ...rest } = init;
   const url = `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
   // Story 1.5 §AC10: default 15s timeout via AbortSignal. Callers wanting a
@@ -92,7 +103,7 @@ export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Prom
     effectiveSignal = composed.signal;
   }
 
-  const serverCookie = await getServerCookieHeader();
+  const serverCookie = forwardCookies ? await getServerCookieHeader() : undefined;
 
   const response = await fetch(url, {
     ...rest,

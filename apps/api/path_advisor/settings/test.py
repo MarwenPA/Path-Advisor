@@ -23,6 +23,15 @@ CACHES = {
     }
 }
 
+# The locmem cache above is process-wide, so anonymous-throttle counters would
+# accumulate across the whole suite (every APIClient shares one test IP). Raise
+# the public SEO rate so unrelated tests never trip it — the dedicated throttle
+# test pins a low rate on the class itself.
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
+    "gdpr_export_create": "50/hour",
+    "public_seo": "100000/min",
+}
+
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 CELERY_TASK_ALWAYS_EAGER = True
 

@@ -448,3 +448,62 @@ class TestSchoolPublicSlugs:
         response = client.get(url)
         row = response.json()[0]
         assert set(row.keys()) == {"slug", "updated_at"}
+
+
+# ── Deactivated schools stay off public surfaces — adversarial-review fix ─────
+
+
+@pytest.fixture
+def inactive_school(db):
+    return School.objects.create(
+        slug="ecole-desactivee-test",
+        name="École Désactivée Test",
+        type=School.Type.ECOLE_INGENIEUR,
+        city="Palaiseau",
+        region="Île-de-France",
+        postal_code="91120",
+        selectivity_index=1,
+        public_private=School.PublicPrivate.PUBLIC,
+        official_url="https://test.example",
+        is_active=False,
+    )
+
+
+class TestDeactivatedSchoolVisibility:
+    @pytest.mark.django_db
+    def test_seo_detail_404s_for_deactivated_school(self, inactive_school):
+        """A deactivated school must never be served to anonymous visitors."""
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": inactive_school.slug})
+        response = client.get(url)
+        assert response.status_code == 404
+
+    @pytest.mark.django_db
+    def test_slugs_exclude_deactivated_school(self, school, inactive_school):
+        """A deactivated school must not be sitemapped."""
+        client = APIClient()
+        url = reverse("schools:public-school-slugs")
+        response = client.get(url)
+        slugs = [row["slug"] for row in response.json()]
+        assert school.slug in slugs
+        assert inactive_school.slug not in slugs
+
+    @pytest.mark.django_db
+    def test_similar_schools_exclude_deactivated_school(self, school, inactive_school):
+        """Live public fiches must not cross-link deactivated schools."""
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        similar_slugs = {s["slug"] for s in response.json()["similar_schools"]}
+        assert inactive_school.slug not in similar_slugs
+
+    @pytest.mark.django_db
+    def test_catalog_excludes_deactivated_school(self, student_client, school, inactive_school):
+        """The browsable catalog hides deactivated schools (mirrors the
+        profession catalog); existing favorites stay reachable via
+        /mes-paris and /schools/{slug} — deliberately NOT filtered there."""
+        url = reverse("schools:school-list")
+        response = student_client.get(url)
+        slugs = [row["slug"] for row in response.json()["results"]]
+        assert school.slug in slugs
+        assert inactive_school.slug not in slugs

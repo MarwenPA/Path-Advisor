@@ -380,20 +380,45 @@ class TestPublicSeoProfessionDetail:
         response = client.get(url)
         assert response.status_code == 404
 
+    # Not `postgresql_only` — asserts the ABSENCE of an audit write (no
+    # trigger involved) and touches no RLS-protected table, so it runs on
+    # the SQLite fast lane too.
     @pytest.mark.django_db
-    @pytest.mark.postgresql_only
-    def test_seo_detail_emits_anonymous_audit_log(self, profession):
+    def test_seo_detail_does_not_write_audit_log(self, profession):
+        """Adversarial-review fix: an anonymous view of public referential
+        content has no actor and no personal data — the former per-hit
+        `record_audit` was an unbounded unauthenticated DB write (DoS +
+        audit-trail pollution) with zero GDPR traceability value."""
         from apps.audit.models import AuditLog
 
         client = APIClient()
         url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
-        client.get(url)
+        response = client.get(url)
 
-        log = AuditLog.objects.get(
-            action="profession_viewed_anonymous",
-            subject_id=str(profession.pk),
-        )
-        assert log.actor_id is None
+        assert response.status_code == 200
+        assert not AuditLog.objects.filter(action="profession_viewed_anonymous").exists()
+
+    # Not `postgresql_only` — anonymous requests only, no RLS-protected table.
+    @pytest.mark.django_db
+    def test_seo_detail_throttles_anonymous_bursts(self, profession, monkeypatch):
+        """Adversarial-review fix: the AllowAny SEO endpoints are per-IP
+        throttled (`public_seo` scope). Rate pinned low here — the test
+        settings raise the real rate so the rest of the suite (which shares
+        one locmem cache + one test IP) never trips it."""
+        from django.core.cache import cache
+
+        from apps.core.throttling import PublicSeoAnonThrottle
+
+        monkeypatch.setattr(PublicSeoAnonThrottle, "rate", "3/min", raising=False)
+        cache.clear()
+
+        client = APIClient()
+        url = reverse("professions:public-seo-detail", kwargs={"slug": profession.slug})
+        statuses = [client.get(url).status_code for _ in range(4)]
+        cache.clear()  # do not leak throttle counters into other tests
+
+        assert statuses[:3] == [200, 200, 200]
+        assert statuses[3] == 429
 
 
 # ── Sitemap slugs feed — Story 7.4 ───────────────────────────────────────────

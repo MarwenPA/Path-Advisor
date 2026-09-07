@@ -395,3 +395,28 @@ describe("FicheMetierTOC — TOC autonome", () => {
     expect(links[0]).toHaveAttribute("href", expect.stringContaining("#section-"));
   });
 });
+
+// ─── Boutons signalement — visibilité selon le payload ─────────────────────────
+
+describe("FicheMetier — boutons signalement (auth-gated)", () => {
+  it("affiche les boutons quand `id` est présent (payload authentifié)", () => {
+    mockMatchMedia(true);
+    // score présent → ReviewRequestButton rendu (AC1 Story 3.8)
+    render(withQueryClient(<FicheMetier profession={profession} score={72} />));
+    expect(
+      screen.getByRole("button", { name: /signaler une erreur sur cette fiche/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /demander une revue humaine/i })).toBeInTheDocument();
+  });
+
+  it("masque les boutons quand `id` est absent (payload SEO anonyme — l'endpoint 403)", () => {
+    mockMatchMedia(true);
+    const anonymousProfession: Profession = { ...profession };
+    delete anonymousProfession.id;
+    render(withQueryClient(<FicheMetier profession={anonymousProfession} score={72} />));
+    expect(screen.queryByRole("button", { name: /signaler une erreur/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /demander une revue humaine/i }),
+    ).not.toBeInTheDocument();
+  });
+});

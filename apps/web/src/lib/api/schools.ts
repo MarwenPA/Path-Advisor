@@ -79,9 +79,12 @@ export const fetchSchool = cache(async (slug: string): Promise<School> => {
  * endpoint; used by the public `/formations/{slug}` SSR page. No
  * `admission_stat` in the payload (see `SchoolPublicSeoSerializer`), so
  * `<FicheEcole>` naturally skips the personalized admission poller.
+ * `forwardCookies: false` — Epic 7 review fix: forwarding cookies calls
+ * `cookies()`, which forced every public page dynamic and made their
+ * `revalidate = 3600` inert (see `apiFetch`'s docstring).
  */
 export const fetchPublicSchool = cache(async (slug: string): Promise<School> => {
-  return apiFetch<School>(`/api/v1/public/schools/${slug}/`);
+  return apiFetch<School>(`/api/v1/public/schools/${slug}/`, { forwardCookies: false });
 });
 
 /** Story 7.4 — `{slug, updated_at}` rows for `app/sitemap.ts`. */
@@ -91,7 +94,8 @@ export interface SchoolSlugRow {
 }
 
 export async function fetchPublicSchoolSlugs(): Promise<SchoolSlugRow[]> {
-  return apiFetch<SchoolSlugRow[]>("/api/v1/public/schools/slugs/");
+  // AllowAny endpoint — no cookies, same rationale as fetchPublicSchool.
+  return apiFetch<SchoolSlugRow[]>("/api/v1/public/schools/slugs/", { forwardCookies: false });
 }
 
 /**
@@ -119,8 +123,10 @@ export async function fetchPublicParcoursSummary(
   niveauScolaire?: string,
 ): Promise<ParcoursSummary[]> {
   const qs = niveauScolaire ? `?niveau_scolaire=${encodeURIComponent(niveauScolaire)}` : "";
+  // AllowAny endpoint — no cookies, same rationale as fetchPublicSchool.
   return apiFetch<ParcoursSummary[]>(
     `/api/v1/public/metiers/${encodeURIComponent(professionSlug)}/parcours/${qs}`,
+    { forwardCookies: false },
   );
 }
 

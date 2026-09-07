@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 import userEvent from "@testing-library/user-event";
 import { SchoolCompare } from "../SchoolCompare";
 import type { School } from "@/lib/api/schools";
@@ -35,19 +36,19 @@ const SCHOOL_D = makeSchool("d", "IUT Paris D");
 
 describe("SchoolCompare", () => {
   it("renders list of schools in compare mode (checkboxes)", () => {
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
     expect(screen.getByRole("checkbox", { name: /IUT Paris A/i })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: /IUT Paris B/i })).toBeInTheDocument();
   });
 
   it("does not show comparison table when fewer than 2 schools selected", () => {
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("selecting 2 schools shows comparison table", async () => {
     const user = userEvent.setup();
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris A/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris B/i }));
     expect(screen.getByRole("table")).toBeInTheDocument();
@@ -55,7 +56,7 @@ describe("SchoolCompare", () => {
 
   it("comparison table has correct field rows", async () => {
     const user = userEvent.setup();
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris A/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris B/i }));
     const table = screen.getByRole("table");
@@ -71,7 +72,7 @@ describe("SchoolCompare", () => {
 
   it("selecting more than 3 is prevented (max 3)", async () => {
     const user = userEvent.setup();
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B, SCHOOL_C, SCHOOL_D]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B, SCHOOL_C, SCHOOL_D]} />);
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris A/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris B/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris C/i }));
@@ -87,7 +88,7 @@ describe("SchoolCompare", () => {
 
   it("shows max-selection status message when 3 schools selected", async () => {
     const user = userEvent.setup();
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B, SCHOOL_C, SCHOOL_D]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B, SCHOOL_C, SCHOOL_D]} />);
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris A/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris B/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris C/i }));
@@ -97,7 +98,7 @@ describe("SchoolCompare", () => {
 
   it("table column headers include school names", async () => {
     const user = userEvent.setup();
-    render(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
+    renderWithIntl(<SchoolCompare schools={[SCHOOL_A, SCHOOL_B]} />);
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris A/i }));
     await user.click(screen.getByRole("checkbox", { name: /IUT Paris B/i }));
     expect(

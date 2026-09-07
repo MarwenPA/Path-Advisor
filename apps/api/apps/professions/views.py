@@ -19,6 +19,7 @@ from rest_framework.views import APIView
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 from apps.core.permissions import IsAuthenticatedAndActive, IsPathAdmin, IsStudent
+from apps.core.throttling import PublicSeoAnonThrottle
 from apps.professions.models import Profession, ProfessionReport
 from apps.professions.serializers import (
     ProfessionAdminSerializer,
@@ -178,26 +179,23 @@ class PublicSeoProfessionDetailView(APIView):
     despite "Public" it actually requires `IsAuthenticatedAndActive` +
     `IsStudent`, kept as-is/unrenamed to avoid a churny rename across the
     existing authenticated `/metiers/{slug}` flow): this view uses the
-    narrower `ProfessionPublicSeoSerializer` and does NOT audit-log with an
-    `actor` (there is none — `record_audit` accepts `actor=None`, which
-    `_resolve_actor` treats as a system/anonymous event).
+    narrower `ProfessionPublicSeoSerializer` and does NOT audit-log at all:
+    the GDPR audit trail traces actions on/by identified data subjects, but
+    an anonymous view of public referential content has no actor and no
+    personal data — a per-hit `record_audit` here was an unbounded,
+    unauthenticated DB-write amplifier (DoS + audit-trail pollution) with
+    zero traceability value. Traffic analytics belong to the web/CDN access
+    logs. Bounded per IP by `PublicSeoAnonThrottle` regardless.
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [PublicSeoAnonThrottle]
 
     def get(self, request: Request, slug: str) -> Response:
         try:
             profession = Profession.objects.get(slug=slug, is_active=True)
         except Profession.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        record_audit(
-            action="profession_viewed_anonymous",
-            result=AuditResult.SUCCESS,
-            actor=None,
-            subject_id=profession.id,
-            metadata={"slug": profession.slug},
-        )
 
         serializer = ProfessionPublicSeoSerializer(profession)
         return Response(serializer.data)
@@ -212,6 +210,7 @@ class PublicProfessionSlugsView(APIView):
     """
 
     permission_classes = [AllowAny]
+    throttle_classes = [PublicSeoAnonThrottle]
 
     def get(self, request: Request) -> Response:
         professions = Profession.objects.filter(is_active=True).order_by("slug")

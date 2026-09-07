@@ -15,13 +15,30 @@
       ]
     },
     "assert": {
-      "assertions": {
-        "categories:performance": ["error", { "minScore": 0.8 }],
-        "categories:seo": ["error", { "minScore": 0.95 }],
-        "largest-contentful-paint": ["error", { "maxNumericValue": 3000 }],
-        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
-        "total-blocking-time": ["error", { "maxNumericValue": 200 }]
-      }
+      "assertMatrix": [
+        {
+          "matchingUrlPattern": "^http://localhost:3000/(?!metiers/|formations/)",
+          "aggregationMethod": "median",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.8 }],
+            "categories:seo": ["error", { "minScore": 0.95 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 200 }]
+          }
+        },
+        {
+          "matchingUrlPattern": "^http://localhost:3000/(metiers|formations)/",
+          "aggregationMethod": "median",
+          "assertions": {
+            "categories:performance": ["error", { "minScore": 0.8 }],
+            "categories:seo": ["error", { "minScore": 0.95 }],
+            "largest-contentful-paint": ["error", { "maxNumericValue": 3000 }],
+            "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+            "total-blocking-time": ["error", { "maxNumericValue": 200 }]
+          }
+        }
+      ]
     },
     "upload": {
       "target": "temporary-public-storage"

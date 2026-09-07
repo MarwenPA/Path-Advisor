@@ -53,7 +53,12 @@ const COLOR_GROUPS: SwatchGroup[] = [
     swatches: [
       { name: "text", className: "bg-text", hex: "#1A1A1A", note: "16.8:1 on bg (AAA)" },
       { name: "text-muted", className: "bg-text-muted", hex: "#666660", note: "5.6:1 on bg (AA)" },
-      { name: "text-subtle", className: "bg-text-subtle", hex: "#8C8C86", note: "large text only" },
+      {
+        name: "text-subtle",
+        className: "bg-text-subtle",
+        hex: "#71716A",
+        note: "4.7:1 on bg (AA)",
+      },
     ],
   },
   {

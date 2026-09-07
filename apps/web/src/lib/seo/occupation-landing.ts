@@ -9,10 +9,30 @@
  */
 import type { Profession } from "@/components/professions/types";
 
-/** Canonical production origin — used for absolute URLs in JSON-LD/OG
- * markup. Story 7.4 (sitemap) will likely centralize this further; kept
- * here for now as the single source for this module. */
-export const SITE_ORIGIN = "https://path-advisor.fr";
+/** Canonical production origin. Kept as its own constant so `robots.ts`
+ * can detect "this deploy is NOT production" (Epic 7 review: a staging
+ * deploy must not advertise production canonicals nor let itself be
+ * indexed). */
+export const PRODUCTION_ORIGIN = "https://path-advisor.fr";
+
+/** Origin used for absolute URLs in canonicals/JSON-LD/OG markup and the
+ * sitemap. Epic 7 review fix: previously hardcoded to production, so any
+ * staging deploy emitted production URLs everywhere. `NEXT_PUBLIC_` prefix
+ * so the value is inlined consistently in both server and client bundles. */
+export const SITE_ORIGIN = process.env.NEXT_PUBLIC_SITE_ORIGIN ?? PRODUCTION_ORIGIN;
+
+/** Valid niveau URL slugs for `/{niveau}/quel-bac-pour-{metier}` (Story
+ * 7.3 AC2), mapped to the backend `Parcours.NiveauScolaire` enum. Lives
+ * here (not in the page file) so `app/sitemap.ts` can enumerate the same
+ * slugs without importing a page module — emitting a niveau the page
+ * doesn't recognize would put 404s in the sitemap. Labels stay in
+ * `messages/fr.json#quelBacPourPage.niveauLabels` (Story 7.7). */
+export const NIVEAU_SLUGS: Record<string, { apiValue: string }> = {
+  "3eme": { apiValue: "troisieme_bac_pro" },
+  "terminale-generale": { apiValue: "terminale_generale" },
+  "terminale-technologique": { apiValue: "terminale_technologique" },
+  "terminale-pro": { apiValue: "terminale_pro" },
+};
 
 export interface FaqEntry {
   question: string;
@@ -74,24 +94,50 @@ export function buildOccupationFaq(profession: Profession): FaqEntry[] {
   return faq;
 }
 
-/** Schema.org `Occupation` — Story 7.3/7.4 AC (rich snippets). */
+/**
+ * Schema.org `Occupation` — Story 7.3/7.4 AC (rich snippets).
+ *
+ * Epic 7 review fixes (Google "Estimated salary" structured-data reqs):
+ * - `MonetaryAmountDistribution` REQUIRES `duration` — our figures are
+ *   annual gross, so `"P1Y"` (ISO 8601), else no rich result at all.
+ * - `salary_range_json` now feeds `percentile10`/`percentile90` and acts
+ *   as the fallback when `median_salary_eur` is absent (it was ignored).
+ * - empty `description` is omitted rather than emitted as `""`.
+ * - `occupationLocation` was `{"@type":"Country"}` gated on the unrelated
+ *   `sector` field — Google requires City granularity, which we don't
+ *   have for a nationwide métier, so it's dropped entirely (a
+ *   non-compliant value is worse than none). `industry` keeps its
+ *   (correct) `sector` gate.
+ */
 export function buildOccupationJsonLd(profession: Profession, url: string) {
   const jsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Occupation",
     name: profession.name,
-    description: profession.description,
     url,
   };
-  if (profession.median_salary_eur) {
-    jsonLd.estimatedSalary = {
-      "@type": "MonetaryAmountDistribution",
-      currency: "EUR",
-      median: profession.median_salary_eur,
-    };
+  if (profession.description) {
+    jsonLd.description = profession.description;
+  }
+  if (profession.median_salary_eur || profession.salary_range_json) {
+    // Array form + `name: "base"` per Google's own Occupation example.
+    jsonLd.estimatedSalary = [
+      {
+        "@type": "MonetaryAmountDistribution",
+        name: "base",
+        currency: "EUR",
+        duration: "P1Y",
+        ...(profession.median_salary_eur ? { median: profession.median_salary_eur } : {}),
+        ...(profession.salary_range_json
+          ? {
+              percentile10: profession.salary_range_json.min,
+              percentile90: profession.salary_range_json.max,
+            }
+          : {}),
+      },
+    ];
   }
   if (profession.sector) {
-    jsonLd.occupationLocation = { "@type": "Country", name: "France" };
     jsonLd.industry = profession.sector;
   }
   return jsonLd;

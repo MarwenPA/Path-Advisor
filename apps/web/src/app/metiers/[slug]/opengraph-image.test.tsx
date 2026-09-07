@@ -8,7 +8,7 @@ vi.mock("@/lib/api/professions", () => ({
   fetchPublicProfession: (...args: unknown[]) => fetchPublicProfessionMock(...args),
 }));
 
-import Image from "./opengraph-image";
+import Image, { generateImageMetadata } from "./opengraph-image";
 
 describe("metiers/[slug] opengraph-image", () => {
   it("renders an image using the profession name", async () => {
@@ -18,6 +18,26 @@ describe("metiers/[slug] opengraph-image", () => {
 
     expect(response).toBeInstanceOf(Response);
     expect(fetchPublicProfessionMock).toHaveBeenCalledWith("infirmier-test");
+  });
+
+  it("names the profession in the image alt (Epic 7 review — generic alt fix)", async () => {
+    fetchPublicProfessionMock.mockResolvedValue({ name: "Infirmier·ère" });
+
+    const [meta] = await generateImageMetadata({
+      params: Promise.resolve({ slug: "infirmier-test" }),
+    });
+
+    expect(meta!.alt).toBe("Fiche métier Infirmier·ère — Path-Advisor");
+  });
+
+  it("falls back to a generic alt when the profession fetch fails", async () => {
+    fetchPublicProfessionMock.mockRejectedValue(new Error("not found"));
+
+    const [meta] = await generateImageMetadata({
+      params: Promise.resolve({ slug: "metier-inexistant" }),
+    });
+
+    expect(meta!.alt).toBe("Fiche métier — Path-Advisor");
   });
 
   it("still renders a fallback image when the profession fetch fails", async () => {
