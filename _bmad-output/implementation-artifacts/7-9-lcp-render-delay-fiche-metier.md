@@ -42,7 +42,16 @@ Faire peindre le contenu principal des fiches publiques côté serveur, pour ram
 
 **AC2** — LCP médian < 2500 ms sur les 5 pages de référence, mesuré via `lhci autorun` avec `aggregationMethod: "median"` et un backend gunicorn (les conditions du gate actuel).
 
-**AC3** — Le budget LCP de `apps/web/lighthouserc.json` est ramené de 3000 à **2500 ms** dans la même PR que le correctif, et `ci-lighthouse` est vert.
+**AC3** — L'exception ciblée de `apps/web/lighthouserc.json` est **supprimée** dans la même PR que le correctif, et `ci-lighthouse` est vert.
+
+Concrètement : le fichier utilise aujourd'hui un `assertMatrix` à deux entrées mutuellement exclusives —
+
+| Entrée | Pages | Budget LCP |
+|---|---|---|
+| `^http://localhost:3000/(?!metiers/\|formations/)` | `/`, `/devenir-*`, `/{niveau}/quel-bac-pour-*` | **2500 ms** (cible produit) |
+| `^http://localhost:3000/(metiers\|formations)/` | `/metiers/{slug}`, `/formations/{slug}` | **3000 ms** (plafond provisoire, ce défaut) |
+
+Une fois le render delay corrigé, les deux entrées doivent être fusionnées en un `assert` unique à 2500 ms pour toutes les pages. Deux pièges vérifiés dans la source de `@lhci/utils` : `assertMatrix` **interdit** `aggregationMethod` au niveau supérieur (il doit figurer dans chaque entrée), et **toutes** les entrées qui matchent s'appliquent cumulativement — d'où des motifs strictement disjoints plutôt qu'un fourre-tout suivi d'une surcharge, qui ne fonctionnerait pas.
 
 **AC4** — Aucune régression fonctionnelle sur l'affichage authentifié des fiches (score, niveau de confiance, signaux contributifs, drawer) : ce sont les seules parties qui ont légitimement besoin d'être clientes.
 
