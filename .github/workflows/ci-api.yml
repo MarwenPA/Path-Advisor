@@ -6,10 +6,14 @@ on:
     paths:
       - "apps/api/**"
       - ".github/workflows/ci-api.yml"
+  # No `paths:` filter here, deliberately. These jobs are REQUIRED status
+  # checks on `main`: a filtered workflow simply never runs on a PR that
+  # touches other directories, so the required check stays "Expected"
+  # forever and the PR becomes unmergeable without an admin bypass.
+  # Verified the hard way — PR #97 (apps/api only) and #98 (apps/web only)
+  # each stalled on the check the other one triggered. The repo is public,
+  # so Actions minutes are free; the only cost is wall-clock on unrelated PRs.
   pull_request:
-    paths:
-      - "apps/api/**"
-      - ".github/workflows/ci-api.yml"
 
 jobs:
   lint-test-openapi:
