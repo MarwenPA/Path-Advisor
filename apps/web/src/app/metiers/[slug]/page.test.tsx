@@ -2,13 +2,16 @@
  * `/metiers/[slug]` page tests — Story 7.1 (public SSR fiche métier).
  *
  * Epic 7 review: the query-param-dependent UI moved to `MetierPageBody`
- * (client, `useSearchParams`) so the Server Component stays ISR-cacheable —
- * `useSearchParams` is mocked per-test below to simulate the two arrival
- * flows, and rendering goes through `renderWithIntl` (the body uses
- * `useTranslations`).
+ * so the Server Component stays ISR-cacheable. Story 7.9: the body reads
+ * `window.location.search` (not `useSearchParams`, which forced an empty
+ * Suspense-fallback shell on prerender), so the two arrival flows are
+ * simulated with `history.replaceState` on jsdom's real location. Rendering
+ * goes through `renderWithIntl` (the body uses `useTranslations`).
+ *
+ * See `__tests__/page.ssr.test.tsx` for the server-HTML guarantee itself.
  */
 import { screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithIntl } from "@/test/render-with-intl";
 
@@ -18,10 +21,8 @@ vi.mock("@/lib/api/professions", () => ({
 }));
 
 const notFoundMock = vi.fn();
-let searchParams = new URLSearchParams();
 vi.mock("next/navigation", () => ({
   notFound: () => notFoundMock(),
-  useSearchParams: () => searchParams,
 }));
 
 vi.mock("./FicheMetierClient", () => ({
@@ -52,9 +53,14 @@ const PROFESSION = {
 };
 
 describe("MetierDetailPage (public)", () => {
+  beforeEach(() => {
+    // Story 7.9 — the body reads window.location.search; reset the URL to
+    // an anonymous visit before each test.
+    window.history.replaceState({}, "", "/metiers/infirmier-test");
+  });
+
   it("renders the CTA to sign up for an anonymous visit (no score in query)", async () => {
     fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
-    searchParams = new URLSearchParams();
 
     renderWithIntl(
       (await MetierDetailPage({ params: Promise.resolve({ slug: "infirmier-test" }) }))!,
@@ -69,7 +75,6 @@ describe("MetierDetailPage (public)", () => {
 
   it("emits Schema.org Occupation JSON-LD (Story 7.4 AC)", async () => {
     fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
-    searchParams = new URLSearchParams();
 
     const { container } = renderWithIntl(
       (await MetierDetailPage({ params: Promise.resolve({ slug: "infirmier-test" }) }))!,
@@ -87,7 +92,6 @@ describe("MetierDetailPage (public)", () => {
       ...PROFESSION,
       description: `piégé</script><script>alert("xss")</script>`,
     });
-    searchParams = new URLSearchParams();
 
     const { container } = renderWithIntl(
       (await MetierDetailPage({ params: Promise.resolve({ slug: "infirmier-test" }) }))!,
@@ -119,7 +123,7 @@ describe("MetierDetailPage (public)", () => {
 
   it("hides the signup CTA when arriving from the authenticated recommendations flow", async () => {
     fetchPublicProfessionMock.mockResolvedValue(PROFESSION);
-    searchParams = new URLSearchParams({ score: "82", confidence: "high" });
+    window.history.replaceState({}, "", "/metiers/infirmier-test?score=82&confidence=high");
 
     renderWithIntl(
       (await MetierDetailPage({ params: Promise.resolve({ slug: "infirmier-test" }) }))!,

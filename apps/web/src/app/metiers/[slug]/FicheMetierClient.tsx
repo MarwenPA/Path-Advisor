@@ -1,11 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 
 import { FicheMetier } from "@/components/professions/FicheMetier";
-import { SignauxDrawer } from "@/components/professions/SignauxDrawer";
 import type { FicheMetierProps } from "@/components/professions/types";
 import type { SignalContributif } from "@/lib/api/recommendations";
+
+// Story 7.9 — the drawer (radix Dialog/Sheet + BulletinsAddSheet) only ever
+// appears on a signal click; loading it lazily keeps its chunk out of the
+// LCP critical path of the public /metiers/{slug} page (`ssr: false` is
+// safe: closed drawer renders nothing server-side anyway).
+const SignauxDrawer = dynamic(
+  () => import("@/components/professions/SignauxDrawer").then((m) => m.SignauxDrawer),
+  { ssr: false },
+);
 
 interface FicheMetierClientProps extends Omit<FicheMetierProps, "onSignalClick"> {
   signalsContributifs: SignalContributif[];
