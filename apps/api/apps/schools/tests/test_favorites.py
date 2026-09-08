@@ -14,31 +14,43 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole, UserStatus
+from apps.core.rls_testing import as_path_admin
 from apps.schools.models import FavoriteSchool, School
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
+# Story 1.16: the `postgresql_only` lane runs as NOSUPERUSER/NOBYPASSRLS
+# against FORCE ROW LEVEL SECURITY, so fixture INSERTs into `users` are
+# themselves subject to the policies. `as_path_admin()` scopes an existing
+# policy branch to the arrange phase ONLY — the requests under test still go
+# through `TenantSessionMiddleware`, which sets the GUCs from the
+# authenticated user and `RESET ALL`s afterwards, so RLS stays fully
+# enforced for the behaviour being asserted. (`schools`/`favorite_schools`
+# carry no RLS, so only user creation needs the wrap.)
+
 
 @pytest.fixture
 def user_a(db):
-    return User.objects.create_user(
-        email="student_a@test.local",
-        password="Strong1!pass",
-        role=UserRole.STUDENT,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    with as_path_admin():
+        return User.objects.create_user(
+            email="student_a@test.local",
+            password="Strong1!pass",
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 @pytest.fixture
 def user_b(db):
-    return User.objects.create_user(
-        email="student_b@test.local",
-        password="Strong1!pass",
-        role=UserRole.STUDENT,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    with as_path_admin():
+        return User.objects.create_user(
+            email="student_b@test.local",
+            password="Strong1!pass",
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 @pytest.fixture

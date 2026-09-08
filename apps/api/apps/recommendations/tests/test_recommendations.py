@@ -2,12 +2,57 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
+
+# Story 1.16: the `postgresql_only` lane enforces FORCE RLS on `users` and
+# `student_profiles`, so arrange-phase INSERTs must identify themselves via an
+# existing policy branch (`as_path_admin`). Setup only — API tests exercise
+# `TenantSessionMiddleware` (which sets the GUCs from the authenticated user
+# then `RESET ALL`s), and service-level tests run the unit under
+# `_as_request_user()`, i.e. the exact GUCs the middleware provides in
+# production — never under `path_admin`.
+from apps.core.rls_testing import as_path_admin
+
+
+@contextmanager
+def _as_request_user(user):
+    """Run a service-level act phase under the caller's own identity GUCs.
+
+    Story 1.16: `compute_recommendations()` reads `student_profiles`, which
+    carries FORCE RLS keyed on `app.current_user_id`. In production the
+    service always runs inside a request where `TenantSessionMiddleware` has
+    set exactly these GUCs; a direct unit-test call has none, so RLS would
+    hide the caller's own profile and silently change the behaviour under
+    test. This mirrors the middleware (same GUCs, same SESSION scope — see
+    its docstring for the autocommit rationale) with the *acting user's* id
+    and role, so the policies stay fully enforced for the unit.
+    """
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        yield
+        return
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT set_config('app.current_user_id', %s, false), "
+            "set_config('app.actor_role', %s, false)",
+            [str(user.id), str(getattr(user, "role", "") or "")],
+        )
+    try:
+        yield
+    finally:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT set_config('app.current_user_id', '', false), "
+                "set_config('app.actor_role', '', false)"
+            )
+
 
 AI_SERVICE_RESPONSE = {
     "student_id": "stu_01",
@@ -107,12 +152,18 @@ class TestComputeRecommendations:
         from apps.accounts.models import User
         from apps.recommendations.services.recommendation_service import compute_recommendations
 
-        user = User.objects.create_user(email="student@test.com", password="pass", role="student")
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="student@test.com", password="pass", role="student"
+            )
         self._make_professions(db)
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            return_value=AI_SERVICE_RESPONSE,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                return_value=AI_SERVICE_RESPONSE,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -126,7 +177,10 @@ class TestComputeRecommendations:
         from apps.accounts.models import User
         from apps.recommendations.services.recommendation_service import compute_recommendations
 
-        user = User.objects.create_user(email="noProfile@test.com", password="pass", role="student")
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="noProfile@test.com", password="pass", role="student"
+            )
         self._make_professions(db)
 
         captured = {}
@@ -135,9 +189,12 @@ class TestComputeRecommendations:
             captured["profile"] = profile
             return AI_SERVICE_RESPONSE
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            side_effect=mock_score,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                side_effect=mock_score,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -151,7 +208,8 @@ class TestComputeRecommendations:
         from apps.accounts.models import User
         from apps.recommendations.services.recommendation_service import compute_recommendations
 
-        user = User.objects.create_user(email="skip@test.com", password="pass", role="student")
+        with as_path_admin():
+            user = User.objects.create_user(email="skip@test.com", password="pass", role="student")
         # Only create prof_01 — prof_02 through prof_09 are unknown
         from apps.professions.models import Profession
 
@@ -167,9 +225,12 @@ class TestComputeRecommendations:
             sector="santé",
         )
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            return_value=AI_SERVICE_RESPONSE,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                return_value=AI_SERVICE_RESPONSE,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -185,9 +246,10 @@ class TestComputeRecommendations:
         from apps.professions.models import Profession
         from apps.recommendations.services.recommendation_service import compute_recommendations
 
-        user = User.objects.create_user(
-            email="nobulletins@test.com", password="pass", role="student"
-        )
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="nobulletins@test.com", password="pass", role="student"
+            )
         for i in range(1, 10):
             Profession.objects.create(
                 id=f"prof_0{i}" if i < 10 else f"prof_{i}",
@@ -209,9 +271,12 @@ class TestComputeRecommendations:
             ],
         }
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            return_value=ai_response_with_high,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                return_value=ai_response_with_high,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -227,10 +292,11 @@ class TestComputeRecommendations:
         from apps.recommendations.services.recommendation_service import compute_recommendations
         from apps.students.models import StudentProfile
 
-        user = User.objects.create_user(
-            email="hasbulletins@test.com", password="pass", role="student"
-        )
-        profile = StudentProfile.objects.create(user=user, bulletins_status="completed")
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="hasbulletins@test.com", password="pass", role="student"
+            )
+            profile = StudentProfile.objects.create(user=user, bulletins_status="completed")
         BulletinManual.objects.create(
             student=profile,
             trimestre_label="T1",
@@ -250,9 +316,12 @@ class TestComputeRecommendations:
                 sector="santé",
             )
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            return_value=AI_SERVICE_RESPONSE,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                return_value=AI_SERVICE_RESPONSE,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -268,8 +337,11 @@ class TestComputeRecommendations:
         from apps.recommendations.services.recommendation_service import compute_recommendations
         from apps.students.models import StudentProfile
 
-        user = User.objects.create_user(email="nullconf@test.com", password="pass", role="student")
-        profile = StudentProfile.objects.create(user=user, bulletins_status="completed")
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="nullconf@test.com", password="pass", role="student"
+            )
+            profile = StudentProfile.objects.create(user=user, bulletins_status="completed")
         BulletinManual.objects.create(
             student=profile,
             trimestre_label="T1",
@@ -292,9 +364,12 @@ class TestComputeRecommendations:
             "scored_occupations": [{"occupation_id": "prof_01", "score": 80}],
         }
 
-        with patch(
-            "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
-            return_value=ai_null_response,
+        with (
+            patch(
+                "apps.recommendations.services.recommendation_service.ai_client.score_metiers",
+                return_value=ai_null_response,
+            ),
+            _as_request_user(user),
         ):
             data = compute_recommendations(user)
 
@@ -314,10 +389,11 @@ class TestComputeBulletinSummary:
         from apps.recommendations.services.recommendation_service import _compute_bulletin_summary
         from apps.students.models import StudentProfile
 
-        user = User.objects.create_user(
-            email="nobulletin@test.com", password="pass", role="student"
-        )
-        profile = StudentProfile.objects.create(user=user)
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="nobulletin@test.com", password="pass", role="student"
+            )
+            profile = StudentProfile.objects.create(user=user)
         result = _compute_bulletin_summary(profile)
         assert result is None
 
@@ -327,10 +403,11 @@ class TestComputeBulletinSummary:
         from apps.recommendations.services.recommendation_service import _compute_bulletin_summary
         from apps.students.models import StudentProfile
 
-        user = User.objects.create_user(
-            email="withbulletin@test.com", password="pass", role="student"
-        )
-        profile = StudentProfile.objects.create(user=user)
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="withbulletin@test.com", password="pass", role="student"
+            )
+            profile = StudentProfile.objects.create(user=user)
         BulletinManual.objects.create(
             student=profile,
             trimestre_label="T1",
@@ -350,8 +427,11 @@ class TestComputeBulletinSummary:
         from apps.recommendations.services.recommendation_service import _compute_bulletin_summary
         from apps.students.models import StudentProfile
 
-        user = User.objects.create_user(email="zeronote@test.com", password="pass", role="student")
-        profile = StudentProfile.objects.create(user=user)
+        with as_path_admin():
+            user = User.objects.create_user(
+                email="zeronote@test.com", password="pass", role="student"
+            )
+            profile = StudentProfile.objects.create(user=user)
         BulletinManual.objects.create(
             student=profile,
             trimestre_label="T1",
@@ -381,7 +461,10 @@ class TestRecommendationsView:
     def test_requires_student_role(self, db):
         from apps.accounts.models import User
 
-        admin = User.objects.create_user(email="admin@test.com", password="pass", role="path_admin")
+        with as_path_admin():
+            admin = User.objects.create_user(
+                email="admin@test.com", password="pass", role="path_admin"
+            )
         client = APIClient()
         client.force_authenticate(user=admin)
         response = client.get("/api/v1/students/me/recommendations/")
@@ -391,12 +474,13 @@ class TestRecommendationsView:
         from apps.accounts.models import User
         from apps.professions.models import Profession
 
-        student = User.objects.create_user(
-            email="student2@test.com", password="pass", role="student"
-        )
-        student.status = "active"
-        student.email_verified_at = timezone.now()
-        student.save(update_fields=["status", "email_verified_at"])
+        with as_path_admin():
+            student = User.objects.create_user(
+                email="student2@test.com", password="pass", role="student"
+            )
+            student.status = "active"
+            student.email_verified_at = timezone.now()
+            student.save(update_fields=["status", "email_verified_at"])
         for i in range(1, 10):
             Profession.objects.create(
                 id=f"prof_0{i}" if i < 10 else f"prof_{i}",
@@ -429,10 +513,13 @@ class TestRecommendationsView:
         from apps.accounts.models import User
         from apps.professions.models import Profession
 
-        student = User.objects.create_user(email="schema@test.com", password="pass", role="student")
-        student.status = "active"
-        student.email_verified_at = timezone.now()
-        student.save(update_fields=["status", "email_verified_at"])
+        with as_path_admin():
+            student = User.objects.create_user(
+                email="schema@test.com", password="pass", role="student"
+            )
+            student.status = "active"
+            student.email_verified_at = timezone.now()
+            student.save(update_fields=["status", "email_verified_at"])
         for i in range(1, 10):
             Profession.objects.create(
                 id=f"prof_0{i}" if i < 10 else f"prof_{i}",
@@ -474,10 +561,13 @@ class TestRecommendationsView:
         from apps.accounts.models import User
         from apps.recommendations.services.ai_client import AIServiceUnavailableError
 
-        student = User.objects.create_user(email="error@test.com", password="pass", role="student")
-        student.status = "active"
-        student.email_verified_at = timezone.now()
-        student.save(update_fields=["status", "email_verified_at"])
+        with as_path_admin():
+            student = User.objects.create_user(
+                email="error@test.com", password="pass", role="student"
+            )
+            student.status = "active"
+            student.email_verified_at = timezone.now()
+            student.save(update_fields=["status", "email_verified_at"])
         client = APIClient()
         client.force_authenticate(user=student)
 

@@ -10,7 +10,7 @@ import pytest
 from django.db import connection, transaction
 
 from apps.accounts.models import UserRole
-from apps.core.rls import bypass_rls
+from apps.core.rls_testing import as_path_admin
 from apps.establishments.models import Cohort, Establishment, EstablishmentType, LicenseType
 
 pytestmark = [pytest.mark.postgresql_only, pytest.mark.rls]
@@ -28,12 +28,16 @@ def _set_gucs(cursor, *, user_id: str = "", tenant_id: str = "", actor_role: str
 
 def _make_establishment(*, uai: str) -> Establishment:
     # Code-review fix (2026-09): this file's own test setup was never
-    # wrapped in `bypass_rls` — on a real NOSUPERUSER/NOBYPASSRLS Postgres
-    # role, `establishments_isolation_modify` (path_admin/bypass only)
-    # refuses the plain INSERT with `InsufficientPrivilege`, so every test
-    # in this file failed at setup, proving nothing about isolation. Pattern
-    # copied from `apps/family/tests/test_rls_isolation.py`.
-    with bypass_rls(reason="test_setup.create_establishment"):
+    # wrapped in a privileged context — on a real NOSUPERUSER/NOBYPASSRLS
+    # Postgres role, `establishments_isolation_modify` (path_admin/bypass
+    # only) refuses the plain INSERT, so every test in this file failed at
+    # setup, proving nothing about isolation.
+    # Story 1.16: switched from `bypass_rls()` to `as_path_admin()` —
+    # `apps.core.rls.bypass_rls` forbids generic/test-helper call sites
+    # (grep surface must stay countable on one hand) and emits an audit row
+    # per call; the policies' existing path_admin branch does the same job
+    # with no new bypass surface. See `apps.core.rls_testing`.
+    with as_path_admin():
         return Establishment.objects.create(
             name=f"Lycée {uai}",
             type=EstablishmentType.LYCEE,
@@ -48,7 +52,7 @@ def _make_establishment(*, uai: str) -> Establishment:
 
 
 def _make_cohort(*, establishment: Establishment, name: str) -> Cohort:
-    with bypass_rls(reason="test_setup.create_cohort"):
+    with as_path_admin():
         return Cohort.objects.create(
             establishment=establishment,
             name=name,

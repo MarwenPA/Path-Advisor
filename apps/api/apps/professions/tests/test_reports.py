@@ -16,32 +16,42 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole, UserStatus
+from apps.core.rls_testing import as_path_admin
 from apps.professions.models import Profession, ProfessionReport
 
 # ── Fixtures ─────────────────────────────────────────────────────────────────
 
+# Story 1.16: the `postgresql_only` lane enforces FORCE RLS on `users`, so
+# fixture INSERTs must identify themselves via an existing policy branch.
+# Arrange only — the requests under test run through
+# `TenantSessionMiddleware`, which sets GUCs from the authenticated user and
+# `RESET ALL`s afterwards, so RLS stays enforced for the behaviour asserted.
+# (`professions`/`profession_reports` carry no RLS.)
+
 
 @pytest.fixture
 def student_user(db):
-    return User.objects.create_user(
-        email="eleve@test.local",
-        password="Strong1!pass",
-        role=UserRole.STUDENT,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    with as_path_admin():
+        return User.objects.create_user(
+            email="eleve@test.local",
+            password="Strong1!pass",
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 @pytest.fixture
 def admin_user(db):
-    return User.objects.create_user(
-        email="admin@test.local",
-        password="Strong1!pass",
-        role=UserRole.PATH_ADMIN,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-        is_superuser=True,
-    )
+    with as_path_admin():
+        return User.objects.create_user(
+            email="admin@test.local",
+            password="Strong1!pass",
+            role=UserRole.PATH_ADMIN,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+            is_superuser=True,
+        )
 
 
 @pytest.fixture

@@ -14,6 +14,7 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserRole, UserStatus
+from apps.core.rls_testing import as_path_admin
 from apps.professions.models import Profession
 from apps.schools.models import Parcours, School
 
@@ -30,13 +31,18 @@ EDGES_SAMPLE = [
 
 
 def _make_user(email: str, role: UserRole = UserRole.STUDENT) -> User:
-    return User.objects.create_user(
-        email=email,
-        password="Strong1!pass",
-        role=role,
-        status=UserStatus.ACTIVE,
-        email_verified_at=timezone.now(),
-    )
+    # Story 1.16: `users` carries FORCE RLS and the postgresql_only lane runs
+    # as a role that cannot bypass it — arrange-phase INSERTs must identify
+    # themselves via an existing policy branch. Setup only: the API calls
+    # under test still run under the GUCs `TenantSessionMiddleware` sets.
+    with as_path_admin():
+        return User.objects.create_user(
+            email=email,
+            password="Strong1!pass",
+            role=role,
+            status=UserStatus.ACTIVE,
+            email_verified_at=timezone.now(),
+        )
 
 
 def _make_profession(slug: str = "infirmier-test") -> Profession:

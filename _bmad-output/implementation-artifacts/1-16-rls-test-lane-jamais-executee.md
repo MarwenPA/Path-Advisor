@@ -1,6 +1,20 @@
 # Story 1.16 : Faire réellement tourner le lane de tests RLS (jamais exécuté)
 
-**Status:** ready-for-dev
+**Status:** review
+
+## 0. Résultat (2026-09-08)
+
+Lane RLS complet (`-m "rls or postgresql_only"`, la sélection exacte de la CI) : **149 passants, 0 échec** — contre 149 erreurs au départ. Lane SQLite rapide inchangé : 1448 passants, 151 skippés. `ruff` propre, aucune nouvelle erreur mypy.
+
+**Aucun trou de politique RLS trouvé.** Les 149 échecs étaient tous des défauts de harnais, et une fois l'arrange et la persistance des GUC corrigés, **chaque assertion d'isolation stricte passe sans avoir été modifiée** contre les politiques telles que migrées. C'est le résultat qu'on espérait sans pouvoir le présumer.
+
+Trois découvertes au-delà du périmètre annoncé :
+
+1. **Des tests d'isolation ne prouvaient rien.** `students/test_rls.py` posait ses GUC avec `set_config(..., is_local => true)` **hors** `transaction.atomic()`. Vérifié empiriquement : en autocommit, un GUC local est perdu dès l'instruction suivante. Sa phase *act* tournait donc sur une session anonyme, pas sur l'identité annoncée — `test_anonymous_session_sees_nothing` passait pour la mauvaise raison, et les autres testaient la branche « deny by default » au lieu de celle de leur nom.
+2. **Des contrôles positifs manquaient.** `rowcount == 0` sur un UPDATE croisé est vacu : une session morte ne matche rien non plus. Chaque test d'isolation a désormais un contrôle prouvant que le même harnais, avec les GUC du propriétaire légitime, atteint bien la ligne.
+3. **Trois bugs de requête jamais exécutés** dans le même fichier : une liste Python bindée en `ARRAY` Postgres vers une colonne `jsonb`, une colonne `NOT NULL` (`bulletins_status`, story 2.7) absente d'un `INSERT` brut — de sorte qu'une violation de contrainte pouvait se faire passer pour le rejet RLS attendu — et une comparaison de `jsonb` texte à une liste Python.
+
+`_set_gucs` lève désormais une exception s'il est appelé hors `transaction.atomic()`, pour que cette classe de bug ne puisse pas revenir silencieusement.
 
 ## 1. Constat
 
@@ -38,7 +52,11 @@ Autrement dit : la RLS est désormais réellement appliquée (c'est le but de ce
 
 **AC2** — Le job `rls-tests` de `ci-api` est **vert en CI réelle** (confirmé via `gh run watch`, pas déduit d'un run local).
 
-**AC3** — Les fixtures créant des utilisateurs/tenants passent explicitement par `bypass_rls(reason=...)`, conformément au contrat documenté dans `apps/core/rls.py` (qui interdit d'en faire un helper générique — chaque appel doit être justifié).
+**AC3** — ~~Les fixtures créant des utilisateurs/tenants passent explicitement par `bypass_rls(reason=...)`~~
+
+> ⚠️ **AC3 telle qu'écrite initialement était fausse et contredisait le code.** `apps/core/rls.py` interdit explicitement ce que cette AC demandait : *« DO NOT call bypass_rls() from a generic helper. The set of call sites MUST stay countable on one hand »*. L'utiliser depuis des fixtures aurait fait exploser la surface de grep sur laquelle un relecteur s'appuie, et émis une ligne d'audit par test.
+>
+> **AC3 corrigée** — les fixtures passent par `as_path_admin()` (`apps/core/rls_testing.py`, module test-only), qui réutilise la branche `path_admin` que **toutes** les politiques du dépôt possèdent déjà. Aucune nouvelle surface de bypass n'est introduite, et `bypass_rls()` garde ses call sites dénombrables.
 
 **AC4** — Si un test révèle une faille d'isolation réelle (et non un défaut de fixture), elle est traitée comme un défaut de sécurité : correctif de politique + test de régression, et non contournement de la fixture pour faire passer le test. **Ne jamais affaiblir un test d'isolation pour obtenir du vert.**
 
