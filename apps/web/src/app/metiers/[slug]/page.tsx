@@ -1,6 +1,5 @@
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
 
 import { ApiError } from "@/lib/api/client";
 import { fetchPublicProfession } from "@/lib/api/professions";
@@ -15,10 +14,12 @@ import { MetierPageBody } from "./MetierPageBody";
  * Public route (no `(authenticated)` layout, no auth check) — the same
  * URL serves both an anonymous visitor (SEO/direct link — CTA to sign up)
  * and a logged-in student arriving from their recommendations list with
- * `?score=&confidence=&signals=` query params. Epic 7 review fix: those
- * params are now read client-side in `MetierPageBody` (`useSearchParams`)
- * — `await searchParams` in this Server Component forced dynamic rendering
- * and made `revalidate` inert (see `MetierPageBody`'s docstring).
+ * `?score=&confidence=&signals=` query params. Those params are read
+ * client-side in `MetierPageBody` from `window.location.search` — never
+ * `await searchParams` here (forces dynamic rendering, makes `revalidate`
+ * inert) and never `useSearchParams` there (forces a Suspense fallback on
+ * prerender, i.e. an empty LCP shell — Story 7.9). See `MetierPageBody`'s
+ * docstring for the full history.
  *
  * `revalidate = 3600` — AC2: CDN-cacheable HTML, 1h TTL (on-demand
  * revalidation on a moderation/report signal is Story 3.8's existing
@@ -100,12 +101,14 @@ export default async function MetierDetailPage({ params }: { params: Promise<{ s
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(occupationJsonLd) }}
       />
-      {/* `useSearchParams` in MetierPageBody requires a Suspense boundary
-          for static/ISR rendering; the fallback is the anonymous variant,
-          which is also exactly what gets prerendered and indexed. */}
-      <Suspense fallback={null}>
-        <MetierPageBody profession={profession} />
-      </Suspense>
+      {/* Story 7.9 — no Suspense boundary here on purpose. MetierPageBody
+          is a Client Component but reads the personalization query params
+          from `window.location.search` (post-hydration), NOT from
+          `useSearchParams()`, so it prerenders as full anonymous HTML
+          (LCP in the initial response) while keeping ISR effective. The
+          previous `<Suspense fallback={null}>` + `useSearchParams` combo
+          prerendered an EMPTY SHELL — see MetierPageBody's docstring. */}
+      <MetierPageBody profession={profession} />
     </main>
   );
 }

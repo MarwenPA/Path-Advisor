@@ -399,14 +399,18 @@ describe("FicheMetierTOC — TOC autonome", () => {
 // ─── Boutons signalement — visibilité selon le payload ─────────────────────────
 
 describe("FicheMetier — boutons signalement (auth-gated)", () => {
-  it("affiche les boutons quand `id` est présent (payload authentifié)", () => {
+  it("affiche les boutons quand `id` est présent (payload authentifié)", async () => {
     mockMatchMedia(true);
     // score présent → ReviewRequestButton rendu (AC1 Story 3.8)
     render(withQueryClient(<FicheMetier profession={profession} score={72} />));
+    // Story 7.9 — les boutons sont chargés via `next/dynamic` (hors chemin
+    // critique LCP de la fiche publique), donc apparition asynchrone.
     expect(
-      screen.getByRole("button", { name: /signaler une erreur sur cette fiche/i }),
+      await screen.findByRole("button", { name: /signaler une erreur sur cette fiche/i }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /demander une revue humaine/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: /demander une revue humaine/i }),
+    ).toBeInTheDocument();
   });
 
   it("masque les boutons quand `id` est absent (payload SEO anonyme — l'endpoint 403)", () => {

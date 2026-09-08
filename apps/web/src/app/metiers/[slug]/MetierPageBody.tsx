@@ -1,8 +1,8 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 import type { Profession } from "@/components/professions/types";
 import type { SignalContributif } from "@/lib/api/recommendations";
@@ -17,12 +17,48 @@ import { FicheMetierClient } from "./FicheMetierClient";
  * Server Component, which forces dynamic rendering on EVERY request and
  * silently disabled its `revalidate = 3600` ISR (AC2 of Story 7.1). The
  * query params only ever personalize the view for a student arriving from
- * their authenticated recommendations list — pure client-side concern — so
- * they're now read here via `useSearchParams()` (inside a `<Suspense>`
- * boundary in the page) and the server-rendered/cached HTML stays the
- * anonymous variant Google sees. Bonus: a student's personal score can no
- * longer be frozen into the cached HTML / SERP snippet.
+ * their authenticated recommendations list — pure client-side concern.
+ *
+ * Story 7.9 fix: that first fix read the params via `useSearchParams()`,
+ * which forces a Suspense fallback on static/ISR prerender — and the
+ * fallback was `null`, so the prerendered HTML was an EMPTY SHELL and the
+ * LCP element only painted after hydration (render delay ≈ 2,3 s). The
+ * params are now read from `window.location.search` through
+ * `useSyncExternalStore` (server snapshot: empty string — same pattern as
+ * `useMediaQuery` in `FicheMetier`). Consequences, all deliberate:
+ *
+ * - The prerendered/cached HTML is the full ANONYMOUS fiche (title,
+ *   description, sections, signup CTA) — LCP paints from the initial HTML,
+ *   and a student's personal score can never be frozen into the cached
+ *   HTML / SERP snippet.
+ * - Hydration renders with the server snapshot (`""`), so it matches the
+ *   server HTML exactly — no hydration mismatch. React then re-checks the
+ *   client snapshot on mount and re-renders once with the real query
+ *   string, upgrading the view to the personalized variant (score badge,
+ *   drawer, CTA hidden) for students arriving from `/mes-metiers`. Only
+ *   those students see that one-frame anonymous→personalized swap;
+ *   anonymous visitors (SEO, the Lighthouse gate) render once.
+ * - The store never notifies (`subscribe` is a no-op): the query string
+ *   only changes with a navigation, which normally remounts this page.
+ *   `popstate` is still subscribed for the one case that does NOT remount:
+ *   browser back/forward between two query-string variants of the SAME
+ *   URL (e.g. `?score=82` → `?score=impossible`). Nothing on this page
+ *   mutates the query string itself, so `pushState` (which does not emit
+ *   `popstate`) is not a concern here.
  */
+
+function subscribeToLocationSearch(onChange: () => void): () => void {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function useLocationSearch(): string {
+  return useSyncExternalStore(
+    subscribeToLocationSearch,
+    () => window.location.search,
+    () => "",
+  );
+}
 
 function parseSignals(raw: string | null): SignalContributif[] {
   if (!raw) return [];
@@ -44,7 +80,7 @@ function parseSignals(raw: string | null): SignalContributif[] {
 
 export function MetierPageBody({ profession }: { profession: Profession }) {
   const t = useTranslations("metierPage");
-  const searchParams = useSearchParams();
+  const searchParams = new URLSearchParams(useLocationSearch());
 
   const scoreStr = searchParams.get("score");
   const confidence = searchParams.get("confidence");
