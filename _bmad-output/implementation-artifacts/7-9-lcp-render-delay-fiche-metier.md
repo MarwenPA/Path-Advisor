@@ -1,6 +1,45 @@
 # Story 7.9 : LCP — supprimer le render delay sur les fiches publiques
 
-**Status:** ready-for-dev
+**Status:** review
+
+## 0. Résultat (2026-09-08)
+
+### La cause réelle était une régression introduite par le correctif `revalidate` de la review
+
+Le correctif de la review avait déplacé tout le corps de la page dans un composant client derrière un `<Suspense fallback={null}>` pour libérer l'ISR. Comme ce composant lisait `useSearchParams`, Next ne pouvait pas le prérendre statiquement et servait le fallback — **c'est-à-dire rien**. L'ISR était bien obtenu (`●` dans le manifeste) mais au prix d'un HTML vide de son contenu. Vérifié : zéro occurrence de la classe de l'élément LCP dans le HTML servi.
+
+Correctif : `useSearchParams` remplacé par une lecture de `window.location.search` via `useSyncExternalStore` (snapshot serveur `""`), et suppression de la frontière Suspense. Le HTML prérendu est désormais **toujours la fiche anonyme complète** ; l'hydratation ré-affiche une fois avec les vrais paramètres pour les élèves arrivant de `/mes-metiers`. Un abonnement `popstate` a été ajouté pour le seul cas qui ne remonte pas le composant (précédent/suivant entre deux variantes de query de la même URL).
+
+Second levier : `SignauxDrawer`, `ReportErrorButton` et `ReviewRequestButton` chargés en `next/dynamic({ssr:false})` — ce sont des composants d'interaction pure, hors chemin critique.
+
+### Mesures (gunicorn + build de production, médiane de 3)
+
+| Page | LCP avant | LCP après | TBT avant | TBT après |
+|---|---|---|---|---|
+| `/metiers/{slug}` | ~3045 | **2502** | 278 | **46** |
+| `/formations/{slug}` | ~2500 | **2497** | — | 42 |
+| `/` | — | 1957 | — | 40 |
+| `/devenir-*` | — | 1955 | — | 41 |
+| `/{niveau}/quel-bac-*` | — | 2346 | — | 42 |
+
+Propriétés vérifiées : contenu présent dans le HTML servi ; HTML avec `?score=82&confidence=high` **identique octet pour octet** à la version anonyme (aucun score d'élève ne peut être figé dans le cache ou un snippet SERP) ; ISR préservé (`●`, routes présentes dans `.next/prerender-manifest.json`). Lint 0 erreur, typecheck, format, **951 tests**, build : verts.
+
+### AC3 partiellement satisfaite — et pourquoi
+
+Les deux fiches restent bimodales : 2105 ms **ou** ~2500 ms selon que la police arrive à temps. Cause isolée par expérience — police basculée temporairement en `display: "optional"`, puis restaurée :
+
+| Police | LCP `/metiers` (3 runs) | Médiane |
+|---|---|---|
+| `display: "swap"` (actuel) | 2503 / 2105 / 2502 | 2502 |
+| `display: "optional"` | 2105 / 2105 / 2111 | **2105** |
+
+Le webfont Inter (48 ko, subset latin, préchargé) vaut donc **~400 ms de LCP** et explique toute la variance. À noter : `unused-javascript` (250 ms) que Lighthouse désignait porte sur les chunks React et vendor — non réductibles ; le diagnostic de l'outil pointait le bon ordre de grandeur mais la mauvaise cause.
+
+`display: "optional"` réglerait le problème, mais au prix de la police de marque à la première visite sur connexion lente — décision de design, non technique, donc **non prise ici**. Le levier propre est le subsetting de la police (même gain, aucun coût visuel) : story **7.11**.
+
+En conséquence l'`assertMatrix` est conservée, mais **resserrée** : 2600 ms sur les deux fiches (contre 3000 avant), 2500 ms strict sur les trois autres pages. L'exception rétrécit à mesure que le défaut rétrécit. `/formations` sortait à 2497 ms contre un seuil de 2500 — 3 ms de marge n'est pas une garantie, d'où son inclusion dans l'exception plutôt qu'un vert de façade.
+
+À corriger avec la story 7.11 : replier la matrice en un `assert` unique à 2500 ms.
 
 ## 1. Contexte — comment ce défaut a été découvert
 

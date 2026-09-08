@@ -1,14 +1,27 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import { ChevronDown } from "lucide-react";
 
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
 import { ScoreVocationnel } from "./ScoreVocationnel";
 import { FicheMetierTOC } from "./FicheMetierTOC";
-import { ReportErrorButton } from "./ReportErrorButton";
-import { ReviewRequestButton } from "./ReviewRequestButton";
+
+// Story 7.9 — the report/review buttons only render for an authenticated
+// payload (`profession.id` present, never on the public SEO fiche), but a
+// static import still shipped their radix Dialog/Sheet + form + mutation
+// chunk to the anonymous /metiers/{slug} page and inflated its simulated
+// LCP. Lazy-load them: the chunk is only fetched on pages that render them.
+const ReportErrorButton = dynamic(
+  () => import("./ReportErrorButton").then((m) => m.ReportErrorButton),
+  { ssr: false },
+);
+const ReviewRequestButton = dynamic(
+  () => import("./ReviewRequestButton").then((m) => m.ReviewRequestButton),
+  { ssr: false },
+);
 import type { FicheMetierProps, Profession, RequirementItem, SignalsByCategory } from "./types";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
