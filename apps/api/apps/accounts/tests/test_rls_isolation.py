@@ -30,6 +30,7 @@ import pytest
 from django.db import connection, transaction
 
 from apps.accounts.models import ParentalConsent, User, UserRole, UserStatus
+from apps.core.rls_testing import as_path_admin
 
 pytestmark = [pytest.mark.postgresql_only, pytest.mark.rls]
 
@@ -57,16 +58,26 @@ def _make_user(
     role: str = UserRole.STUDENT,
     status: str = UserStatus.ACTIVE,
 ) -> User:
-    """Create a User row directly via the ORM (test setup runs as table owner)."""
-    user = User.objects.create(
-        email=email,
-        tenant_id=tenant_id,
-        role=role,
-        status=status,
-        email_verified_at=None,
-    )
-    user.set_password("Path-Advisor-2026!")
-    user.save()
+    """Create a User row for the arrange phase.
+
+    Story 1.16: the old docstring claimed "test setup runs as table owner" —
+    exactly the premise this lane invalidates. Under `FORCE ROW LEVEL
+    SECURITY` with a NOSUPERUSER/NOBYPASSRLS role, even the owner obeys the
+    policies, so a bare `User.objects.create` fails with "new row violates
+    row-level security policy". `as_path_admin()` (session-scoped GUC, see
+    `apps.core.rls_testing`) covers arrange only; each test's act phase
+    re-sets the GUCs transaction-locally, which overrides the session value.
+    """
+    with as_path_admin():
+        user = User.objects.create(
+            email=email,
+            tenant_id=tenant_id,
+            role=role,
+            status=status,
+            email_verified_at=None,
+        )
+        user.set_password("Path-Advisor-2026!")
+        user.save()
     return user
 
 
@@ -185,16 +196,19 @@ def test_parental_consents_select_cross_user_blocked(skip_if_sqlite):
     tenant = uuid.uuid4()
     student_a = _make_user(email="sa@example.test", tenant_id=tenant)
     student_b = _make_user(email="sb@example.test", tenant_id=tenant)
-    consent_a = ParentalConsent.objects.create(
-        student=student_a,
-        parent_email="pa@example.test",
-        token=f"tok-{uuid.uuid4().hex}",
-    )
-    consent_b = ParentalConsent.objects.create(
-        student=student_b,
-        parent_email="pb@example.test",
-        token=f"tok-{uuid.uuid4().hex}",
-    )
+    # Story 1.16: still arrange — parental_consents_isolation_modify applies
+    # to the setup INSERTs too, hence the same path_admin window.
+    with as_path_admin():
+        consent_a = ParentalConsent.objects.create(
+            student=student_a,
+            parent_email="pa@example.test",
+            token=f"tok-{uuid.uuid4().hex}",
+        )
+        consent_b = ParentalConsent.objects.create(
+            student=student_b,
+            parent_email="pb@example.test",
+            token=f"tok-{uuid.uuid4().hex}",
+        )
 
     with transaction.atomic(), connection.cursor() as cur:
         _set_gucs(
