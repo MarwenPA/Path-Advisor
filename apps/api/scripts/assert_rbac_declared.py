@@ -111,6 +111,13 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     ),
     "public-profession-slugs": "Sitemap slugs feed — Story 7.4",
     "public-school-slugs": "Sitemap slugs feed — Story 7.4",
+    # --- Anonymous RUM beacon (Story 8.9). Anonymity is the FEATURE: the
+    #     view also sets `authentication_classes = []` so a logged-in
+    #     student's beacon is never attributable, the payload is closed
+    #     enums with bounded values, and writes are throttled per IP
+    #     (`rum_ingest`). See apps/telemetry/models.py for the
+    #     privacy-by-construction contract.
+    "rum-ingest": "Anonymous Core Web Vitals beacon — Story 8.9",
 }
 
 
