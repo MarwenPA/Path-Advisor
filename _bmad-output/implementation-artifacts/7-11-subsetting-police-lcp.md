@@ -1,6 +1,24 @@
 # Story 7.11 : Sortir la police du chemin critique LCP (subsetting)
 
-**Status:** ready-for-dev
+**Status:** done
+
+## 0. Résultat (2026-09-20)
+
+**Toutes les AC satisfaites.** `apps/web/src/app/fonts/inter-vf-latin-fr.woff2` : **26 204 octets contre 48 432 (−46 %)**, servi via `next/font/local` (préchargement + `adjustFontFallback` conservés, `display: "swap"` conservé — la police de marque reste appliquée dès la première visite).
+
+Pipeline (documenté aussi en commentaire dans `layout.tsx`) : `fonttools varLib.instancer` borne l'axe `wght` à 400:700 (48,4 → 36,2 ko — seuls 400/500/600/700 sont utilisés, vérifié par grep des classes Tailwind), puis `pyftsubset` restreint les glyphes au français réel (→ 26,2 ko). Le jeu de caractères a été établi par **inventaire mécanique** du catalogue fr.json + les caractères du référentiel (`·` de « Technicien·ne », `œ`, `«»`, `€`, `°`).
+
+**Zéro régression de glyphe, vérifié contre la source** : `←`, `→`, `Ÿ`, `ﬁ/ﬂ` manquent du subset **mais manquaient déjà du build Google** — les flèches du catalogue s'affichent depuis toujours en police système. Kerning (GPOS `kern`) conservé ; `mark`/`mkmk` élagués (positionnement d'accents combinants, inutile en français précomposé). Delta assumé : le build Google chargeait à la demande des fichiers `latin-ext` (85 ko) pour les caractères hors latin — ils tombent désormais en police système, métriques ajustées.
+
+**Mesures (gunicorn + build de prod, gate uniforme 2500 ms, médiane de 3)** :
+
+| Page | Avant (7.9) | Après | TBT |
+|---|---|---|---|
+| `/metiers/{slug}` | 2502 | **2316** (runs 2314-2318) | 7 |
+| `/formations/{slug}` | 2497 | **2312** | 5 |
+| `/`, `/devenir-*`, `/{niveau}/*` | 1955-2346 | 2159-2162 | 3-4 |
+
+**La bimodalité 2105/2500 a disparu** (runs à ±4 ms) — confirmation empirique que la police était toute la variance. L'`assertMatrix` est repliée en un `assert` unique à **2500 ms** pour les 5 pages (AC3) : plus aucune exception dans le gate. Web : 957 tests, lint/typecheck/format/build verts.
 
 ## 1. Constat, mesuré
 
