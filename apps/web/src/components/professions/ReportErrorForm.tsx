@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,13 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ErrorType, ReportPayload } from "@/hooks/useReportProfessionError";
 
-const ERROR_TYPE_OPTIONS: { value: ErrorType; label: string }[] = [
-  { value: "description_inexacte", label: "Description inexacte ou trompeuse" },
-  { value: "debouches_perimes", label: "Débouchés ou informations périmées" },
-  { value: "lien_casse", label: "Lien ou ressource cassé(e)" },
-  { value: "autre", label: "Autre" },
+// `value` is the API payload discriminant — only the label (catalog key
+// `ficheMetier.reportError.form.typeOptions.*`) is displayed.
+const ERROR_TYPE_OPTIONS: { value: ErrorType; labelKey: string }[] = [
+  { value: "description_inexacte", labelKey: "descriptionInexacte" },
+  { value: "debouches_perimes", labelKey: "debouchesPerimes" },
+  { value: "lien_casse", labelKey: "lienCasse" },
+  { value: "autre", labelKey: "autre" },
 ];
 
 const MAX_COMMENT_LENGTH = 500;
@@ -39,6 +42,7 @@ export function ReportErrorForm({
   onSubmit,
   onCancel,
 }: ReportErrorFormProps) {
+  const t = useTranslations("ficheMetier.reportError.form");
   const [errorType, setErrorType] = React.useState<ErrorType | "">("");
   const [location, setLocation] = React.useState("");
   const [comment, setComment] = React.useState("");
@@ -62,13 +66,13 @@ export function ReportErrorForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate aria-label="Formulaire de signalement">
+    <form onSubmit={handleSubmit} noValidate aria-label={t("formAria")}>
       <p className="mb-4 text-sm text-muted-foreground">{professionName}</p>
 
       {/* Type d'erreur — required */}
       <div className="mb-4">
         <Label htmlFor={selectId} className="mb-1.5 block">
-          Type d&apos;erreur <span aria-hidden>*</span>
+          {t("typeLabel")} <span aria-hidden>*</span>
         </Label>
         <Select
           value={errorType}
@@ -81,19 +85,19 @@ export function ReportErrorForm({
             id={selectId}
             aria-describedby={showTypeError ? `${selectId}-error` : undefined}
           >
-            <SelectValue placeholder="Choisir un type d'erreur" />
+            <SelectValue placeholder={t("typePlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {ERROR_TYPE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`typeOptions.${opt.labelKey}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {showTypeError && (
           <p id={`${selectId}-error`} className="mt-1 text-sm text-destructive" role="alert">
-            Ce champ est obligatoire.
+            {t("requiredField")}
           </p>
         )}
       </div>
@@ -101,31 +105,33 @@ export function ReportErrorForm({
       {/* Localisation — optional */}
       <div className="mb-4">
         <Label htmlFor={locationId} className="mb-1.5 block">
-          Où exactement ? <span className="font-normal text-muted-foreground">(optionnel)</span>
+          {t("locationLabel")}{" "}
+          <span className="font-normal text-muted-foreground">{t("optionalHint")}</span>
         </Label>
         <Input
           id={locationId}
           value={location}
           onChange={(e) => setLocation(e.target.value)}
-          placeholder="Ex. : section 'Comment y aller', paragraphe 2"
+          placeholder={t("locationPlaceholder")}
         />
       </div>
 
       {/* Commentaire — optional, max 500 */}
       <div className="mb-6">
         <Label htmlFor={commentId} className="mb-1.5 block">
-          Commentaire <span className="font-normal text-muted-foreground">(optionnel)</span>
+          {t("commentLabel")}{" "}
+          <span className="font-normal text-muted-foreground">{t("optionalHint")}</span>
         </Label>
         <Textarea
           id={commentId}
           value={comment}
           onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
-          placeholder="Décris l'erreur ou propose une correction"
+          placeholder={t("commentPlaceholder")}
           rows={3}
           aria-describedby={`${commentId}-count`}
         />
         <p id={`${commentId}-count`} className="mt-1 text-right text-xs text-muted-foreground">
-          {comment.length}/{MAX_COMMENT_LENGTH}
+          {t("charCount", { count: comment.length, max: MAX_COMMENT_LENGTH })}
         </p>
       </div>
 
@@ -137,7 +143,7 @@ export function ReportErrorForm({
       )}
 
       <Button type="submit" className="mb-2 w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Envoi…" : "Envoyer le signalement"}
+        {isSubmitting ? t("submitting") : t("submit")}
       </Button>
       <Button
         type="button"
@@ -146,7 +152,7 @@ export function ReportErrorForm({
         onClick={onCancel}
         disabled={isSubmitting}
       >
-        Annuler
+        {t("cancel")}
       </Button>
     </form>
   );

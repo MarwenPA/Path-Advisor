@@ -27,6 +27,26 @@ function SelectivityStars({ index }: { index: number }) {
   );
 }
 
+/** Story 7.10 (Part B) AC2/AC5 — explicit banner for a school pulled from
+ * the referential (`is_active === false` on authenticated payloads only).
+ * RGAA: the signal is carried by text + a visible icon, never colour alone;
+ * `role="note"` + aria-label make it a named landmark screen readers announce
+ * when reaching the fiche (content is server-rendered, so no live region is
+ * needed — it is present from the first paint, not injected later). */
+function DeactivatedNotice() {
+  const t = useTranslations("ficheEcole");
+  return (
+    <p
+      role="note"
+      aria-label={t("deactivatedNoticeAria")}
+      className="mb-3 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+    >
+      <span aria-hidden="true">⚠️</span>
+      <span>{t("deactivatedNotice")}</span>
+    </p>
+  );
+}
+
 function FormationItem({ formation }: { formation: Formation }) {
   const t = useTranslations("ficheEcole");
   return (
@@ -60,6 +80,11 @@ export function FicheEcole({
       ? { min: school.tuition_min_eur, max: school.tuition_max_eur }
       : null;
 
+  // Story 7.10 (Part B): strict `=== false` — the public SEO payload omits
+  // the field entirely (undefined must NOT trigger the notice), only the
+  // authenticated serializer sends an explicit boolean.
+  const isDeactivated = school.is_active === false;
+
   // compare variant: compact horizontal layout with checkbox
   if (variant === "compare") {
     return (
@@ -76,6 +101,7 @@ export function FicheEcole({
             className="mt-1"
           />
           <div className="flex-1">
+            {isDeactivated && <DeactivatedNotice />}
             <p className="font-medium">{school.name}</p>
             <p className="text-xs text-muted-foreground">{school.city}</p>
             <SelectivityStars index={school.selectivity_index} />
@@ -108,6 +134,10 @@ export function FicheEcole({
       aria-label={t("ficheAria", { name: school.name })}
       className={cn("rounded-xl border bg-card", variant === "expanded" ? "p-6" : "p-4", className)}
     >
+      {/* Story 7.10 (Part B) AC2 — before the header so it is the first thing
+          read on a deactivated school's fiche, in /mes-paris cards included */}
+      {isDeactivated && <DeactivatedNotice />}
+
       {/* Header */}
       <div className="mb-3">
         <HeadingTag className="text-lg font-semibold">{school.name}</HeadingTag>
@@ -180,7 +210,15 @@ export function FicheEcole({
           carries the field (Story 4.5 AC1, AC5). Anonymous public payloads
           omit it entirely → section hidden instead of an empty "Tes chances
           d'admission" block. */}
-      {variant === "expanded" && hasAdmissionField && (
+      {/* Story 7.10 (Part B) AC4 — no admission section at all for a
+          deactivated school: a prediction about a school removed from the
+          referential is meaningless, and rendering the poller would keep
+          refetching /admission-stat/ (which now 404s for it). The backend
+          also nulls `admission_stat`, but the guard here prevents the
+          "Données d'admission non disponibles" fallback from rendering under
+          a "Tes chances d'admission" heading that would contradict the
+          deactivation notice above. */}
+      {variant === "expanded" && hasAdmissionField && !isDeactivated && (
         <section aria-label={t("admissionAria")} className="mt-4">
           <SectionHeadingTag className="mb-2 text-sm font-medium">
             {t("admissionTitle")}

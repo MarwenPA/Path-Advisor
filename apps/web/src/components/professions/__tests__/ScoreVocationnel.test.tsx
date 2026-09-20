@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 
 import { ScoreVocationnel, ScoreVocationnelComparison } from "../ScoreVocationnel";
 import type { Signal } from "../types";
@@ -59,7 +60,7 @@ function setup(
     onExplainClick?: () => void;
   } = {},
 ) {
-  return render(<ScoreVocationnel {...baseProps} {...props} />);
+  return renderWithIntl(<ScoreVocationnel {...baseProps} {...props} />);
 }
 
 /** The phrase paragraph (the visible italic <p>, not the tooltip bubble copy). */
@@ -183,6 +184,13 @@ describe("AC2 — variant compact", () => {
     expect(screen.getByText("+3 autres")).toBeInTheDocument();
   });
 
+  it("accorde le chip +N au singulier via le pluriel ICU (Story 7.10 AC4)", () => {
+    // 3 signaux, 2 visibles en compact → 1 signal caché → "+1 autre", pas "+1 autres"
+    setup({ variant: "compact", signals: signals.slice(0, 3) });
+    expect(screen.getByText("+1 autre")).toBeInTheDocument();
+    expect(screen.queryByText("+1 autres")).toBeNull();
+  });
+
   it("le bouton Copier est visible en compact", () => {
     setup({ variant: "compact" });
     expect(screen.getByRole("button", { name: /copier la phrase/i })).toBeInTheDocument();
@@ -249,7 +257,7 @@ describe("AC4 — variant comparison", () => {
 
   it("ScoreVocationnelComparison rend 2 cartes en snap-scroll + grid lg", () => {
     const { variant: _variant, ...itemBase } = baseProps;
-    const { container } = render(
+    const { container } = renderWithIntl(
       <ScoreVocationnelComparison
         items={[
           { ...itemBase, metierId: "a" },

@@ -7,7 +7,8 @@
 
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ReviewRequestButton } from "../ReviewRequestButton";
@@ -65,7 +66,7 @@ function makeClient() {
 
 function renderButton(props?: Partial<React.ComponentProps<typeof ReviewRequestButton>>) {
   const client = makeClient();
-  return render(
+  return renderWithIntl(
     <QueryClientProvider client={client}>
       <ReviewRequestButton
         professionSlug="medecin-generaliste"

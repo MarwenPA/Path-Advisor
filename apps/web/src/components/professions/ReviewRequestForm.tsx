@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -14,10 +15,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ReviewPayload, ReviewReason } from "@/hooks/useRequestRecommendationReview";
 
-const REASON_OPTIONS: { value: ReviewReason; label: string }[] = [
-  { value: "ne_correspond_pas", label: "Ne me correspond pas du tout" },
-  { value: "choquant_inapproprie", label: "Métier choquant ou inapproprié" },
-  { value: "autre", label: "Autre" },
+// `value` is the API payload discriminant — only the label (catalog key
+// `ficheMetier.reviewRequest.form.reasonOptions.*`) is displayed.
+const REASON_OPTIONS: { value: ReviewReason; labelKey: string }[] = [
+  { value: "ne_correspond_pas", labelKey: "neCorrespondPas" },
+  { value: "choquant_inapproprie", labelKey: "choquantInapproprie" },
+  { value: "autre", labelKey: "autre" },
 ];
 
 const MAX_COMMENT_LENGTH = 500;
@@ -39,6 +42,7 @@ export function ReviewRequestForm({
   onSubmit,
   onCancel,
 }: ReviewRequestFormProps) {
+  const t = useTranslations("ficheMetier.reviewRequest.form");
   const [reason, setReason] = React.useState<ReviewReason | "">("");
   const [comment, setComment] = React.useState("");
   const [showReasonError, setShowReasonError] = React.useState(false);
@@ -60,13 +64,13 @@ export function ReviewRequestForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate aria-label="Formulaire de demande de revue humaine">
+    <form onSubmit={handleSubmit} noValidate aria-label={t("formAria")}>
       <p className="mb-4 text-sm text-muted-foreground">{professionName}</p>
 
       {/* Raison — required */}
       <div className="mb-4">
         <Label htmlFor={selectId} className="mb-1.5 block">
-          Raison <span aria-hidden>*</span>
+          {t("reasonLabel")} <span aria-hidden>*</span>
         </Label>
         <Select
           value={reason}
@@ -79,19 +83,19 @@ export function ReviewRequestForm({
             id={selectId}
             aria-describedby={showReasonError ? `${selectId}-error` : undefined}
           >
-            <SelectValue placeholder="Choisir une raison" />
+            <SelectValue placeholder={t("reasonPlaceholder")} />
           </SelectTrigger>
           <SelectContent>
             {REASON_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
+                {t(`reasonOptions.${opt.labelKey}`)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         {showReasonError && (
           <p id={`${selectId}-error`} className="mt-1 text-sm text-destructive" role="alert">
-            Ce champ est obligatoire.
+            {t("requiredField")}
           </p>
         )}
       </div>
@@ -99,18 +103,19 @@ export function ReviewRequestForm({
       {/* Commentaire — optional, max 500 */}
       <div className="mb-6">
         <Label htmlFor={commentId} className="mb-1.5 block">
-          Commentaire <span className="font-normal text-muted-foreground">(optionnel)</span>
+          {t("commentLabel")}{" "}
+          <span className="font-normal text-muted-foreground">{t("optionalHint")}</span>
         </Label>
         <Textarea
           id={commentId}
           value={comment}
           onChange={(e) => setComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
-          placeholder="Explique pourquoi cette reco te semble incorrecte (optionnel)"
+          placeholder={t("commentPlaceholder")}
           rows={3}
           aria-describedby={`${commentId}-count`}
         />
         <p id={`${commentId}-count`} className="mt-1 text-right text-xs text-muted-foreground">
-          {comment.length}/{MAX_COMMENT_LENGTH}
+          {t("charCount", { count: comment.length, max: MAX_COMMENT_LENGTH })}
         </p>
       </div>
 
@@ -122,7 +127,7 @@ export function ReviewRequestForm({
       )}
 
       <Button type="submit" className="mb-2 w-full" disabled={isSubmitting}>
-        {isSubmitting ? "Envoi…" : "Envoyer la demande"}
+        {isSubmitting ? t("submitting") : t("submit")}
       </Button>
       <Button
         type="button"
@@ -131,7 +136,7 @@ export function ReviewRequestForm({
         onClick={onCancel}
         disabled={isSubmitting}
       >
-        Annuler
+        {t("cancel")}
       </Button>
     </form>
   );
