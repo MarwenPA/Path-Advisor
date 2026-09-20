@@ -75,6 +75,8 @@ INSTALLED_APPS = [
     "apps.establishments",
     # Story 5.4 — premium B2C early-outreach requests (élève -> école).
     "apps.outreach",
+    # Story 8.9 — anonymous RUM (Core Web Vitals field data).
+    "apps.telemetry",
 ]
 
 MIDDLEWARE = [
@@ -240,6 +242,9 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "gdpr_export_create": "50/hour",
         "public_seo": "120/min",
+        # Story 8.9 — one batched beacon per page view; 60/min per IP is far
+        # above real usage but bounds the unauthenticated DB write.
+        "rum_ingest": "60/min",
     },
 }
 

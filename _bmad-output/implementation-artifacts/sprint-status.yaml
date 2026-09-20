@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-09-20  # 7.10 + 7.11 mergees ; epic-7 close (11/11 done), gate CWV uniforme 2500ms
+last_updated: 2026-09-20  # epic-7 close ; 8.9 (RUM) implementee -> review
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -181,7 +181,7 @@ development_status:
   # Ajoutee 2026-09-08 : les budgets CWV sont calibres sur une metrique SIMULEE,
   # sans aucune mesure de terrain — c'est ce manque qui a permis 2 mauvais
   # arbitrages de seuil pendant l'Epic 7.
-  8-9-rum-core-web-vitals-terrain: ready-for-dev
+  8-9-rum-core-web-vitals-terrain: review
   epic-8-retrospective: optional
 
   # Epic 9 — Back-office, Administration & Modération

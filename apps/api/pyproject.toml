@@ -97,6 +97,8 @@ ignore = [
 "apps/schools/**" = ["RUF012", "DJ001"]
 # Django convention: permission_classes / Meta.ordering are class-level lists (Story 5.1).
 "apps/billing/**" = ["RUF012", "DJ001"]
+# Django convention: permission/authentication/throttle_classes and Meta lists (Story 8.9).
+"apps/telemetry/**" = ["RUF012"]
 # Django convention: serializer/Meta fields are class-level lists. DJ001: nullable relationship/custom_message fields intentional (Story 6.1).
 "apps/family/**" = ["RUF012", "DJ001"]
 # Django convention: permission_classes / Meta fields are class-level lists.

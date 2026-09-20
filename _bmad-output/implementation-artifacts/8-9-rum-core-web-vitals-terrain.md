@@ -1,6 +1,20 @@
 # Story 8.9 : Métriques utilisateur réelles (RUM) sur les Core Web Vitals
 
-**Status:** ready-for-dev
+**Status:** review
+
+## 0. Résultat (2026-09-20)
+
+**AC1-AC4 livrées ; AC5 est datée par nature** (réexamen des budgets après 2-4 semaines de données — un rappel est posé dans la section AC5).
+
+**Backend** — nouvelle app `apps/telemetry` : `POST /api/v1/rum/vitals/` (AllowAny, throttle `rum_ingest` 60/min/IP, `authentication_classes = []` pour que le beacon d'un élève connecté ne soit jamais rattachable à sa session) et `GET /api/v1/admin/rum/summary/` (path_admin, p75 rang-le-plus-proche par métrique × type de page, segmenté device/connexion — fenêtre 28 j par défaut, 90 j max, alignée CrUX). Rétention : commande `prune_rum_vitals` (90 j). **13 tests**, dont un qui épingle le schéma : la table n'a *aucune colonne* utilisateur/IP/URL — la vie privée est par construction, pas par politique. `mypy apps/telemetry` : 0 erreur.
+
+**Frontend** — `RumReporter` monté dans le layout racine, auto-restreint : `pathnameToPageType` est un mapping fermé des 5 types de pages publiques ; tout le reste (espace authentifié inclus) n'est **jamais** mis en file. Batch unique flushé sur `visibilitychange`/`pagehide` via `fetch(keepalive, credentials: "omit")` — pas de `sendBeacon`, qui ne porte pas `application/json` sans ennuis CORS. **17 tests**, dont : un chemin authentifié n'est jamais rapporté, le payload ne contient jamais le pathname, pas de double-envoi.
+
+**Vérifié en bout-en-bout par un vrai navigateur** (leçon de l'Epic 7 : le build qui passe ne prouve rien) : Chrome piloté par Lighthouse sur la stack docker de dev → 9 lignes en Postgres avec `page_type=metier_fiche`, device `mobile`, connexion `4g`. Le flux complet — mesure web-vitals, file, flush pagehide, CORS, validation d'enum, écriture — fonctionne sans intervention manuelle.
+
+Corrections en cours de route, consignées : mon premier test de p75 attendait 1000 pour `[1000,1000,2000]` — **le code avait raison** (rang-le-plus-proche de 3 échantillons = le 3ᵉ) ; et le test de throttle devait épingler le taux sur la classe (DRF fige `THROTTLE_RATES` à l'import — le commentaire de `settings/test.py` le disait déjà).
+
+**Page RGPD** mise à jour (finalité « Mesure de performance technique », formulée pour un adolescent : ni identifiant, ni IP, ni URL complète, purge à 90 j).
 
 ## 1. Le manque
 

@@ -119,6 +119,16 @@ export default function RgpdPolicyPage() {
               <strong>Amélioration produit</strong> — analytics anonymisé (PostHog) pour comprendre
               comment le produit est utilisé. Tu peux refuser cette finalité à tout moment.
             </li>
+            <li>
+              {/* Story 8.9 — RUM. La collecte est anonyme PAR CONSTRUCTION :
+                  le schéma ne peut stocker ni identifiant, ni IP, ni URL
+                  complète (cf. apps/api/apps/telemetry/models.py). */}
+              <strong>Mesure de performance technique</strong> — vitesse de chargement des pages
+              publiques (Core Web Vitals), collectée de façon strictement anonyme : aucun
+              identifiant, aucune adresse IP, aucune URL complète n’est enregistrée — uniquement le
+              type de page, le type d’appareil et la qualité de connexion, supprimés au plus tard
+              après 90 jours.
+            </li>
           </ul>
         </section>
 
