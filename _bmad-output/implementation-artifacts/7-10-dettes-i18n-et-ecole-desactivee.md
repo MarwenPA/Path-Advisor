@@ -1,6 +1,31 @@
 # Story 7.10 : Dettes issues de la review Epic 7 (i18n FicheMetier + école désactivée)
 
-**Status:** ready-for-dev
+## 0. Résultat (2026-09-20)
+
+Les deux parties sont livrées. Web : **959 tests**, lint 0 erreur, typecheck, format, build verts, routes toujours en `●` (l'ISR de la 7.9 n'est pas défait). API : **1455 passants** sur le lane rapide, **151 sur le lane RLS** (vérifié contre un Postgres provisionné comme la CI), ruff propre.
+
+**Partie A** — les 8 composants de `components/professions/` sont migrés vers `next-intl` (namespace `ficheMetier.*`). Vérification par grep systématique, pas à la lecture — c'est le raccourci qui avait produit la fausse revendication de la 7.7 : aucun texte JSX, attribut traduisible ou littéral accentué ne subsiste hors tests.
+
+Découplage clé/libellé respecté : `SECTION_DEFS` garde son `key` (état d'accordéon, ids DOM, `data-section`) et gagne un `labelKey` ; `ERROR_TYPE_OPTIONS`/`REASON_OPTIONS` gardent leur `value` d'API. Le `next/dynamic({ssr:false})` de la 7.9 est intact.
+
+**Bug de grammaire trouvé au passage** : la puce `+{n} autres` de `ScoreVocationnel` affichait « +1 autres ». Corrigée en pluriel ICU (`+{count, plural, one {# autre} other {# autres}}`) avec un test qui vérifie que « +1 autre » s'affiche et que « +1 autres » ne s'affiche pas.
+
+**Partie B** — `SchoolDetailSerializer` expose `is_active` (vérifié absent du sérialiseur public SEO, avec tests dédiés) ; bannière `role="note"` dans les trois variantes de `FicheEcole`, sens porté par le texte + une icône `aria-hidden`, jamais par la couleur seule.
+
+Arbitrage AC4 : **masquer** la probabilité d'admission plutôt qu'avertir — une probabilité pour un établissement retiré du référentiel n'est pas une prédiction dégradée mais une prédiction dénuée de sens, et l'afficher « avec avertissement » inviterait quand même un adolescent à s'y ancrer. Appliqué à trois niveaux, dont un **404 sur l'endpoint de statistiques** : sans lui, le poller de 30 s aurait continué à recalculer et *persister* des lignes pour une école hors référentiel — effet de bord invisible depuis l'interface, non anticipé dans la rédaction de cette story.
+
+Le garde d'affichage est strict (`is_active === false`) : le payload public omettant le champ, il vaut `undefined` et ne déclenche jamais la bannière.
+
+### Dette restante, signalée plutôt que masquée
+
+- `/mes-paris/page.tsx` : français en dur (« Mes Paris », état vide) — dette story 4.8.
+- `components/ui/dialog.tsx:49` : un « Close » **en anglais** en sr-only dans la primitive Dialog partagée, annoncé sur chaque dialogue de la fiche.
+- `components/features/bulletins/bulletins-add-sheet.tsx` : en dur, rendu depuis `SignauxDrawer`.
+- Les puces `level_compatibility` affichent des valeurs d'enum brutes via `level.replace(/_/g, " ")` — il faudrait une table de libellés comme `quelBacPourPage.niveauLabels`.
+- `toLocaleString("fr-FR")` en dur pour les salaires, hors formatage next-intl.
+
+
+**Status:** review
 
 Deux dettes identifiées et **délibérément non traitées** pendant les correctifs de review, pour éviter des changements risqués en fin de cycle. Elles sont indépendantes l'une de l'autre et peuvent être découpées.
 

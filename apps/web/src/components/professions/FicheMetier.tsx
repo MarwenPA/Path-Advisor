@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import { ChevronDown } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { cn } from "@/lib/utils";
@@ -37,23 +38,31 @@ function slugify(text: string): string {
   return slug || text.toLowerCase().replace(/\s+/g, "-") || "signal";
 }
 
+// `key` is a logic discriminant (accordion state, DOM ids, data-section) and a
+// React key — never displayed. The displayed label lives in the catalog under
+// `ficheMetier.sections.{labelKey}`.
 const SECTION_DEFS = [
-  { key: "cest-quoi", label: "C'est quoi" },
-  { key: "pour-qui", label: "Pour qui" },
-  { key: "comment-y-aller", label: "Comment y aller" },
-  { key: "infos-pratiques", label: "Infos pratiques" },
-  { key: "signaux", label: "Signaux contributifs" },
+  { key: "cest-quoi", labelKey: "cestQuoi" },
+  { key: "pour-qui", labelKey: "pourQui" },
+  { key: "comment-y-aller", labelKey: "commentYAller" },
+  { key: "infos-pratiques", labelKey: "infosPratiques" },
+  { key: "signaux", labelKey: "signaux" },
 ] as const;
 
 type SectionKey = (typeof SECTION_DEFS)[number]["key"];
 
 const ACCORDION_KEYS: SectionKey[] = ["pour-qui", "comment-y-aller", "infos-pratiques"];
 
-// D1: category keys for signal IDs
-const SIGNAL_CATEGORIES: [string, string, keyof SignalsByCategory][] = [
-  ["passions", "Passions", "passions"],
-  ["valeurs", "Valeurs", "valeurs"],
-  ["specialites", "Spécialités", "specialites"],
+// D1: category keys for signal IDs. First element is an ID prefix / React key,
+// second the catalog key under `ficheMetier.signalCategories`.
+const SIGNAL_CATEGORIES: [
+  string,
+  "passions" | "valeurs" | "specialites",
+  keyof SignalsByCategory,
+][] = [
+  ["passions", "passions", "passions"],
+  ["valeurs", "valeurs", "valeurs"],
+  ["specialites", "specialites", "specialites"],
 ];
 
 // ─── useMediaQuery ────────────────────────────────────────────────────────────
@@ -82,15 +91,16 @@ function SectorBadge({ sector }: { sector: string }) {
 }
 
 function RequirementsList({ requirements }: { requirements: RequirementItem[] }) {
+  const t = useTranslations("ficheMetier.requirements");
   const grouped = requirements.reduce<Record<string, string[]>>((acc, item) => {
     (acc[item.type] ??= []).push(item.label);
     return acc;
   }, {});
 
   const typeLabels: Record<string, string> = {
-    studies: "Études",
-    skill: "Compétences",
-    quality: "Qualités",
+    studies: t("studies"),
+    skill: t("skill"),
+    quality: t("quality"),
   };
 
   return (
@@ -110,27 +120,30 @@ function RequirementsList({ requirements }: { requirements: RequirementItem[] })
 }
 
 function SalaryInfo({ profession }: { profession: Profession }) {
+  const t = useTranslations("ficheMetier.salary");
   const { median_salary_eur, salary_range_json, level_compatibility } = profession;
 
   return (
     <div className="flex flex-col gap-4">
       {median_salary_eur != null && (
         <div>
-          <p className="text-body-sm text-text-muted">Salaire médian brut annuel</p>
+          <p className="text-body-sm text-text-muted">{t("medianLabel")}</p>
           <p className="text-body font-semibold text-text">
-            {median_salary_eur.toLocaleString("fr-FR")} €
+            {t("medianValue", { value: median_salary_eur.toLocaleString("fr-FR") })}
           </p>
         </div>
       )}
       {salary_range_json && (
         <div>
-          <p className="text-body-sm text-text-muted">Fourchette</p>
+          <p className="text-body-sm text-text-muted">{t("rangeLabel")}</p>
           <p className="text-body text-text">
-            {salary_range_json.min.toLocaleString("fr-FR")} €&nbsp;–&nbsp;
-            {salary_range_json.max.toLocaleString("fr-FR")} €
+            {t("rangeValue", {
+              min: salary_range_json.min.toLocaleString("fr-FR"),
+              max: salary_range_json.max.toLocaleString("fr-FR"),
+            })}
             {salary_range_json.source && (
               <span className="ml-1 text-caption text-text-muted">
-                ({salary_range_json.source})
+                {t("rangeSource", { source: salary_range_json.source })}
               </span>
             )}
           </p>
@@ -138,7 +151,7 @@ function SalaryInfo({ profession }: { profession: Profession }) {
       )}
       {level_compatibility.length > 0 && (
         <div>
-          <p className="text-body-sm text-text-muted">Niveaux compatibles</p>
+          <p className="text-body-sm text-text-muted">{t("levelsLabel")}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {level_compatibility.map((level) => (
               <span
@@ -167,14 +180,17 @@ function SignalChipsGrouped({
   onSignalClick,
   interactive = true,
 }: SignalChipsGroupedProps) {
+  const t = useTranslations("ficheMetier");
   return (
     <div className="flex flex-col gap-4">
-      {SIGNAL_CATEGORIES.map(([catKey, catLabel, jsonKey]) => {
+      {SIGNAL_CATEGORIES.map(([catKey, catLabelKey, jsonKey]) => {
         const signals = signalsJson[jsonKey] ?? [];
         if (!signals.length) return null;
         return (
           <div key={catKey}>
-            <h3 className="mb-2 text-body font-semibold text-text">{catLabel}</h3>
+            <h3 className="mb-2 text-body font-semibold text-text">
+              {t(`signalCategories.${catLabelKey}`)}
+            </h3>
             <div className="flex flex-wrap gap-1.5">
               {signals.map((signal) => {
                 const signalId = `${catKey}-${slugify(signal)}`;
@@ -184,7 +200,7 @@ function SignalChipsGrouped({
                     <button
                       key={itemKey}
                       type="button"
-                      aria-label={`Signal contributif : ${signal}`}
+                      aria-label={t("signalChipAria", { label: signal })}
                       onClick={() => onSignalClick(signalId)}
                       className={cn(
                         "inline-flex items-center rounded-full border border-border px-2.5 py-0.5",
@@ -228,6 +244,7 @@ function SectionContent({
   onSignalClick?: (signalId: string) => void;
   interactive?: boolean;
 }) {
+  const t = useTranslations("ficheMetier.requirements");
   switch (sectionKey) {
     case "cest-quoi":
       return <p className="text-body text-text">{profession.description}</p>;
@@ -237,7 +254,7 @@ function SectionContent({
         <div className="flex flex-col gap-6">
           <RequirementsList requirements={profession.requirements_json} />
           <div>
-            <h3 className="mb-1 text-body font-semibold text-text">Journée type</h3>
+            <h3 className="mb-1 text-body font-semibold text-text">{t("dailyRoutineTitle")}</h3>
             <p className="text-body text-text-muted">{profession.daily_routine}</p>
           </div>
         </div>
@@ -279,7 +296,10 @@ function HeroSection({
   onSignalClick,
   isPrint = false,
 }: HeroSectionProps) {
-  const genericPhrase = `${profession.name} est un métier ${profession.sector ? `du secteur ${profession.sector}` : "varié et enrichissant"}.`;
+  const t = useTranslations("ficheMetier.hero");
+  const genericPhrase = profession.sector
+    ? t("genericPhraseWithSector", { name: profession.name, sector: profession.sector })
+    : t("genericPhraseNoSector", { name: profession.name });
 
   // D1: flat signals deduped by slug, category-prefixed ids (first occurrence wins)
   const flatSignals: { id: string; label: string }[] = [];
@@ -311,9 +331,11 @@ function HeroSection({
           // P5: static print view — no interactive CTAs (CopyButton, Explain)
           <div className="mt-4 flex flex-col gap-2">
             <p className="text-body font-semibold text-text">
-              Score : {score}/100
+              {t("printScore", { score })}
               {confidenceLevel === "indicative" && (
-                <span className="ml-2 text-body-sm font-normal text-text-muted">(indicatif)</span>
+                <span className="ml-2 text-body-sm font-normal text-text-muted">
+                  {t("printIndicative")}
+                </span>
               )}
             </p>
             <p className="text-body italic text-text-muted">{phraseRecopiable ?? genericPhrase}</p>
@@ -348,6 +370,7 @@ function FicheMetierMobile({
   confidenceLevel,
   onSignalClick,
 }: Omit<FicheMetierProps, "variant">) {
+  const t = useTranslations("ficheMetier");
   const [expanded, setExpanded] = React.useState<Set<SectionKey>>(new Set());
   const reducedMotion = usePrefersReducedMotion();
 
@@ -378,7 +401,7 @@ function FicheMetierMobile({
       {/* C'est quoi — always visible */}
       <section aria-labelledby="section-cest-quoi">
         <h2 id="section-cest-quoi" className="mb-3 text-h2 font-semibold text-text">
-          C&apos;est quoi
+          {t("sections.cestQuoi")}
         </h2>
         <SectionContent
           sectionKey="cest-quoi"
@@ -407,7 +430,7 @@ function FicheMetierMobile({
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
                 )}
               >
-                <span>{def.label}</span>
+                <span>{t(`sections.${def.labelKey}`)}</span>
                 <ChevronDown
                   size={20}
                   aria-hidden
@@ -443,7 +466,7 @@ function FicheMetierMobile({
       {/* Signaux contributifs — always visible */}
       <section aria-labelledby="section-signaux">
         <h2 id="section-signaux" className="mb-3 text-h2 font-semibold text-text">
-          Signaux contributifs
+          {t("sections.signaux")}
         </h2>
         <SectionContent
           sectionKey="signaux"
@@ -463,7 +486,7 @@ function FicheMetierMobile({
           "transition-colors duration-instant",
         )}
       >
-        Tout afficher
+        {t("expandAll")}
       </button>
 
       {/* Pied de fiche — boutons signalement (hors print). Masqués sur le
@@ -493,8 +516,14 @@ function FicheMetierDesktop({
   confidenceLevel,
   onSignalClick,
 }: Omit<FicheMetierProps, "variant">) {
+  const t = useTranslations("ficheMetier");
   const [activeSection, setActiveSection] = React.useState<SectionKey>("cest-quoi");
   const reducedMotion = usePrefersReducedMotion();
+
+  const tocSections = SECTION_DEFS.map((def) => ({
+    key: def.key,
+    label: t(`sections.${def.labelKey}`),
+  }));
 
   // D2: IntersectionObserver highlights TOC as user scrolls
   React.useEffect(() => {
@@ -548,7 +577,7 @@ function FicheMetierDesktop({
         style={{ display: "grid", gridTemplateColumns: "200px 1fr", gap: "2rem" }}
       >
         <FicheMetierTOC
-          sections={SECTION_DEFS}
+          sections={tocSections}
           activeSection={activeSection}
           onSectionClick={handleTocClick}
         />
@@ -558,7 +587,7 @@ function FicheMetierDesktop({
           {SECTION_DEFS.map((def) => (
             <section key={def.key} data-section={def.key} aria-labelledby={`section-${def.key}`}>
               <h2 id={`section-${def.key}`} className="mb-4 text-h2 font-semibold text-text">
-                {def.label}
+                {t(`sections.${def.labelKey}`)}
               </h2>
               <SectionContent
                 sectionKey={def.key}
@@ -594,6 +623,7 @@ function FicheMetierPrint({
   phraseRecopiable,
   confidenceLevel,
 }: Omit<FicheMetierProps, "variant" | "onSignalClick">) {
+  const t = useTranslations("ficheMetier");
   return (
     <div
       className="flex flex-col gap-8 bg-white text-black"
@@ -611,7 +641,7 @@ function FicheMetierPrint({
       {SECTION_DEFS.map((def) => (
         <section key={def.key} aria-labelledby={`section-print-${def.key}`}>
           <h2 id={`section-print-${def.key}`} className="mb-3 text-h2 font-semibold">
-            {def.label}
+            {t(`sections.${def.labelKey}`)}
           </h2>
           <SectionContent sectionKey={def.key} profession={profession} interactive={false} />
         </section>

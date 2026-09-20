@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Flag } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -64,6 +65,7 @@ export function ReportErrorButton({
   professionName,
   className,
 }: ReportErrorButtonProps) {
+  const t = useTranslations("ficheMetier.reportError");
   const [open, setOpen] = React.useState(false);
   const [reported, setReported] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -80,10 +82,10 @@ export function ReportErrorButton({
       onSuccess: () => {
         setOpen(false);
         setReported(true);
-        showToast("Merci, ton signalement a été pris en compte");
+        showToast(t("successToast"));
       },
       onError: () => {
-        setSubmitError("Envoi échoué — réessaie dans quelques instants");
+        setSubmitError(t("submitFailed"));
       },
     });
   }
@@ -97,7 +99,7 @@ export function ReportErrorButton({
         if (!isReported) setOpen(true);
       }}
       disabled={isReported}
-      aria-label={isReported ? "Erreur déjà signalée" : "Signaler une erreur sur cette fiche"}
+      aria-label={isReported ? t("triggerReportedAria") : t("triggerAria")}
       className={cn(
         "inline-flex items-center gap-1.5 text-sm transition-colors",
         isReported
@@ -110,7 +112,7 @@ export function ReportErrorButton({
         className={cn("size-4 shrink-0", isReported ? "fill-muted-foreground" : "")}
         aria-hidden
       />
-      {isReported ? "Signalé" : "Signaler une erreur"}
+      {isReported ? t("triggerReported") : t("trigger")}
     </button>
   );
 
@@ -149,7 +151,7 @@ export function ReportErrorButton({
             {/* Handle visuel */}
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
             <SheetHeader className="mb-4">
-              <SheetTitle>Signaler une erreur sur cette fiche</SheetTitle>
+              <SheetTitle>{t("dialogTitle")}</SheetTitle>
             </SheetHeader>
             {formContent}
           </SheetContent>
@@ -159,7 +161,7 @@ export function ReportErrorButton({
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Signaler une erreur sur cette fiche</DialogTitle>
+              <DialogTitle>{t("dialogTitle")}</DialogTitle>
             </DialogHeader>
             {formContent}
           </DialogContent>

@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { BookOpen, Heart, Star, Zap } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { BulletinsAddSheet } from "@/components/features/bulletins/bulletins-add-sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -25,12 +26,14 @@ function useIsMobile() {
 
 // ─── Signal helpers ───────────────────────────────────────────────────────────
 
-type SignalCategory = "passion" | "valeur" | "spécialité" | "autre";
+// Internal discriminant (icon lookup + catalog key) — the displayed category
+// name lives in the catalog under `ficheMetier.signauxDrawer.categories.*`.
+type SignalCategory = "passion" | "valeur" | "specialite" | "autre";
 
 const CATEGORY_ICONS: Record<SignalCategory, React.ElementType> = {
   passion: Heart,
   valeur: Star,
-  spécialité: BookOpen,
+  specialite: BookOpen,
   autre: Zap,
 };
 
@@ -41,7 +44,7 @@ function formatSignalLabel(signal: string): { category: SignalCategory; label: s
   const categoryMap: Record<string, SignalCategory> = {
     passion: "passion",
     valeur: "valeur",
-    specialite: "spécialité",
+    specialite: "specialite",
   };
   return { category: categoryMap[cat ?? ""] ?? "autre", label: label || signal };
 }
@@ -66,22 +69,20 @@ interface IncompleteProfileContextProps {
 }
 
 function IncompleteProfileContext({ onAddBulletins }: IncompleteProfileContextProps) {
+  const t = useTranslations("ficheMetier.signauxDrawer");
   return (
     <aside
-      aria-label="Précision du score"
+      aria-label={t("incompleteAria")}
       className="rounded-lg border border-border bg-bg-2 px-4 py-3 text-body-sm text-text-muted"
       data-testid="incomplete-profile-context"
     >
-      <p>
-        Avec tes bulletins, on pourrait préciser ton score à ±5 pts près au lieu de ±15
-        actuellement.
-      </p>
+      <p>{t("incompleteBody")}</p>
       <button
         type="button"
         onClick={onAddBulletins}
         className="mt-2 text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        Ajouter mes bulletins
+        {t("incompleteCta")}
       </button>
     </aside>
   );
@@ -97,39 +98,41 @@ function SignauxContent({
 }: Pick<SignauxDrawerProps, "metiersName" | "signals" | "confidenceLevel"> & {
   onAddBulletins: () => void;
 }) {
+  const t = useTranslations("ficheMetier.signauxDrawer");
   const sorted = [...signals].sort((a, b) => b.contribution - a.contribution);
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-body-sm text-text-muted">
-        Voilà les ingrédients qui ont fait monter {metiersName}
-      </p>
+      <p className="text-body-sm text-text-muted">{t("intro", { name: metiersName })}</p>
 
       {sorted.length === 0 ? (
-        <p className="text-body text-text-muted">
-          Les signaux détaillés ne sont pas disponibles pour ce métier
-        </p>
+        <p className="text-body text-text-muted">{t("empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3" role="list">
           {sorted.map((s) => {
             const { category, label } = formatSignalLabel(s.signal);
+            const categoryLabel = t(`categories.${category}`);
             const Icon = CATEGORY_ICONS[category];
             return (
               <li
                 key={s.signal}
                 className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2"
-                aria-label={`${category} ${label} : +${s.contribution} pts`}
+                aria-label={t("itemAria", {
+                  category: categoryLabel,
+                  label,
+                  points: s.contribution,
+                })}
               >
                 <Icon size={16} className="shrink-0 text-text-muted" aria-hidden />
                 <div className="flex flex-1 items-center justify-between gap-2">
                   <div className="flex flex-col">
                     <span className="text-caption font-medium uppercase tracking-wide text-text-muted">
-                      {category}
+                      {categoryLabel}
                     </span>
                     <span className="text-body text-text">{label}</span>
                   </div>
                   <span className="font-mono text-body-sm font-semibold text-brand">
-                    +{s.contribution}&nbsp;pts
+                    {t("points", { points: s.contribution })}
                   </span>
                 </div>
               </li>
@@ -145,13 +148,13 @@ function SignauxContent({
           href="/revue-humaine"
           className="text-body-sm text-brand underline-offset-2 hover:underline"
         >
-          Demander une revue humaine
+          {t("reviewLink")}
         </Link>
         <Link
           href="/methodologie"
           className="text-body-sm text-text-muted underline-offset-2 hover:underline"
         >
-          Comment ça marche
+          {t("methodologyLink")}
         </Link>
       </div>
     </div>
@@ -167,9 +170,10 @@ export function SignauxDrawer({
   signals,
   confidenceLevel,
 }: SignauxDrawerProps) {
+  const t = useTranslations("ficheMetier.signauxDrawer");
   const isMobile = useIsMobile();
   const [bulletinsSheetOpen, setBulletinsSheetOpen] = React.useState(false);
-  const title = "Pourquoi ce métier ?";
+  const title = t("title");
 
   const content = (
     <SignauxContent

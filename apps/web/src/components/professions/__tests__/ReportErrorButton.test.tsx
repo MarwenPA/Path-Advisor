@@ -7,7 +7,8 @@
 
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ReportErrorButton } from "../ReportErrorButton";
@@ -63,7 +64,7 @@ function makeClient() {
 
 function renderButton() {
   const client = makeClient();
-  return render(
+  return renderWithIntl(
     <QueryClientProvider client={client}>
       <ReportErrorButton professionSlug="infirmier-test" professionName="Infirmier·ère" />
     </QueryClientProvider>,

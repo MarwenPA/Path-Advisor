@@ -6,7 +6,8 @@
 
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 
 import { ReportErrorForm } from "../ReportErrorForm";
 
@@ -14,7 +15,7 @@ const mockOnSubmit = vi.fn();
 const mockOnCancel = vi.fn();
 
 function renderForm(props: Partial<React.ComponentProps<typeof ReportErrorForm>> = {}) {
-  return render(
+  return renderWithIntl(
     <ReportErrorForm
       professionName="Infirmier·ère"
       isSubmitting={false}

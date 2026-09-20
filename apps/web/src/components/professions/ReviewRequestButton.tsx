@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { AlertCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -66,6 +67,7 @@ export function ReviewRequestButton({
   hasScore,
   className,
 }: ReviewRequestButtonProps) {
+  const t = useTranslations("ficheMetier.reviewRequest");
   const [open, setOpen] = React.useState(false);
   const [reviewRequested, setReviewRequested] = React.useState(false);
   const [submitError, setSubmitError] = React.useState<string | null>(null);
@@ -85,10 +87,10 @@ export function ReviewRequestButton({
       onSuccess: () => {
         setOpen(false);
         setReviewRequested(true);
-        showToast("Demande envoyée — on te répondra sous 7 jours ouvrés");
+        showToast(t("successToast"));
       },
       onError: () => {
-        setSubmitError("Envoi échoué — réessaie dans quelques instants");
+        setSubmitError(t("submitFailed"));
       },
     });
   }
@@ -102,11 +104,7 @@ export function ReviewRequestButton({
         if (!isRequested) setOpen(true);
       }}
       disabled={isRequested}
-      aria-label={
-        isRequested
-          ? "Revue humaine déjà demandée"
-          : "Demander une revue humaine de cette recommandation"
-      }
+      aria-label={isRequested ? t("triggerRequestedAria") : t("triggerAria")}
       className={cn(
         "inline-flex items-center gap-1.5 text-sm transition-colors",
         isRequested
@@ -119,7 +117,7 @@ export function ReviewRequestButton({
         className={cn("size-4 shrink-0", isRequested ? "fill-muted-foreground" : "")}
         aria-hidden
       />
-      {isRequested ? "Revue demandée" : "Cette reco me dérange — demander une revue"}
+      {isRequested ? t("triggerRequested") : t("trigger")}
     </button>
   );
 
@@ -159,7 +157,7 @@ export function ReviewRequestButton({
             {/* Handle visuel */}
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
             <SheetHeader className="mb-4">
-              <SheetTitle>Demander une revue humaine</SheetTitle>
+              <SheetTitle>{t("dialogTitle")}</SheetTitle>
             </SheetHeader>
             {formContent}
           </SheetContent>
@@ -169,7 +167,7 @@ export function ReviewRequestButton({
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Demander une revue humaine</DialogTitle>
+              <DialogTitle>{t("dialogTitle")}</DialogTitle>
             </DialogHeader>
             {formContent}
           </DialogContent>

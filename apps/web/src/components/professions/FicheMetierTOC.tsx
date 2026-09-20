@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -16,12 +17,9 @@ interface FicheMetierTOCProps {
 }
 
 export function FicheMetierTOC({ sections, activeSection, onSectionClick }: FicheMetierTOCProps) {
+  const t = useTranslations("ficheMetier.toc");
   return (
-    <nav
-      aria-label="Sections de la fiche"
-      className="sticky top-20 self-start"
-      style={{ width: "200px" }}
-    >
+    <nav aria-label={t("navAria")} className="sticky top-20 self-start" style={{ width: "200px" }}>
       <ul className="flex flex-col gap-1">
         {sections.map((section) => {
           const isActive = activeSection === section.key;

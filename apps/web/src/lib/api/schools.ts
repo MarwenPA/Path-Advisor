@@ -62,6 +62,12 @@ export interface School {
   tuition_max_eur?: number;
   formations: Formation[];
   admission_stat?: AdmissionStat;
+  // Story 7.10 (Part B) — deactivation signal on authenticated payloads only
+  // (`SchoolDetailSerializer`); the public SEO serializer never sends it
+  // (deactivated schools 404 on public surfaces). Optional so the public
+  // payload still typechecks; `false` means "no longer in the referential"
+  // and `<FicheEcole>` renders an explicit notice + hides admission stats.
+  is_active?: boolean;
   // Story 7.2 — cross-linking on the public fiche; only present from
   // `fetchPublicSchool`, absent from the authenticated `fetchSchool`.
   metiers_cibles?: { slug: string; name: string }[];

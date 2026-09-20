@@ -148,6 +148,15 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
 
     Story 4.5: adds admission_stat SerializerMethodField that resolves the user-specific
     or baseline AdmissionStat row for this school (AC1, AC5).
+
+    Story 7.10 (Part B): exposes `is_active` so the frontend can tell the
+    student a favorited school was pulled from the referential.
+    `SchoolDetailView`/`MesParisListView` deliberately do NOT filter on
+    is_active (an existing favorite must not 404 or silently vanish), but
+    before this field the student had no signal at all and could base an
+    orientation decision on a school no longer in the catalog. Authenticated
+    payloads ONLY — `SchoolPublicSeoSerializer`/`SchoolSlugSerializer` must
+    never carry it (deactivated schools 404 on public surfaces anyway).
     """
 
     formations = FormationInlineSerializer(many=True, read_only=True)
@@ -178,6 +187,7 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
             "official_url",
             "formations",
             "admission_stat",
+            "is_active",
             "created_at",
             "updated_at",
         )
@@ -190,7 +200,15 @@ class SchoolDetailSerializer(serializers.ModelSerializer):
           1. Row matching the authenticated user (personalised).
           2. Baseline row (user=None) if the authenticated user has no row.
           3. None if no rows exist at all (AC5 graceful degradation).
+
+        Story 7.10 (Part B) AC4: a deactivated school gets None — a
+        probability computed against a school removed from the referential
+        is meaningless, and serving it invites the student to keep relying
+        on it. Nulled here (not just hidden in the UI) so every consumer of
+        this serializer (fiche école, /mes-paris) is covered at the source.
         """
+        if not school.is_active:
+            return None
         try:
             request = self.context.get("request")
             user = request.user if request and request.user.is_authenticated else None

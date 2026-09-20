@@ -507,3 +507,95 @@ class TestDeactivatedSchoolVisibility:
         slugs = [row["slug"] for row in response.json()["results"]]
         assert school.slug in slugs
         assert inactive_school.slug not in slugs
+
+
+# ── Story 7.10 (Part B) — deactivation signal on authenticated payloads ───────
+#
+# SchoolDetailView / MesParisListView stay deliberately unfiltered (an
+# existing favorite must not 404 or vanish), but the student needs a signal:
+# the authenticated serializer now carries `is_active`, and it must NEVER
+# leak onto the public SEO surfaces (which 404 deactivated schools anyway —
+# the field would only tell scrapers which slugs to probe).
+
+
+class TestDeactivationSignal:
+    @pytest.mark.django_db
+    def test_authenticated_detail_exposes_is_active_true(self, student_client, school):
+        url = reverse("schools:school-detail", kwargs={"slug": school.slug})
+        response = student_client.get(url)
+        assert response.status_code == 200
+        assert response.json()["is_active"] is True
+
+    @pytest.mark.django_db
+    def test_authenticated_detail_still_serves_deactivated_school_with_flag(
+        self, student_client, inactive_school
+    ):
+        """AC3: the fiche stays reachable (no 404) — the flag is the signal."""
+        url = reverse("schools:school-detail", kwargs={"slug": inactive_school.slug})
+        response = student_client.get(url)
+        assert response.status_code == 200
+        assert response.json()["is_active"] is False
+
+    @pytest.mark.django_db
+    def test_deactivated_school_has_null_admission_stat(self, student_client, inactive_school):
+        """AC4: a prediction about a school removed from the referential is
+        meaningless — nulled at the serializer, even if stat rows exist."""
+        from apps.schools.models import AdmissionStat
+
+        AdmissionStat.objects.create(
+            school=inactive_school,
+            user=None,
+            min_proba=30,
+            expected_proba=55,
+            max_proba=75,
+            label=AdmissionStat.Label.REALISTE,
+            context_line="Moyenne admise 2024 : 14,5",
+        )
+        url = reverse("schools:school-detail", kwargs={"slug": inactive_school.slug})
+        response = student_client.get(url)
+        assert response.status_code == 200
+        assert response.json()["admission_stat"] is None
+
+    @pytest.mark.django_db
+    def test_active_school_keeps_admission_stat(self, student_client, school):
+        """Guard against over-nulling: an active school's baseline stat still flows."""
+        from apps.schools.models import AdmissionStat
+
+        AdmissionStat.objects.create(
+            school=school,
+            user=None,
+            min_proba=30,
+            expected_proba=55,
+            max_proba=75,
+            label=AdmissionStat.Label.REALISTE,
+            context_line="Moyenne admise 2024 : 14,5",
+        )
+        url = reverse("schools:school-detail", kwargs={"slug": school.slug})
+        response = student_client.get(url)
+        assert response.json()["admission_stat"] is not None
+
+    @pytest.mark.django_db
+    def test_admission_stat_endpoint_404s_for_deactivated_school(
+        self, student_client, inactive_school
+    ):
+        """AC4: the polling endpoint must not recompute (and persist) a
+        prediction for a deactivated school."""
+        url = reverse("schools:school-admission-stat", kwargs={"slug": inactive_school.slug})
+        response = student_client.get(url)
+        assert response.status_code == 404
+
+    @pytest.mark.django_db
+    def test_public_seo_payload_does_not_leak_is_active(self, school):
+        """AC1: the flag is authenticated-only — the public SEO serializer
+        payload must not carry it (deactivated schools 404 there anyway)."""
+        client = APIClient()
+        url = reverse("schools:public-seo-school-detail", kwargs={"slug": school.slug})
+        response = client.get(url)
+        assert "is_active" not in response.json()
+
+    @pytest.mark.django_db
+    def test_public_slugs_payload_does_not_leak_is_active(self, school):
+        client = APIClient()
+        url = reverse("schools:public-school-slugs")
+        response = client.get(url)
+        assert all("is_active" not in row for row in response.json())

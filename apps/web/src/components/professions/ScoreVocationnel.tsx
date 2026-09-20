@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -39,6 +40,7 @@ interface ScoreChipProps {
 }
 
 function ScoreChip({ score, large, reducedMotion }: ScoreChipProps) {
+  const t = useTranslations("ficheMetier.score");
   const value = normaliseScore(score);
   return (
     <Badge
@@ -50,10 +52,10 @@ function ScoreChip({ score, large, reducedMotion }: ScoreChipProps) {
         large ? "text-body" : "text-body-sm",
         !reducedMotion && "transition-colors duration-quick",
       )}
-      aria-label={`Compatible à ${value} % avec ce métier`}
+      aria-label={t("chipAria", { value })}
       style={{ fontFeatureSettings: '"tnum"' }}
     >
-      {value}&thinsp;/&thinsp;100
+      {t("chipValue", { value })}
     </Badge>
   );
 }
@@ -69,11 +71,12 @@ interface CopyButtonProps {
 }
 
 function CopyButton({ text, metiersName, disabled }: CopyButtonProps) {
+  const t = useTranslations("ficheMetier.score");
   const { copy, status, errorMessage } = useCopyToClipboard();
   const copied = status === "copied";
   const toastMessage =
     status === "copied"
-      ? "Phrase copiée — colle-la où tu veux"
+      ? t("copiedToast")
       : status === "error" && errorMessage
         ? errorMessage
         : null;
@@ -91,7 +94,7 @@ function CopyButton({ text, metiersName, disabled }: CopyButtonProps) {
           copy(text);
         }}
         disabled={disabled}
-        aria-label={`Copier la phrase défendable pour ${metiersName}`}
+        aria-label={t("copyAria", { name: metiersName })}
         className={cn(
           "inline-flex items-center gap-1 rounded px-1.5 py-1 text-body-sm text-text-subtle",
           "hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -100,7 +103,7 @@ function CopyButton({ text, metiersName, disabled }: CopyButtonProps) {
         )}
       >
         {copied ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-        <span className="sr-only">{copied ? "Copié" : "Copier"}</span>
+        <span className="sr-only">{copied ? t("copied") : t("copy")}</span>
       </button>
 
       {/*
@@ -133,11 +136,12 @@ interface SignalChipsProps {
 }
 
 function SignalChips({ signals, maxVisible, onSignalClick }: SignalChipsProps) {
+  const t = useTranslations("ficheMetier");
   const visible = signals.slice(0, maxVisible);
   const extra = signals.length - maxVisible;
 
   return (
-    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Signaux contributifs">
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("score.signalsGroupAria")}>
       {visible.map((s) => (
         <Badge
           key={s.id}
@@ -147,7 +151,7 @@ function SignalChips({ signals, maxVisible, onSignalClick }: SignalChipsProps) {
         >
           <button
             type="button"
-            aria-label={`Signal contributif : ${s.label}`}
+            aria-label={t("signalChipAria", { label: s.label })}
             onClick={(e) => {
               e.stopPropagation();
               onSignalClick?.(s.id);
@@ -159,7 +163,7 @@ function SignalChips({ signals, maxVisible, onSignalClick }: SignalChipsProps) {
       ))}
       {extra > 0 && (
         <Badge variant="outline" className="text-text-subtle">
-          +{extra} autres
+          {t("score.extraSignals", { count: extra })}
         </Badge>
       )}
     </div>
@@ -181,6 +185,7 @@ export function ScoreVocationnel({
   onSignalClick,
   onExplainClick,
 }: ScoreVocationnelProps) {
+  const t = useTranslations("ficheMetier.score");
   const reducedMotion = usePrefersReducedMotion();
   const isCompact = variant === "compact";
   const isExpanded = variant === "expanded";
@@ -196,14 +201,14 @@ export function ScoreVocationnel({
       className={cn("flex-1 text-body italic text-text", isCompact && "line-clamp-1")}
       aria-label={
         hasPhrase
-          ? `Phrase défendable pour ${metiersName} : ${trimmedPhrase}`
-          : `Aucune phrase défendable disponible pour ${metiersName}`
+          ? t("phraseAria", { name: metiersName, phrase: trimmedPhrase })
+          : t("phraseEmptyAria", { name: metiersName })
       }
     >
       {hasPhrase ? (
-        <>&ldquo;{trimmedPhrase}&rdquo;</>
+        t("phraseQuoted", { phrase: trimmedPhrase })
       ) : (
-        <span className="not-italic text-text-muted">Phrase à venir</span>
+        <span className="not-italic text-text-muted">{t("phrasePlaceholder")}</span>
       )}
     </p>
   );
@@ -216,15 +221,15 @@ export function ScoreVocationnel({
         isCompact && "max-h-40 max-w-[360px] overflow-hidden",
         isComparison && "h-full flex-1",
       )}
-      aria-label={`Score vocationnel : ${metiersName}`}
+      aria-label={t("cardAria", { name: metiersName })}
     >
       {/* Header — nom métier + chip score */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-0.5">
           <h3 className="text-h3 font-semibold leading-tight text-text">{metiersName}</h3>
           {isIndicative && (
-            <span className="text-caption text-text-muted" aria-label="Score indicatif">
-              indicatif
+            <span className="text-caption text-text-muted" aria-label={t("indicativeAria")}>
+              {t("indicativeLabel")}
             </span>
           )}
         </div>
@@ -257,7 +262,7 @@ export function ScoreVocationnel({
             "hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           )}
         >
-          → Pourquoi ce score ?
+          {t("explainCta")}
         </button>
       )}
     </article>
@@ -287,10 +292,11 @@ export function ScoreVocationnelComparison({
   onSignalClick,
   onExplainClick,
 }: ScoreVocationnelComparisonProps) {
+  const t = useTranslations("ficheMetier.score");
   return (
     <div
       role="group"
-      aria-label="Comparaison de deux métiers"
+      aria-label={t("comparisonAria")}
       className={cn(
         // Mobile: snap scroll carousel.
         "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2",

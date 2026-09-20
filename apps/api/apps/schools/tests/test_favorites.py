@@ -205,3 +205,34 @@ class TestMesParisListView:
         school_data = response.json()[0]
         for field in ("id", "slug", "name", "type", "city", "region", "formations"):
             assert field in school_data, f"mes-paris response missing field '{field}'"
+
+    # ── Story 7.10 (Part B) — deactivated school stays listed, with a signal ──
+
+    def test_mes_paris_keeps_deactivated_favorite_with_is_active_flag(
+        self, auth_client, user_a, school_alpha
+    ):
+        """AC1/AC3: a favorite pointing at a deactivated school must not
+        vanish from /mes-paris (the deliberate no-filter decision), and the
+        payload must now carry `is_active: false` so the frontend can render
+        the "n'est plus référencé" notice instead of a normal card."""
+        FavoriteSchool.objects.create(user=user_a, school=school_alpha)
+        school_alpha.is_active = False
+        school_alpha.save(update_fields=["is_active"])
+        url = reverse("schools:mes-paris")
+        response = auth_client.get(url)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["slug"] == school_alpha.slug
+        assert data[0]["is_active"] is False
+
+    def test_deactivated_favorite_stays_removable(self, auth_client, user_a, school_alpha):
+        """AC3: DELETE favorite must keep working for a deactivated school —
+        SchoolFavoriteView deliberately does not filter on is_active."""
+        FavoriteSchool.objects.create(user=user_a, school=school_alpha)
+        school_alpha.is_active = False
+        school_alpha.save(update_fields=["is_active"])
+        url = reverse("schools:school-favorite", kwargs={"slug": school_alpha.slug})
+        response = auth_client.delete(url)
+        assert response.status_code == 200
+        assert not FavoriteSchool.objects.filter(user=user_a, school=school_alpha).exists()

@@ -253,7 +253,12 @@ class AdmissionStatView(APIView):
     permission_classes: ClassVar = [IsAuthenticated]
 
     def get(self, request: Request, slug: str) -> Response:
-        school = get_object_or_404(School, slug=slug)
+        # Story 7.10 (Part B) AC4: no prediction for a deactivated school — a
+        # probability against a school removed from the referential is
+        # meaningless, and recomputing here would also persist a fresh stat
+        # row for it. The fiche itself stays reachable (SchoolDetailView is
+        # deliberately unfiltered); only the prediction endpoint 404s.
+        school = get_object_or_404(School, slug=slug, is_active=True)
         service = AdmissionPredictionService()
 
         existing = AdmissionStat.objects.filter(school=school, user=request.user).first()

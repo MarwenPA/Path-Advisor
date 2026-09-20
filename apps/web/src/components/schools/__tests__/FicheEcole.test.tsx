@@ -212,4 +212,54 @@ describe("FicheEcole", () => {
     screen.getByRole("checkbox", { name: /Sélectionner/i }).click();
     expect(onSelect).toHaveBeenCalledWith("abc");
   });
+
+  // ── Story 7.10 (Part B) — deactivated school signal ─────────────────────────
+
+  const DEACTIVATED: School = { ...SCHOOL, is_active: false };
+
+  it("shows the deactivation notice on the expanded fiche (role=note, SR-announced)", () => {
+    renderWithIntl(<FicheEcole school={DEACTIVATED} variant="expanded" />);
+    expect(
+      screen.getByRole("note", { name: /cet établissement n'est plus référencé/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/n'est plus référencé sur Path Advisor/i)).toBeInTheDocument();
+  });
+
+  it("shows the deactivation notice on the card variant (/mes-paris)", () => {
+    renderWithIntl(<FicheEcole school={DEACTIVATED} variant="card" />);
+    expect(screen.getByText(/n'est plus référencé sur Path Advisor/i)).toBeInTheDocument();
+  });
+
+  it("shows the deactivation notice on the compare variant", () => {
+    renderWithIntl(<FicheEcole school={DEACTIVATED} variant="compare" />);
+    expect(screen.getByText(/n'est plus référencé sur Path Advisor/i)).toBeInTheDocument();
+  });
+
+  it("AC4: hides the admission section entirely for a deactivated school, even with a stat", () => {
+    const deactivatedWithStat: School = { ...DEACTIVATED, admission_stat: ADMISSION_STAT };
+    renderWithIntl(<FicheEcole school={deactivatedWithStat} variant="expanded" />);
+    expect(
+      screen.queryByRole("region", { name: /statistique d'admission/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/55 %/)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the notice when is_active is true", () => {
+    renderWithIntl(<FicheEcole school={{ ...SCHOOL, is_active: true }} variant="expanded" />);
+    expect(screen.queryByText(/n'est plus référencé/i)).not.toBeInTheDocument();
+  });
+
+  it("does NOT show the notice when the field is absent (public SEO payload)", () => {
+    // The public serializer omits is_active entirely — undefined must not
+    // trigger the notice (strict === false check).
+    renderWithIntl(<FicheEcole school={SCHOOL} variant="expanded" />);
+    expect(screen.queryByText(/n'est plus référencé/i)).not.toBeInTheDocument();
+  });
+
+  it("RGAA: the notice's warning icon is aria-hidden (text carries the meaning, not colour/icon)", () => {
+    renderWithIntl(<FicheEcole school={DEACTIVATED} variant="expanded" />);
+    const note = screen.getByRole("note", { name: /n'est plus référencé/i });
+    const icon = note.querySelector('[aria-hidden="true"]');
+    expect(icon).not.toBeNull();
+  });
 });

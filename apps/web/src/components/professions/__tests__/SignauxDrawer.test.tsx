@@ -1,6 +1,7 @@
 import * as React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithIntl } from "@/test/render-with-intl";
 
 import { SignauxDrawer } from "../SignauxDrawer";
 import type { SignalContributif } from "@/lib/api/recommendations";
@@ -29,7 +30,7 @@ const SIGNALS: SignalContributif[] = [
 ];
 
 function renderDrawer(props: Partial<React.ComponentProps<typeof SignauxDrawer>> = {}) {
-  return render(
+  return renderWithIntl(
     <SignauxDrawer
       open={true}
       onOpenChange={vi.fn()}
@@ -92,7 +93,7 @@ describe("SignauxDrawer", () => {
 
   it("calls onOpenChange(false) when close button is clicked", () => {
     const onOpenChange = vi.fn();
-    render(
+    renderWithIntl(
       <SignauxDrawer
         open={true}
         onOpenChange={onOpenChange}
@@ -106,7 +107,7 @@ describe("SignauxDrawer", () => {
   });
 
   it("does not render content when closed", () => {
-    render(
+    renderWithIntl(
       <SignauxDrawer
         open={false}
         onOpenChange={vi.fn()}

@@ -121,7 +121,142 @@
     "debouchesTitle": "Débouchés",
     "admissionAria": "Statistique d'admission",
     "admissionTitle": "Tes chances d'admission",
-    "admissionUnavailable": "Données d'admission non disponibles"
+    "admissionUnavailable": "Données d'admission non disponibles",
+    "deactivatedNotice": "Cet établissement n'est plus référencé sur Path Advisor. Tu peux garder ce pari, mais ses infos ne sont plus mises à jour.",
+    "deactivatedNoticeAria": "Avertissement : cet établissement n'est plus référencé"
+  },
+  "ficheMetier": {
+    "sections": {
+      "cestQuoi": "C'est quoi",
+      "pourQui": "Pour qui",
+      "commentYAller": "Comment y aller",
+      "infosPratiques": "Infos pratiques",
+      "signaux": "Signaux contributifs"
+    },
+    "toc": {
+      "navAria": "Sections de la fiche"
+    },
+    "hero": {
+      "genericPhraseWithSector": "{name} est un métier du secteur {sector}.",
+      "genericPhraseNoSector": "{name} est un métier varié et enrichissant.",
+      "printScore": "Score : {score}/100",
+      "printIndicative": "(indicatif)"
+    },
+    "requirements": {
+      "studies": "Études",
+      "skill": "Compétences",
+      "quality": "Qualités",
+      "dailyRoutineTitle": "Journée type"
+    },
+    "salary": {
+      "medianLabel": "Salaire médian brut annuel",
+      "medianValue": "{value} €",
+      "rangeLabel": "Fourchette",
+      "rangeValue": "{min} € – {max} €",
+      "rangeSource": "({source})",
+      "levelsLabel": "Niveaux compatibles"
+    },
+    "signalCategories": {
+      "passions": "Passions",
+      "valeurs": "Valeurs",
+      "specialites": "Spécialités"
+    },
+    "signalChipAria": "Signal contributif : {label}",
+    "expandAll": "Tout afficher",
+    "score": {
+      "cardAria": "Score vocationnel : {name}",
+      "chipAria": "Compatible à {value} % avec ce métier",
+      "chipValue": "{value} / 100",
+      "phraseQuoted": "“{phrase}”",
+      "indicativeAria": "Score indicatif",
+      "indicativeLabel": "indicatif",
+      "phraseAria": "Phrase défendable pour {name} : {phrase}",
+      "phraseEmptyAria": "Aucune phrase défendable disponible pour {name}",
+      "phrasePlaceholder": "Phrase à venir",
+      "copyAria": "Copier la phrase défendable pour {name}",
+      "copied": "Copié",
+      "copy": "Copier",
+      "copiedToast": "Phrase copiée — colle-la où tu veux",
+      "signalsGroupAria": "Signaux contributifs",
+      "extraSignals": "+{count, plural, one {# autre} other {# autres}}",
+      "explainCta": "→ Pourquoi ce score ?",
+      "comparisonAria": "Comparaison de deux métiers"
+    },
+    "signauxDrawer": {
+      "title": "Pourquoi ce métier ?",
+      "intro": "Voilà les ingrédients qui ont fait monter {name}",
+      "empty": "Les signaux détaillés ne sont pas disponibles pour ce métier",
+      "itemAria": "{category} {label} : +{points} pts",
+      "points": "+{points} pts",
+      "categories": {
+        "passion": "passion",
+        "valeur": "valeur",
+        "specialite": "spécialité",
+        "autre": "autre"
+      },
+      "incompleteAria": "Précision du score",
+      "incompleteBody": "Avec tes bulletins, on pourrait préciser ton score à ±5 pts près au lieu de ±15 actuellement.",
+      "incompleteCta": "Ajouter mes bulletins",
+      "reviewLink": "Demander une revue humaine",
+      "methodologyLink": "Comment ça marche"
+    },
+    "reportError": {
+      "trigger": "Signaler une erreur",
+      "triggerReported": "Signalé",
+      "triggerAria": "Signaler une erreur sur cette fiche",
+      "triggerReportedAria": "Erreur déjà signalée",
+      "dialogTitle": "Signaler une erreur sur cette fiche",
+      "successToast": "Merci, ton signalement a été pris en compte",
+      "submitFailed": "Envoi échoué — réessaie dans quelques instants",
+      "form": {
+        "formAria": "Formulaire de signalement",
+        "typeLabel": "Type d'erreur",
+        "typePlaceholder": "Choisir un type d'erreur",
+        "typeOptions": {
+          "descriptionInexacte": "Description inexacte ou trompeuse",
+          "debouchesPerimes": "Débouchés ou informations périmées",
+          "lienCasse": "Lien ou ressource cassé(e)",
+          "autre": "Autre"
+        },
+        "requiredField": "Ce champ est obligatoire.",
+        "locationLabel": "Où exactement ?",
+        "locationPlaceholder": "Ex. : section 'Comment y aller', paragraphe 2",
+        "optionalHint": "(optionnel)",
+        "commentLabel": "Commentaire",
+        "commentPlaceholder": "Décris l'erreur ou propose une correction",
+        "charCount": "{count}/{max}",
+        "submit": "Envoyer le signalement",
+        "submitting": "Envoi…",
+        "cancel": "Annuler"
+      }
+    },
+    "reviewRequest": {
+      "trigger": "Cette reco me dérange — demander une revue",
+      "triggerRequested": "Revue demandée",
+      "triggerAria": "Demander une revue humaine de cette recommandation",
+      "triggerRequestedAria": "Revue humaine déjà demandée",
+      "dialogTitle": "Demander une revue humaine",
+      "successToast": "Demande envoyée — on te répondra sous 7 jours ouvrés",
+      "submitFailed": "Envoi échoué — réessaie dans quelques instants",
+      "form": {
+        "formAria": "Formulaire de demande de revue humaine",
+        "reasonLabel": "Raison",
+        "reasonPlaceholder": "Choisir une raison",
+        "reasonOptions": {
+          "neCorrespondPas": "Ne me correspond pas du tout",
+          "choquantInapproprie": "Métier choquant ou inapproprié",
+          "autre": "Autre"
+        },
+        "requiredField": "Ce champ est obligatoire.",
+        "optionalHint": "(optionnel)",
+        "commentLabel": "Commentaire",
+        "commentPlaceholder": "Explique pourquoi cette reco te semble incorrecte (optionnel)",
+        "charCount": "{count}/{max}",
+        "submit": "Envoyer la demande",
+        "submitting": "Envoi…",
+        "cancel": "Annuler"
+      }
+    }
   },
   "formationPage": {
     "metaTitleFallback": "École — Path Advisor",

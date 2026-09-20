@@ -164,7 +164,7 @@ development_status:
   # Ajoutee 2026-09-08 : la police (48 ko) vaut ~400 ms de LCP sur les fiches ;
   # subsetting = meme gain sans cout visuel (vs display:optional, ecarte).
   7-11-subsetting-police-lcp: ready-for-dev
-  7-10-dettes-i18n-et-ecole-desactivee: ready-for-dev
+  7-10-dettes-i18n-et-ecole-desactivee: review
   epic-7-retrospective: optional
 
   # Epic 8 — Continuité temporelle & Notifications
