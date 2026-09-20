@@ -18,7 +18,9 @@ Pipeline (documenté aussi en commentaire dans `layout.tsx`) : `fonttools varLib
 | `/formations/{slug}` | 2497 | **2312** | 5 |
 | `/`, `/devenir-*`, `/{niveau}/*` | 1955-2346 | 2159-2162 | 3-4 |
 
-**La bimodalité 2105/2500 a disparu** (runs à ±4 ms) — confirmation empirique que la police était toute la variance. L'`assertMatrix` est repliée en un `assert` unique à **2500 ms** pour les 5 pages (AC3) : plus aucune exception dans le gate. Web : 957 tests, lint/typecheck/format/build verts.
+**La bimodalité 2105/2500 a disparu** (runs à ±4 ms) — confirmation empirique que la police était toute la variance. L'`assertMatrix` est repliée en un `assert` unique à **2500 ms** pour les 5 pages (AC3) : plus aucune exception dans le gate — et `lighthouse` est passé **SUCCESS en CI réelle** sur ce gate uniforme.
+
+⚠️ **Correction (review légère de clôture)** : la première version de cette section affirmait « 957 tests verts ». C'était un **faux vert** — 957 = 959 − 2 : `layout.test.ts` mockait encore `next/font/google` après le passage à `next/font/local`, ses 2 tests mouraient à l'import, et le résumé `Tests 957 passed` masquait la ligne `Test Files 1 failed` que mon `tail` tronquait. `ci-web` était rouge sur la PR de clôture. Mock corrigé → **121 fichiers / 959 tests passants**, la ligne `Test Files` lue explicitement.
 
 ## 1. Constat, mesuré
 
