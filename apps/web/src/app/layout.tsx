@@ -5,7 +5,6 @@ import { getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 
 import { QueryProvider } from "@/components/providers/query-provider";
-import { RumReporter } from "@/components/telemetry/rum-reporter";
 import { SITE_ORIGIN } from "@/lib/seo/occupation-landing";
 
 // Story 7.11 — self-hosted SUBSET of Inter variable, replacing
@@ -76,10 +75,6 @@ export default async function RootLayout({
         <NextIntlClientProvider messages={messages}>
           <QueryProvider>{children}</QueryProvider>
         </NextIntlClientProvider>
-        {/* Story 8.9 — anonymous CWV field data. Mounted globally but
-            self-restricting: only the closed set of PUBLIC page types is
-            ever reported (see the component's privacy contract). */}
-        <RumReporter />
       </body>
     </html>
   );

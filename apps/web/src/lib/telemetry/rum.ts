@@ -1,15 +1,14 @@
-"use client";
-
-import { useReportWebVitals } from "next/web-vitals";
-import { usePathname } from "next/navigation";
-import { useEffect } from "react";
-
 /**
  * Story 8.9 — anonymous Real User Monitoring of Core Web Vitals.
  *
- * Every perf budget in `lighthouserc.json` is calibrated against a
- * SIMULATED metric; this component is the field instrument that gap
- * lacked (it allowed two bad threshold calls during Epic 7).
+ * Framework-free ON PURPOSE, and loaded at browser idle from
+ * `instrumentation-client.ts` — the first version of this was a client
+ * component mounted in the root layout, and the CWV gate caught it adding
+ * ~40ms of simulated LCP on `/metiers/{slug}` (a client boundary in the
+ * root layout puts its chunk on every page's critical path). The measuring
+ * instrument must not distort the measurement: this module now costs ZERO
+ * critical-path bytes — web-vitals' PerformanceObservers are buffered, so
+ * subscribing after `load`+idle still captures LCP/FCP/TTFB.
  *
  * Privacy (the app serves minors — GDPR, AC4):
  * - PUBLIC pages only: `pathnameToPageType` is a closed mapping, and
@@ -23,10 +22,8 @@ import { useEffect } from "react";
  * - the ingest table has no user/IP/URL column at all (see
  *   `apps/api/apps/telemetry/models.py` — privacy by construction).
  *
- * Transport: metrics are queued as web-vitals reports them and flushed in
- * ONE batched request when the page is hidden/unloaded, via
- * `fetch(keepalive)` rather than `sendBeacon` — sendBeacon cannot carry
- * `application/json` without CORS trouble, keepalive can.
+ * Transport: one batched `fetch(keepalive)` on pagehide/visibility-hidden —
+ * `sendBeacon` cannot carry `application/json` without CORS trouble.
  */
 
 const PAGE_TYPES = {
@@ -113,25 +110,24 @@ export function __resetQueueForTests(): QueuedVital[] {
   return drained;
 }
 
-export function RumReporter() {
-  const pathname = usePathname();
+/**
+ * Subscribe web-vitals (buffered observers — late subscription is fine)
+ * and arm the pagehide flush. Called once, at idle, from
+ * `instrumentation-client.ts`.
+ */
+export async function initRum(): Promise<void> {
+  const { onCLS, onFCP, onINP, onLCP, onTTFB } = await import("web-vitals");
+  const report = (metric: { name: string; value: number; rating?: string }) =>
+    queueVital(metric, window.location.pathname);
+  onLCP(report);
+  onCLS(report);
+  onINP(report);
+  onTTFB(report);
+  onFCP(report);
 
-  useReportWebVitals((metric) => {
-    queueVital(metric, pathname ?? window.location.pathname);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushQueue();
   });
-
-  useEffect(() => {
-    const onHidden = () => {
-      if (document.visibilityState === "hidden") flushQueue();
-    };
-    document.addEventListener("visibilitychange", onHidden);
-    // Safari does not reliably fire visibilitychange on unload.
-    window.addEventListener("pagehide", flushQueue);
-    return () => {
-      document.removeEventListener("visibilitychange", onHidden);
-      window.removeEventListener("pagehide", flushQueue);
-    };
-  }, []);
-
-  return null;
+  // Safari does not reliably fire visibilitychange on unload.
+  window.addEventListener("pagehide", flushQueue);
 }

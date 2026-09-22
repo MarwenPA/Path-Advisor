@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { __resetQueueForTests, flushQueue, pathnameToPageType, queueVital } from "./rum-reporter";
+import { __resetQueueForTests, flushQueue, pathnameToPageType, queueVital } from "./rum";
 
 beforeEach(() => {
   __resetQueueForTests();
