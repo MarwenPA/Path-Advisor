@@ -3,7 +3,7 @@ Salut,
 On a bien reçu ta demande de suppression de compte. Ton compte est
 désactivé dès maintenant.
 
-Tu as 30 jours pour changer d'avis : passé le {{ hard_delete_after|date:"j F Y à H:i" }},
+Tu as 30 jours pour changer d'avis : passé le {{ hard_delete_after }},
 toutes tes données seront effacées définitivement (sauf le journal d'audit
 pseudonymisé, conservé 3 ans pour des raisons légales).
 

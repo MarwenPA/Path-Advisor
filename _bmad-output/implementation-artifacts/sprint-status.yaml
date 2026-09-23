@@ -170,7 +170,7 @@ development_status:
   # 8-8 lancée en avance (hors ordre) à la demande utilisateur — ne dépend
   # d'aucune autre story 8.x (pas de dépendance sur email/notifications).
   epic-8: in-progress
-  8-1-email-transactionnel-abstraction: backlog
+  8-1-email-transactionnel-abstraction: review
   8-2-engine-notifications-templates: backlog
   8-3-notifications-calendrier-parcoursup: backlog
   8-4-notification-reponse-ecole: backlog
@@ -181,7 +181,7 @@ development_status:
   # Ajoutee 2026-09-08 : les budgets CWV sont calibres sur une metrique SIMULEE,
   # sans aucune mesure de terrain — c'est ce manque qui a permis 2 mauvais
   # arbitrages de seuil pendant l'Epic 7.
-  8-9-rum-core-web-vitals-terrain: review
+  8-9-rum-core-web-vitals-terrain: done  # AC5 (recalibrage sur 2-4 sem. de donnees) volontairement ouverte
   epic-8-retrospective: optional
 
   # Epic 9 — Back-office, Administration & Modération

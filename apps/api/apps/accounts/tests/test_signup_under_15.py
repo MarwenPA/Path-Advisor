@@ -35,10 +35,17 @@ def _post_signup(client: APIClient, payload: dict[str, object]):
     return client.post(reverse("rest_register"), payload, format="json")
 
 
-def test_signup_under_15_with_parent_email_creates_user_and_parental_consent():
+def test_signup_under_15_with_parent_email_creates_user_and_parental_consent(
+    django_capture_on_commit_callbacks,
+):
     """AC1 — happy path: < 15 + parent_email → User + ParentalConsent + 2 emails."""
     client = APIClient()
-    response = _post_signup(client, _payload_minor())
+    # Story 8.1: the parent-request email is queued via the mailer outbox and
+    # delivered in an on_commit hook — execute the callbacks so eager Celery
+    # delivers it into mail.outbox (the child verify email is allauth's own
+    # synchronous send and lands either way).
+    with django_capture_on_commit_callbacks(execute=True):
+        response = _post_signup(client, _payload_minor())
 
     assert response.status_code == 201, response.content
     User = get_user_model()

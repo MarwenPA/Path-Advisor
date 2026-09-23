@@ -22,7 +22,6 @@ import json
 import secrets
 import time
 from datetime import timedelta
-from smtplib import SMTPException
 from types import SimpleNamespace
 from typing import Any
 
@@ -62,6 +61,7 @@ from apps.accounts.services.parental_consent_email import (
 from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 from apps.core.rls import with_system_actor
+from apps.mailer.tasks import EMAIL_RETRY_EXC
 
 log = structlog.get_logger(__name__)
 
@@ -78,19 +78,21 @@ log = structlog.get_logger(__name__)
 _REMINDER_AFTER_DAYS = 30
 
 # Narrow retryable email exceptions — programming bugs (TemplateDoesNotExist,
-# KeyError) must NOT be retried (Story 1.11 post-review). Hoisted from below
-# (was line 262) so Story 1.10's `notify_parental_consent_revoked` (review D5)
-# can reference it without a forward declaration.
-_EMAIL_RETRY_EXC = (SMTPException, ConnectionError, TimeoutError, OSError)
+# KeyError) must NOT be retried (Story 1.11 post-review). Story 8.1 hoisted
+# the canonical list into `apps.mailer.tasks.EMAIL_RETRY_EXC`; this alias
+# keeps the existing call sites and tests untouched.
+_EMAIL_RETRY_EXC = EMAIL_RETRY_EXC
 
 
 @shared_task(name="accounts.send_parental_consent_reminders")
 def send_parental_consent_reminders() -> int:
     """Reminder dispatch — runs daily at 04:00 UTC (cf. path_advisor.celery beat).
 
-    Returns the number of reminders sent so the task's success row in Celery flower /
-    structlog is queryable. The DB write happens **after** the SMTP send completes:
-    if mail dispatch raises, `reminder_sent_at` stays NULL and the next run retries.
+    Returns the number of reminders queued so the task's success row in Celery
+    flower / structlog is queryable. Story 8.1: `send_reminder_to_parent` now
+    writes a durable EmailOutbox row (async delivery with retry), so
+    `reminder_sent_at` is stamped on durable enqueue — if the enqueue itself
+    raises, the stamp stays NULL and the next run retries.
     """
     cutoff = timezone.now() - timedelta(days=_REMINDER_AFTER_DAYS)
 
@@ -162,11 +164,12 @@ def suspend_unresolved_parental_consents() -> int:
 
 @shared_task(name="accounts.notify_unconfirmed_granted_consents")
 def notify_unconfirmed_granted_consents() -> int:
-    """Resend the "granted" child email for rows where SMTP failed (Story 1.4 §P14).
+    """Resend the "granted" child email for unstamped rows (Story 1.4 §P14).
 
-    The synchronous `/decide/` POST stamps `notification_sent_at` only on
-    successful SMTP send. This hourly reconciliation closes the gap when the
-    parent has clicked "Autoriser" but the child never got the confirmation.
+    The `/decide/` POST stamps `notification_sent_at` once the email is
+    durably queued (Story 8.1 — delivery retries live in the mailer outbox).
+    This hourly reconciliation remains as a safety net for rows stamped NULL
+    before 8.1, or where the enqueue itself failed mid-request.
     """
     with with_system_actor(reason="parental_consent.notify_unconfirmed_granted"):
         rows = ParentalConsent.objects.filter(
@@ -201,15 +204,15 @@ def notify_parental_consent_revoked(consent_id: str) -> bool:
     been revoked" email to the parent. Dispatched from
     ``ParentalConsentSource.revoke`` via ``transaction.on_commit``.
 
-    Idempotency contract (review D5) :
+    Idempotency contract (review D5, restated under Story 8.1) :
     1. ``revocation_notification_sent_at IS NULL`` is checked BEFORE sending —
-       a re-dispatch (Celery retry that landed after SMTP success, or manual
-       re-run) is a no-op.
-    2. ``revocation_notification_sent_at`` is stamped on successful SMTP send.
-    3. On transient SMTP failure (SMTPException / ConnectionError / TimeoutError
-       / OSError), Celery autoretries with exponential backoff (3 max).
-    4. On programming errors (TemplateDoesNotExist, KeyError, etc.), the task
-       fails fast — Celery doesn't retry these.
+       a re-dispatch (retry, or manual re-run) is a no-op.
+    2. ``revocation_notification_sent_at`` is stamped once the email is
+       durably queued in the mailer outbox (``send_revoked_to_parent`` can no
+       longer fail for SMTP reasons — delivery retries and the loud terminal
+       ``failed`` state are owned by ``apps.mailer``).
+    3. The ``autoretry_for`` config is kept for defence in depth around the
+       enqueue itself, but SMTP exceptions no longer reach this task.
     """
     with with_system_actor(reason="parental_consent.notify_revoked"):
         try:

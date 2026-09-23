@@ -1,19 +1,17 @@
 """Email dispatch helpers for the parent-invitation flow (Story 6.1 §T4).
 
-Mirrors `apps.accounts.services.parental_consent_email` — same best-effort
-send contract (SMTP failure never breaks the transaction that triggered it).
+Story 8.1: sends go through `apps.mailer.send_transactional` — each call
+persists a durable `EmailOutbox` row and delivery happens asynchronously
+with exponential retry. The old "best-effort" contract (SMTP failure →
+warning log → email silently lost) is gone: a failed delivery ends as a
+non-silent `failed` outbox row, replayable via `retry_failed_emails`.
 """
 
 from __future__ import annotations
 
 import os
 
-import structlog
-from django.conf import settings
-from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
-
-log = structlog.get_logger(__name__)
+from apps.mailer.service import send_transactional
 
 
 def _site_url() -> str:
@@ -21,30 +19,25 @@ def _site_url() -> str:
     return site_url.rstrip("/")
 
 
-def _send(*, template_base: str, to: str, context: dict[str, object]) -> bool:
-    subject = render_to_string(f"family/{template_base}_subject.txt", context).strip()
-    body_txt = render_to_string(f"family/{template_base}.txt", context)
-    body_html = render_to_string(f"family/{template_base}.html", context)
+def _queue(*, template_base: str, to: str, context: dict[str, object]) -> bool:
+    """Queue one transactional email; returns True (the row is durable).
 
-    msg = EmailMultiAlternatives(
-        subject=subject,
-        body=body_txt,
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        to=[to],
+    Kept as a `bool` so the existing Celery wrapper tasks in
+    `apps.family.tasks` keep their return contract — "True" now means
+    "durably queued", not "SMTP accepted".
+    """
+    send_transactional(
+        template_app="family",
+        template_base=template_base,
+        to=to,
+        context=context,
     )
-    msg.attach_alternative(body_html, "text/html")
-    try:
-        msg.send(fail_silently=False)
-        log.info("family.email_sent", template=template_base, to=to)
-        return True
-    except Exception as exc:
-        log.warning("family.email_failed", template=template_base, to=to, error=str(exc))
-        return False
+    return True
 
 
 def send_invitation_to_parent(invitation) -> bool:
     invitation_url = f"{_site_url()}/auth/invitation-parent/{invitation.token}"
-    return _send(
+    return _queue(
         template_base="parent_invitation",
         to=invitation.parent_email,
         context={
@@ -56,7 +49,7 @@ def send_invitation_to_parent(invitation) -> bool:
 
 
 def send_invitation_accepted_to_student(invitation, parent) -> bool:
-    return _send(
+    return _queue(
         template_base="parent_invitation_accepted_to_student",
         to=invitation.student.email,
         context={
@@ -67,7 +60,7 @@ def send_invitation_accepted_to_student(invitation, parent) -> bool:
 
 
 def send_parent_link_revoked_to_parent(link) -> bool:
-    return _send(
+    return _queue(
         template_base="parent_link_revoked_to_parent",
         to=link.parent.email,
         context={"student_first_name": link.student.email.split("@")[0]},

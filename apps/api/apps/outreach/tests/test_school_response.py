@@ -107,15 +107,19 @@ def _words(n: int) -> str:
 
 class TestEcoleOutreachRespond:
     def test_interested_response_flips_status_and_notifies_student(
-        self, school_admin_client, student, school, profession
+        self, school_admin_client, student, school, profession, django_capture_on_commit_callbacks
     ):
         outreach = _create_outreach(student=student, school=school, profession=profession)
 
-        response = school_admin_client.post(
-            reverse("outreach:ecole-outreach-respond", kwargs={"outreach_id": outreach.id}),
-            {"action": "interested", "comment": "Beau profil, on encourage ta candidature."},
-            format="json",
-        )
+        # Story 8.1: the student notification is queued via the mailer outbox
+        # and delivered in an on_commit hook — execute them so eager Celery
+        # fills mail.outbox.
+        with django_capture_on_commit_callbacks(execute=True):
+            response = school_admin_client.post(
+                reverse("outreach:ecole-outreach-respond", kwargs={"outreach_id": outreach.id}),
+                {"action": "interested", "comment": "Beau profil, on encourage ta candidature."},
+                format="json",
+            )
 
         assert response.status_code == 201, response.content
         with bypass_rls(reason="test_assert.read_outreach"):
@@ -241,15 +245,23 @@ class TestInterviewFollowUp:
         return outreach
 
     def test_student_accepts_a_proposed_slot(
-        self, student_client, student, school, profession, school_admin
+        self,
+        student_client,
+        student,
+        school,
+        profession,
+        school_admin,
+        django_capture_on_commit_callbacks,
     ):
         outreach = self._outreach_with_interview(student, school, profession)
 
-        response = student_client.post(
-            reverse("outreach:interview-accept", kwargs={"outreach_id": outreach.id}),
-            {"slot": "2026-10-01T10:00:00Z"},
-            format="json",
-        )
+        # Story 8.1: outbox delivery happens in on_commit hooks.
+        with django_capture_on_commit_callbacks(execute=True):
+            response = student_client.post(
+                reverse("outreach:interview-accept", kwargs={"outreach_id": outreach.id}),
+                {"slot": "2026-10-01T10:00:00Z"},
+                format="json",
+            )
 
         assert response.status_code == 200, response.content
         assert response.json()["response"]["accepted_slot"] == "2026-10-01T10:00:00Z"
@@ -270,15 +282,22 @@ class TestInterviewFollowUp:
         assert response.status_code == 400
 
     def test_student_proposes_an_alternative(
-        self, student_client, student, school, profession, school_admin
+        self,
+        student_client,
+        student,
+        school,
+        profession,
+        school_admin,
+        django_capture_on_commit_callbacks,
     ):
         outreach = self._outreach_with_interview(student, school, profession)
 
-        response = student_client.post(
-            reverse("outreach:interview-alternative", kwargs={"outreach_id": outreach.id}),
-            {"note": "Je ne suis dispo qu'après 16h, possible ?"},
-            format="json",
-        )
+        with django_capture_on_commit_callbacks(execute=True):
+            response = student_client.post(
+                reverse("outreach:interview-alternative", kwargs={"outreach_id": outreach.id}),
+                {"note": "Je ne suis dispo qu'après 16h, possible ?"},
+                format="json",
+            )
 
         assert response.status_code == 200, response.content
         assert len(mail.outbox) == 1

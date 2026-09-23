@@ -39,10 +39,16 @@ _PWD = "Path-Advisor-2026!"
 # ---------------------------------------------------------------------------
 
 
-def test_request_deletion_happy_path_soft_deletes_user_and_creates_row(mailoutbox):
+def test_request_deletion_happy_path_soft_deletes_user_and_creates_row(
+    mailoutbox, django_capture_on_commit_callbacks
+):
     user = UserFactory(email="alice@example.test")
 
-    deletion = deletion_service.request_deletion(user=user, password=_PWD)
+    # Story 8.1: the confirmation email is queued via the mailer outbox and
+    # delivered in an on_commit hook — execute those callbacks so eager
+    # Celery delivers into mailoutbox.
+    with django_capture_on_commit_callbacks(execute=True):
+        deletion = deletion_service.request_deletion(user=user, password=_PWD)
 
     user.refresh_from_db()
     assert user.status == UserStatus.DELETED
@@ -110,13 +116,16 @@ def test_request_deletion_terminates_active_sessions(client, settings):
     assert Session.objects.count() == 0
 
 
-def test_request_deletion_smtp_failure_rolls_back():
+def test_request_deletion_email_enqueue_failure_rolls_back():
+    """Story 8.1 restatement of the §AC4 atomicity test: SMTP can no longer
+    fail at the call site (delivery is async via the mailer outbox), but a
+    failure to QUEUE the email — the only failure mode left in-transaction —
+    must still revert the whole soft-delete."""
     user = UserFactory()
-    # Patch the send fn to raise — atomicity contract says everything reverts.
     with (
         patch(
             "apps.accounts.services.account_deletion_email.send_account_deletion_requested_email",
-            side_effect=RuntimeError("smtp boom"),
+            side_effect=RuntimeError("outbox enqueue boom"),
         ),
         pytest.raises(RuntimeError),
     ):
@@ -133,17 +142,22 @@ def test_request_deletion_smtp_failure_rolls_back():
 # ---------------------------------------------------------------------------
 
 
-def test_cancel_deletion_restores_user_and_marks_row(mailoutbox):
+def test_cancel_deletion_restores_user_and_marks_row(
+    mailoutbox, django_capture_on_commit_callbacks
+):
     user = UserFactory()
     deletion = deletion_service.request_deletion(user=user, password=_PWD)
     user.refresh_from_db()
     assert user.status == UserStatus.DELETED
 
-    restored = deletion_service.cancel_deletion(
-        request=deletion,
-        password=_PWD,
-        cancel_reason="user_self_service",
-    )
+    # Story 8.1: outbox delivery happens in on_commit hooks (see the
+    # happy-path test above).
+    with django_capture_on_commit_callbacks(execute=True):
+        restored = deletion_service.cancel_deletion(
+            request=deletion,
+            password=_PWD,
+            cancel_reason="user_self_service",
+        )
 
     user.refresh_from_db()
     assert user.status == UserStatus.ACTIVE
@@ -315,3 +329,43 @@ def test_hard_delete_writes_audit_before_user_cascade():
     assert row.subject_id == user.id  # captured before the cascade
     # User is gone now.
     assert not User.objects.filter(pk=user.id).exists()
+
+
+def test_smtp_outage_leaves_nonsilent_outbox_row(django_capture_on_commit_callbacks):
+    """Story 8.1 AC3 — the deletion-requested email now queues through the
+    mailer outbox: an SMTP outage no longer blocks the soft-delete NOR loses
+    the email — it leaves a durable, queryable `EmailOutbox` trace (queued,
+    with attempts + last_error) instead of rolling back the request."""
+    from smtplib import SMTPException
+
+    from django.core import mail
+
+    from apps.mailer.models import EmailOutbox, OutboxStatus
+    from apps.mailer.tasks import MAX_RETRIES
+
+    user = UserFactory(email="ac3@example.test")
+
+    with (
+        patch("apps.mailer.tasks._render_and_send", side_effect=SMTPException("smtp down")),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        deletion_service.request_deletion(user=user, password=_PWD)
+
+    # The soft-delete persisted — SMTP being down is not the user's problem.
+    user.refresh_from_db()
+    assert user.status == UserStatus.DELETED
+
+    row = EmailOutbox.objects.get()
+    assert row.to == "ac3@example.test"
+    assert row.template_app == "accounts"
+    assert row.template_base == "email/account_deletion_requested"
+    # Durable and replayable — never lost. Eager Celery runs the retry chain
+    # inline, so every attempt is already accounted for on the row.
+    # Story 8.1 core fix: exhausted-retryable rows now terminate FAILED
+    # (the QUEUED terminal these tests first pinned was the dead-branch
+    # bug this very suite surfaced — retry(exc=...) re-raises the original
+    # exception, so the old MaxRetriesExceededError handler never ran).
+    assert row.status == OutboxStatus.FAILED
+    assert row.attempts == MAX_RETRIES + 1
+    assert "SMTPException: smtp down" in row.last_error
+    assert len(mail.outbox) == 0  # nothing delivered — and nothing swallowed

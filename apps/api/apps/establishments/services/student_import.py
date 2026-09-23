@@ -150,8 +150,9 @@ def import_row(*, cohort: Cohort, row: dict) -> ImportRowResult:
         # it, the parent never receives the consent link and the student
         # stays in `pending_parental_consent` forever (no reminder sweep
         # covers CSV-imported minors — see Story 6.5 §6 Out of Scope).
-        # Dispatched after the atomic block commits, same reasoning as
-        # `signals.py`: an SMTP failure must not roll back the consent row.
+        # Story 8.1: queues a durable EmailOutbox row (async delivery with
+        # retry); called after the atomic block, same reasoning as
+        # `signals.py` — the consent row commits regardless of email fate.
         send_request_to_parent(consent)
 
     return ImportRowResult(skipped=False, user=user, invitation=invitation)

@@ -927,9 +927,11 @@ def parental_consent_decide(request: Request, token: str) -> Response:
         # Idempotent: only send the "granted" mail on the actual state change. If a
         # double-click squeezes past `select_for_update` (different worker / proc),
         # `record_decision` would raise AlreadyDecided and we'd never reach here.
-        # Story 1.4 review §P14: stamp `notification_sent_at` only on success so the
-        # reconciliation Celery task `notify_unconfirmed_granted_consents` retries
-        # rows where SMTP failed at this point.
+        # Story 8.1: the send queues a durable EmailOutbox row (async delivery
+        # with retry — it can no longer fail for SMTP reasons here), so the
+        # §P14 stamp now means "durably queued". The reconciliation task
+        # `notify_unconfirmed_granted_consents` stays as a safety net for rows
+        # stamped NULL before 8.1 (or if the enqueue itself ever failed).
         if consent.decision == "granted" and send_granted_to_child(consent.student):
             consent.notification_sent_at = timezone.now()
             consent.save(update_fields=["notification_sent_at", "updated_at"])
@@ -980,15 +982,14 @@ def parental_consent_resend(request: Request) -> Response:
 
     # §P16: use the reminder template (the "Vous n'avez pas encore répondu" copy) —
     # the child-initiated resend should not look like the initial request.
-    # §P6: only flip reminder_sent_at on successful SMTP — otherwise the daily Celery
-    # reminder job (which guards on `reminder_sent_at IS NULL`) would also skip the row.
-    sent = send_reminder_to_parent(consent)
-    if sent:
-        consent.reminder_sent_at = timezone.now()
-        consent.save(update_fields=["reminder_sent_at", "updated_at"])
-        return Response({"detail": "Email parental renvoyé."})
-    # SMTP failure surfaced as a generic 503-ish problem so the front can retry.
-    raise RateLimited(retry_after_seconds=600)
+    # Story 8.1: the send queues a durable EmailOutbox row — delivery is async
+    # with retry, so there is no SMTP-failure branch left here. Stamping
+    # `reminder_sent_at` on enqueue keeps the daily Celery reminder job (which
+    # guards on `reminder_sent_at IS NULL`) from double-reminding (§P6 intent).
+    send_reminder_to_parent(consent)
+    consent.reminder_sent_at = timezone.now()
+    consent.save(update_fields=["reminder_sent_at", "updated_at"])
+    return Response({"detail": "Email parental renvoyé."})
 
 
 def _client_ip_from_request(request: Request) -> str | None:

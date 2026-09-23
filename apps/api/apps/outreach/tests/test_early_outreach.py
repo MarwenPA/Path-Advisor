@@ -127,15 +127,18 @@ class TestCreateEarlyOutreachRequest:
         assert outreach.motivation_text == ""
 
     def test_accepts_a_valid_motivation_and_gates_it_into_pending_moderation(
-        self, premium_client, school, profession
+        self, premium_client, school, profession, django_capture_on_commit_callbacks
     ):
         """Story 5.5 — a well-formed (200-500 word) motivation blocks the
         send until moderation, and triggers the "en cours de relecture" email."""
-        response = premium_client.post(
-            _url(school.slug),
-            {"profession_id": profession.id, "motivation_text": _words(200)},
-            format="json",
-        )
+        # Story 8.1: emails are queued via the mailer outbox and delivered in
+        # on_commit hooks — execute them so eager Celery fills mail.outbox.
+        with django_capture_on_commit_callbacks(execute=True):
+            response = premium_client.post(
+                _url(school.slug),
+                {"profession_id": profession.id, "motivation_text": _words(200)},
+                format="json",
+            )
         assert response.status_code == 201, response.content
         assert response.json()["status"] == EarlyOutreachRequestStatus.PENDING_MODERATION
         assert len(mail.outbox) == 1
@@ -294,10 +297,14 @@ class TestModerationServiceFunctions:
                 status=EarlyOutreachRequestStatus.PENDING_MODERATION,
             )
 
-    def test_approve_unblocks_the_request_and_notifies(self, premium_student, school, profession):
+    def test_approve_unblocks_the_request_and_notifies(
+        self, premium_student, school, profession, django_capture_on_commit_callbacks
+    ):
         outreach = self._pending_moderation_outreach(premium_student, school, profession)
 
-        result = approve_early_outreach_motivation(outreach=outreach)
+        # Story 8.1: outbox delivery happens in on_commit hooks.
+        with django_capture_on_commit_callbacks(execute=True):
+            result = approve_early_outreach_motivation(outreach=outreach)
 
         assert result.status == EarlyOutreachRequestStatus.PENDING
         assert len(mail.outbox) == 1
@@ -311,17 +318,57 @@ class TestModerationServiceFunctions:
         with pytest.raises(OutreachModerationStateError):
             approve_early_outreach_motivation(outreach=outreach)
 
-    def test_reject_blocks_and_records_the_reason(self, premium_student, school, profession):
+    def test_reject_blocks_and_records_the_reason(
+        self, premium_student, school, profession, django_capture_on_commit_callbacks
+    ):
         outreach = self._pending_moderation_outreach(premium_student, school, profession)
 
-        result = reject_early_outreach_motivation(
-            outreach=outreach, reason="Trop générique, précise ton projet."
-        )
+        with django_capture_on_commit_callbacks(execute=True):
+            result = reject_early_outreach_motivation(
+                outreach=outreach, reason="Trop générique, précise ton projet."
+            )
 
         assert result.status == EarlyOutreachRequestStatus.REJECTED
         assert result.rejection_reason == "Trop générique, précise ton projet."
         assert len(mail.outbox) == 1
         assert "Trop générique" in mail.outbox[0].body
+
+    def test_smtp_outage_leaves_nonsilent_outbox_row(
+        self, premium_student, school, profession, django_capture_on_commit_callbacks
+    ):
+        """Story 8.1 AC3 — the moderation emails now queue through the mailer
+        outbox: an SMTP outage leaves a durable, queryable `EmailOutbox` trace
+        (FAILED, with attempts + last_error) instead of the pre-8.1 swallowed
+        `logger.warning`, and the approval itself is untouched."""
+        from smtplib import SMTPException
+        from unittest import mock
+
+        from apps.mailer.models import EmailOutbox, OutboxStatus
+        from apps.mailer.tasks import MAX_RETRIES
+
+        outreach = self._pending_moderation_outreach(premium_student, school, profession)
+
+        with (
+            mock.patch(
+                "apps.mailer.tasks._render_and_send", side_effect=SMTPException("smtp down")
+            ),
+            django_capture_on_commit_callbacks(execute=True),
+        ):
+            result = approve_early_outreach_motivation(outreach=outreach)
+
+        # The moderation decision persisted regardless of email fate.
+        assert result.status == EarlyOutreachRequestStatus.PENDING
+
+        row = EmailOutbox.objects.get()
+        assert row.to == premium_student.email
+        assert row.template_app == "outreach"
+        assert row.template_base == "email/motivation_approved"
+        # Durable and replayable — never lost. Eager Celery runs the retry
+        # chain inline, so every attempt is already accounted for on the row.
+        assert row.status == OutboxStatus.FAILED
+        assert row.attempts == MAX_RETRIES + 1
+        assert "SMTPException: smtp down" in row.last_error
+        assert len(mail.outbox) == 0  # nothing delivered — and nothing swallowed
 
 
 # ── Story 5.5 — resubmit endpoint ────────────────────────────────────────────

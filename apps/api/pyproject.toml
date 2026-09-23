@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "Path-Advisor — Django + DRF backend"
 requires-python = ">=3.12,<3.14"
 dependencies = [
+    # Story 8.1 — Postmark production email backend behind Django's
+    # EMAIL_BACKEND switch (EMAIL_PROVIDER=postmark in prod settings).
+    "django-anymail[postmark]>=12.0,<13.0",
     "django>=5.1,<5.2",
     "djangorestframework>=3.15,<3.16",
     "drf-spectacular>=0.27,<1.0",
@@ -99,6 +102,8 @@ ignore = [
 "apps/billing/**" = ["RUF012", "DJ001"]
 # Django convention: permission/authentication/throttle_classes and Meta lists (Story 8.9).
 "apps/telemetry/**" = ["RUF012"]
+# Django convention: Meta.indexes is a class-level list (Story 8.1).
+"apps/mailer/**" = ["RUF012"]
 # Django convention: serializer/Meta fields are class-level lists. DJ001: nullable relationship/custom_message fields intentional (Story 6.1).
 "apps/family/**" = ["RUF012", "DJ001"]
 # Django convention: permission_classes / Meta fields are class-level lists.

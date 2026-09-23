@@ -77,6 +77,8 @@ INSTALLED_APPS = [
     "apps.outreach",
     # Story 8.9 — anonymous RUM (Core Web Vitals field data).
     "apps.telemetry",
+    # Story 8.1 — durable email outbox + Celery delivery with retry.
+    "apps.mailer",
 ]
 
 MIDDLEWARE = [

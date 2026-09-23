@@ -236,3 +236,41 @@ def test_parental_consent_url_ordering_routes_resend_before_dynamic_token():
     # Confirm the token view does NOT capture the literal "resend".
     token_match = __import__("django").urls.resolve("/api/v1/auth/parental-consent/resend/")
     assert token_match.url_name == "parental-consent-resend"
+
+
+def test_smtp_outage_leaves_nonsilent_outbox_row(django_capture_on_commit_callbacks):
+    """Story 8.1 AC3 — the parental-consent request email now queues through
+    the mailer outbox: an SMTP outage leaves a durable, queryable
+    `EmailOutbox` trace (FAILED, with attempts + last_error) instead of the
+    pre-8.1 swallowed `log.warning`."""
+    from smtplib import SMTPException
+    from unittest import mock
+
+    from django.core import mail
+
+    from apps.accounts.services.parental_consent_email import send_request_to_parent
+    from apps.mailer.models import EmailOutbox, OutboxStatus
+    from apps.mailer.tasks import MAX_RETRIES
+
+    _user, consent = _make_pending_consent()
+
+    with (
+        mock.patch("apps.mailer.tasks._render_and_send", side_effect=SMTPException("smtp down")),
+        django_capture_on_commit_callbacks(execute=True),
+    ):
+        assert send_request_to_parent(consent) is True
+
+    row = EmailOutbox.objects.get()
+    assert row.to == consent.parent_email
+    assert row.template_app == "parental_consent"
+    assert row.template_base == "parental_consent_request"
+    # Durable and replayable — never lost. Eager Celery runs the retry chain
+    # inline, so every attempt is already accounted for on the row.
+    # Story 8.1 core fix: exhausted-retryable rows now terminate FAILED
+    # (the QUEUED terminal these tests first pinned was the dead-branch
+    # bug this very suite surfaced — retry(exc=...) re-raises the original
+    # exception, so the old MaxRetriesExceededError handler never ran).
+    assert row.status == OutboxStatus.FAILED
+    assert row.attempts == MAX_RETRIES + 1
+    assert "SMTPException: smtp down" in row.last_error
+    assert len(mail.outbox) == 0  # nothing delivered — and nothing swallowed

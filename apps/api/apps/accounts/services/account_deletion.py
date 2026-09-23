@@ -328,9 +328,12 @@ def request_deletion(
 
         killed_sessions = _terminate_user_sessions(user_locked)
 
-        # SMTP send inside the transaction: failure → rollback → user sees a
-        # 503 and retries. Acceptable cost (200-500 ms) for the atomicity
-        # invariant that "the user got the email iff the soft-delete persisted".
+        # Story 8.1: this queues a durable EmailOutbox row INSIDE the
+        # transaction — the row commits (or rolls back) with the soft-delete,
+        # which keeps the §AC4 atomicity invariant "the user gets the email
+        # iff the soft-delete persisted". Delivery itself is async with retry
+        # after commit, so an SMTP outage can no longer block the deletion
+        # nor lose the email.
         send_account_deletion_requested_email(
             user=user_locked,
             deletion=deletion,
@@ -474,7 +477,8 @@ def cancel_deletion(
         user_locked.deleted_at = None
         user_locked.save(update_fields=["status", "is_active", "deleted_at", "updated_at"])
 
-        # Restoration email — same atomicity policy as request_deletion.
+        # Restoration email — same atomicity policy as request_deletion
+        # (durable outbox row committed with the restore; async delivery).
         send_account_deletion_cancelled_email(user=user_locked, deletion=request_locked)
 
     log.info(
@@ -513,8 +517,9 @@ def hard_delete(request: AccountDeletionRequest) -> dict[str, Any]:
         5. `user.delete()` — PostgreSQL ON DELETE CASCADE wipes parental_consents
            (FK with CASCADE), GDPR export requests' user_id is a logical FK
            (CharField, survives intentionally for the 7-day download window).
-        6. Best-effort completion email — fire-and-forget; SMTP errors are
-           logged but never fail the deletion (story §4.5 #9).
+        6. Completion email queued in the outbox (Story 8.1) — delivered with
+           retries after commit; it can never fail the deletion (story §4.5
+           #9), and even an enqueue error is swallowed below.
         7. Set `hard_deleted_at` on the request row.
 
     Returns a dict suitable for structlog + Celery beat reporting:
@@ -697,9 +702,10 @@ def hard_delete(request: AccountDeletionRequest) -> dict[str, Any]:
         # so the email send works fine after the cascade.
         user_locked.delete()
 
-        # Step 6 — completion email AFTER the cascade. Failures are swallowed:
-        # the wipe is the legal obligation; the notification is best-effort
-        # (story §4.5 #9).
+        # Step 6 — completion email AFTER the cascade. Story 8.1: the outbox
+        # row joins this transaction and delivery happens after commit with
+        # retry — enqueue failures (the only kind left) are still swallowed:
+        # the wipe is the legal obligation, not the notification (§4.5 #9).
         try:
             send_account_deletion_completed_email(user=user_locked, deletion=request_locked)
         except Exception:
