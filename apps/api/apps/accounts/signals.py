@@ -61,10 +61,10 @@ def _on_user_signed_up(sender, request, user, **kwargs) -> None:
                 ip=ip,
                 user_agent=user_agent,
             )
-        # Dispatch outside the atomic block so an SMTP failure does not roll back the
-        # consent row (the student can resend via /resend/, which auto-skips expired
-        # consents per §P5). Returns a bool but we don't act on it here — the consent
-        # exists, and tooling can replay reminders later.
+        # Story 8.1: this queues a durable EmailOutbox row (delivery is async
+        # with retry — an SMTP outage can no longer lose the email). Kept
+        # outside the atomic block above so the consent row commits first
+        # regardless; returns True (queued) which we don't act on here.
         send_request_to_parent(consent)
 
 

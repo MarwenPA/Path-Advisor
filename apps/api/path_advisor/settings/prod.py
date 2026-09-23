@@ -63,7 +63,17 @@ if not _site_url:
 if not _site_url.startswith(("http://", "https://")):
     raise ImproperlyConfigured(f"NEXT_PUBLIC_SITE_URL must be an absolute URL (got {_site_url!r}).")
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# Story 8.1 — provider switch WITHOUT code changes (AC1): default stays SMTP
+# (any host via EMAIL_* env vars); EMAIL_PROVIDER=postmark selects Postmark's
+# API through anymail. Adding SendGrid later is one more branch here, and
+# zero changes anywhere else — Django's EMAIL_BACKEND *is* the provider
+# interface the AC asked for.
+_EMAIL_PROVIDER = os.environ.get("EMAIL_PROVIDER", "smtp")
+if _EMAIL_PROVIDER == "postmark":
+    EMAIL_BACKEND = "anymail.backends.postmark.EmailBackend"
+    ANYMAIL = {"POSTMARK_SERVER_TOKEN": os.environ["POSTMARK_SERVER_TOKEN"]}
+else:
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.environ["EMAIL_HOST"]
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_USE_TLS = True

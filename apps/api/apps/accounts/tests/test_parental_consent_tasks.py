@@ -44,7 +44,9 @@ def _pending(*, requested_days_ago: int = 0):
     return user, consent
 
 
-def test_celery_send_reminders_emails_only_pending_over_30d_unreminded():
+def test_celery_send_reminders_emails_only_pending_over_30d_unreminded(
+    django_capture_on_commit_callbacks,
+):
     """AC6 — reminder sent iff `decision IS NULL AND reminder_sent_at IS NULL AND requested_at < now-30d`."""
     _, fresh = _pending(requested_days_ago=10)  # too recent
     _, due = _pending(requested_days_ago=35)  # eligible
@@ -53,7 +55,10 @@ def test_celery_send_reminders_emails_only_pending_over_30d_unreminded():
     already_reminded.save(update_fields=["reminder_sent_at"])
 
     mail.outbox.clear()
-    sent = send_parental_consent_reminders()
+    # Story 8.1: the reminder is queued via the mailer outbox and delivered in
+    # an on_commit hook — execute those callbacks so eager Celery delivers.
+    with django_capture_on_commit_callbacks(execute=True):
+        sent = send_parental_consent_reminders()
 
     assert sent == 1
     # Verify the right consent was reminded.
@@ -68,13 +73,16 @@ def test_celery_send_reminders_emails_only_pending_over_30d_unreminded():
     assert already_reminded.reminder_sent_at < timezone.now() - timedelta(days=1)
 
 
-def test_celery_suspend_unresolved_marks_user_suspended_and_writes_audit():
+def test_celery_suspend_unresolved_marks_user_suspended_and_writes_audit(
+    django_capture_on_commit_callbacks,
+):
     """AC6 — suspend job flips User to SUSPENDED + sends the final email to the child."""
     fresh_user, _ = _pending(requested_days_ago=30)  # not yet 60 days
     expired_user, _ = _pending(requested_days_ago=65)  # over 60 days
 
     mail.outbox.clear()
-    suspended = suspend_unresolved_parental_consents()
+    with django_capture_on_commit_callbacks(execute=True):
+        suspended = suspend_unresolved_parental_consents()
 
     assert suspended == 1
     fresh_user.refresh_from_db()
@@ -88,13 +96,15 @@ def test_celery_suspend_unresolved_marks_user_suspended_and_writes_audit():
     assert fresh_user.email not in recipients
 
 
-def test_celery_suspend_is_idempotent_on_double_run():
+def test_celery_suspend_is_idempotent_on_double_run(django_capture_on_commit_callbacks):
     """AC6 — running the suspend job twice in a row only suspends once + only emails once."""
     user, _ = _pending(requested_days_ago=65)
     mail.outbox.clear()
 
-    first = suspend_unresolved_parental_consents()
-    second = suspend_unresolved_parental_consents()
+    with django_capture_on_commit_callbacks(execute=True):
+        first = suspend_unresolved_parental_consents()
+    with django_capture_on_commit_callbacks(execute=True):
+        second = suspend_unresolved_parental_consents()
 
     assert first == 1
     assert second == 0

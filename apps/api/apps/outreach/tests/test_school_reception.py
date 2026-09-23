@@ -263,7 +263,7 @@ class TestSchoolStaffNotLinked:
 
 class TestExpireStaleRequests:
     def test_expires_pending_requests_older_than_7_days_and_notifies(
-        self, student, school, profession
+        self, student, school, profession, django_capture_on_commit_callbacks
     ):
         stale = _create_outreach(student=student, school=school, profession=profession)
         with bypass_rls(reason="test_setup.backdate_outreach"):
@@ -272,7 +272,11 @@ class TestExpireStaleRequests:
             )
         fresh = _create_outreach(student=student, school=school, profession=profession)
 
-        count = expire_stale_early_outreach_requests()
+        # Story 8.1: the expiry notification is queued via the mailer outbox
+        # and delivered in an on_commit hook — execute them so eager Celery
+        # fills mail.outbox.
+        with django_capture_on_commit_callbacks(execute=True):
+            count = expire_stale_early_outreach_requests()
 
         assert count == 1
         with bypass_rls(reason="test_assert.read_outreach"):

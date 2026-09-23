@@ -82,6 +82,58 @@ services:
       retries: 10
       start_period: 30s
 
+  # Story 8.1 — Celery worker + beat. Discovery during that story: Celery was
+  # configured in settings but RAN NOWHERE — no worker/beat service existed
+  # (and `path_advisor/__init__.py` didn't load the app, fixed alongside).
+  # Every async flow (email outbox, OCR, invitations, parental-consent beat
+  # schedules) needs these two to actually execute in local dev.
+  worker:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile.dev
+    container_name: pa-worker
+    command: uv run celery -A path_advisor worker --loglevel=info --concurrency=2
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      AWS_S3_ENDPOINT_URL: http://minio:9000
+      EMAIL_HOST: mailpit
+      EMAIL_PORT: "1025"
+    volumes:
+      - ../apps/api:/app
+      - /app/.venv
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: ../apps/api
+      dockerfile: Dockerfile.dev
+    container_name: pa-beat
+    command: uv run celery -A path_advisor beat --loglevel=info
+    env_file: ../.env
+    environment:
+      POSTGRES_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - ../apps/api:/app
+      - /app/.venv
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   ai-service:
     build:
       context: ../apps/ai-service

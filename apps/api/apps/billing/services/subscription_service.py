@@ -191,7 +191,10 @@ class SubscriptionService:
                 subject_id=user.id,
                 metadata={"paying_user_id": paid_by_user_id, "beneficiary_user_id": user.id},
             )
-        # Story 5.3 AC2 — best-effort confirmation email; must never fail the
+        # Story 5.3 AC2 — confirmation email. Story 8.1: this queues a durable
+        # EmailOutbox row that joins the webhook transaction (activation and
+        # email commit together; delivery is async with retry after commit).
+        # The try/except stays because an enqueue failure must never fail the
         # webhook (record_webhook_event's transaction would roll back the
         # activation itself on any raise here).
         try:

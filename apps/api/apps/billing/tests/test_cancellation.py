@@ -138,20 +138,27 @@ def test_new_checkout_clears_prior_cancel_at_period_end():
 # --- AC2 confirmation email --------------------------------------------------
 
 
-def test_checkout_completed_sends_confirmation_email():
+def test_checkout_completed_sends_confirmation_email(django_capture_on_commit_callbacks):
     u = _make_user()
-    SubscriptionService.apply_event(
-        event_type="checkout.session.completed",
-        obj={"client_reference_id": u.id, "customer": "cus_1", "subscription": "sub_1"},
-    )
+    # Story 8.1: the email is queued via the mailer outbox and delivered in an
+    # on_commit hook — execute the callbacks so eager Celery fills mail.outbox.
+    with django_capture_on_commit_callbacks(execute=True):
+        SubscriptionService.apply_event(
+            event_type="checkout.session.completed",
+            obj={"client_reference_id": u.id, "customer": "cus_1", "subscription": "sub_1"},
+        )
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == [u.email]
 
 
 def test_checkout_completed_email_failure_does_not_block_activation():
+    """Story 8.1 restatement: SMTP can no longer fail here (delivery is async
+    via the mailer outbox) — an enqueue failure is the only in-transaction
+    failure mode left, and it must not block the activation."""
     u = _make_user()
     with patch(
-        "apps.billing.services.emails.send_premium_activated", side_effect=RuntimeError("smtp down")
+        "apps.billing.services.emails.send_premium_activated",
+        side_effect=RuntimeError("outbox enqueue boom"),
     ):
         handled = SubscriptionService.apply_event(
             event_type="checkout.session.completed",
