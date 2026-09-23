@@ -30,6 +30,9 @@ CACHES = {
 REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # noqa: F405
     "gdpr_export_create": "50/hour",
     "public_seo": "100000/min",
+    # Story 8.9 — same reasoning as public_seo; the dedicated throttle test
+    # overrides this back down to 3/min for itself.
+    "rum_ingest": "100000/min",
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

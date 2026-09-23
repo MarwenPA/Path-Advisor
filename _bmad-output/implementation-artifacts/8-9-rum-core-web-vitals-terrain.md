@@ -1,6 +1,26 @@
 # Story 8.9 : Métriques utilisateur réelles (RUM) sur les Core Web Vitals
 
-**Status:** ready-for-dev
+**Status:** review
+
+## 0. Résultat (2026-09-20)
+
+**AC1-AC4 livrées ; AC5 est datée par nature** (réexamen des budgets après 2-4 semaines de données — un rappel est posé dans la section AC5).
+
+**Backend** — nouvelle app `apps/telemetry` : `POST /api/v1/rum/vitals/` (AllowAny, throttle `rum_ingest` 60/min/IP, `authentication_classes = []` pour que le beacon d'un élève connecté ne soit jamais rattachable à sa session) et `GET /api/v1/admin/rum/summary/` (path_admin, p75 rang-le-plus-proche par métrique × type de page, segmenté device/connexion — fenêtre 28 j par défaut, 90 j max, alignée CrUX). Rétention : commande `prune_rum_vitals` (90 j). **13 tests**, dont un qui épingle le schéma : la table n'a *aucune colonne* utilisateur/IP/URL — la vie privée est par construction, pas par politique. `mypy apps/telemetry` : 0 erreur.
+
+**Frontend** — collecteur hors React : `src/instrumentation-client.ts` (convention Next) charge `src/lib/telemetry/rum.ts` **à l'idle du navigateur, après `load`** — les PerformanceObservers de `web-vitals` sont bufferisés, donc l'abonnement tardif capte quand même LCP/FCP/TTFB. `pathnameToPageType` est un mapping fermé des 5 types de pages publiques ; tout le reste (espace authentifié inclus) n'est **jamais** mis en file. Batch unique flushé sur `visibilitychange`/`pagehide` via `fetch(keepalive, credentials: "omit")` — pas de `sendBeacon`, qui ne porte pas `application/json` sans ennuis CORS. **17 tests**, dont : un chemin authentifié n'est jamais rapporté, le payload ne contient jamais le pathname, pas de double-envoi.
+
+⚠️ **Cette architecture est la seconde — la première s'est fait attraper par le gate qu'elle devait calibrer.** La v1 était un composant client (`RumReporter`) monté dans le layout racine : une frontière cliente au layout racine met son chunk sur le chemin critique de *toutes* les pages, et `ci-lighthouse` a mesuré **+~40 ms de LCP simulé** sur `/metiers/{slug}` (2538/2543/2540 ms, grappe ±5 ms — pas du bruit), au-dessus du budget 2500. Relever le budget était exclu (leçon de l'Epic 7). La v2 coûte **zéro octet critique**, vérifié dans `build-manifest.json` : les chunks RUM (~9,6 ko au total, `web-vitals` inclus) sont absents de `rootMainFiles`, chargés à l'idle. L'instrument de mesure ne doit pas fausser la mesure.
+
+**Forensique d'une expérience confondue (à garder — c'est la leçon de la story).** La première vérification vivante de la v2 a donné zéro ligne en base, contre 9 pour la v1. J'ai d'abord accusé la fenêtre d'idle (deadline 5 s « trop tardive »), resserrée à 1,2 s — zéro encore. Un flush forcé post-abonnement (bissection) — zéro toujours. La vérité est venue de Chrome headless piloté en direct avec sa console : `__RUM_BOOT__` ✓, `__RUM_INIT__` ✓, puis **blocage CORS** — mes probes v2 tournaient sur le port **3200**, absent de `CORS_ALLOWED_ORIGINS`, quand la v1 « 9 lignes » tournait sur **3000**. J'ai comparé deux versions de code dans deux environnements : la variable était le port, pas l'architecture — qui fonctionnait probablement depuis la première version. Ma « preuve » intermédiaire (`grep timeout:5e3` dans les chunks) était en outre un faux positif possible, ce littéral étant générique ; seuls des marqueurs uniques + la console du navigateur ont tranché. Le commentaire mensonger laissé entre-temps dans `instrumentation-client.ts` a été réécrit avec la cause réelle.
+
+Preuve finale sur l'origine autorisée (port 3000, build de prod, Chrome headless) : **FCP/LCP/TTFB en base** malgré l'abonnement tardif — les observers bufferisés font leur travail ; CLS/INP absents à juste titre (session sans interaction ni shift). Note opérationnelle : le beacon voyage sous le **même régime CORS** que tous les appels API du front (`NEXT_PUBLIC_API_URL`) — aucune configuration nouvelle requise en production.
+
+**Vérifié en bout-en-bout par un vrai navigateur** (leçon de l'Epic 7 : le build qui passe ne prouve rien) : Chrome piloté par Lighthouse sur la stack docker de dev → 9 lignes en Postgres avec `page_type=metier_fiche`, device `mobile`, connexion `4g`. Le flux complet — mesure web-vitals, file, flush pagehide, CORS, validation d'enum, écriture — fonctionne sans intervention manuelle.
+
+Corrections en cours de route, consignées : mon premier test de p75 attendait 1000 pour `[1000,1000,2000]` — **le code avait raison** (rang-le-plus-proche de 3 échantillons = le 3ᵉ) ; et le test de throttle devait épingler le taux sur la classe (DRF fige `THROTTLE_RATES` à l'import — le commentaire de `settings/test.py` le disait déjà).
+
+**Page RGPD** mise à jour (finalité « Mesure de performance technique », formulée pour un adolescent : ni identifiant, ni IP, ni URL complète, purge à 90 j).
 
 ## 1. Le manque
 

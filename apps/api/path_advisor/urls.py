@@ -120,6 +120,8 @@ urlpatterns = [
     path("api/v1/", include("apps.recommendations.urls")),
     # Story 4.1 — schools & formations referential (admin + public endpoints).
     path("api/v1/", include("apps.schools.urls")),
+    # Story 8.9 — anonymous RUM beacons + path_admin p75 summary.
+    path("api/v1/", include("apps.telemetry.urls")),
     # Story 6.1 — parent invitation flow (POST/GET parent-invitations, accept, resend).
     path("api/v1/family/", include("apps.family.urls")),
     # Story 6.5 — B2B onboarding admin endpoints (establishments/cohorts/import/counselors).

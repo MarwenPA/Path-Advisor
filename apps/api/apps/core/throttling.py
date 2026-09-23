@@ -23,3 +23,19 @@ class PublicSeoAnonThrottle(AnonRateThrottle):
     """
 
     scope = "public_seo"
+
+
+class RumIngestAnonThrottle(AnonRateThrottle):
+    """Per-IP throttle on the anonymous RUM beacon endpoint (Story 8.9).
+
+    One page view flushes ONE batched beacon (up to 5 metrics inside), so a
+    real user emits a handful of requests per minute at most. The rate
+    (`rum_ingest`) is set well above that but bounds the obvious abuse: the
+    endpoint is unauthenticated **and writes to the database**, the exact
+    combination the adversarial review flagged on the old anonymous audit
+    write. NOTE: the ingest view also sets `authentication_classes = []`, so
+    every request is keyed here as anonymous BY DESIGN — a logged-in
+    student's beacon must not be attributable (see `telemetry.models`).
+    """
+
+    scope = "rum_ingest"
