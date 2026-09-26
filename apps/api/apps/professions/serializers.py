@@ -122,7 +122,9 @@ class ProfessionReportAdminSerializer(serializers.ModelSerializer):
     """Full representation for admin list — Story 3.8 AC6."""
 
     profession_slug = serializers.CharField(source="profession.slug", read_only=True)
+    profession_name = serializers.CharField(source="profession.name", read_only=True)
     reporter_id = serializers.CharField(source="reporter.id", read_only=True, allow_null=True)
+    error_type_label = serializers.CharField(source="get_error_type_display", read_only=True)
 
     class Meta:
         model = ProfessionReport
@@ -134,6 +136,8 @@ class ProfessionReportAdminSerializer(serializers.ModelSerializer):
             "location",
             "comment",
             "status",
+            "profession_name",
+            "error_type_label",
             "created_at",
         ]
         read_only_fields = fields

@@ -8,6 +8,7 @@ from apps.professions.views import (
     AdminProfessionListView,
     AdminProfessionRevisionsView,
     AdminProfessionRollbackView,
+    ProfessionReportActionView,
     ProfessionReportAdminListView,
     ProfessionReportCreateView,
     PublicProfessionDetailView,
@@ -21,6 +22,11 @@ app_name = "professions"
 urlpatterns = [
     # Admin endpoints (IsPathAdmin)
     path("admin/professions/", AdminProfessionListView.as_view(), name="admin-list"),
+    path(
+        "admin/professions/reports/<str:report_id>/<str:action>/",
+        ProfessionReportActionView.as_view(),
+        name="admin-report-action",
+    ),
     path(
         "admin/professions/reports/",
         ProfessionReportAdminListView.as_view(),

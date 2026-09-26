@@ -1,0 +1,10 @@
+Bonjour,
+
+Tu avais signalé un problème sur la fiche « {{ profession_name }} ». Merci — elle vient d'être mise à jour.
+
+Revoir la fiche : {{ fiche_url }}
+
+---
+Tu reçois cet email car les notifications « {{ category_label }} » sont activées.
+Gérer mes notifications : {{ manage_notifications_url }}
+Se désinscrire : {{ unsubscribe_url }}

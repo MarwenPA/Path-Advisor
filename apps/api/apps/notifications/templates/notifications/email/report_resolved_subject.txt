@@ -1,0 +1,1 @@
+Ta fiche signalée a été mise à jour — {{ profession_name }}

@@ -24,6 +24,11 @@ class NotificationCategory(models.TextChoices):
     SCHOOL_RESPONSES = "school_responses", "Réponses école"
     NEW_SCHOOLS = "new_schools", "Nouvelles écoles pertinentes"
     PROFILE_COMPLETION = "profile_completion", "Rappels de complétion profil"
+    #: Story 9.3 — suivi des signalements de fiches (résolution, demandes de
+    #: précision). Première catégorie ajoutée APRÈS la règle « visible
+    #: seulement si émettrice » (revue Epic 8, P2-4) : elle émet dès sa
+    #: naissance.
+    REPORT_UPDATES = "report_updates", "Suivi de tes signalements"
 
 
 class NotificationPreference(models.Model):

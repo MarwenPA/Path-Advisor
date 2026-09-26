@@ -8,8 +8,11 @@ Routes:
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
@@ -95,18 +98,92 @@ class ProfessionReportCreateView(APIView):
 
 
 class ProfessionReportAdminListView(APIView):
-    """GET /api/v1/admin/professions/reports/ — paginated list for admin (AC6)."""
+    """GET /api/v1/admin/professions/reports/ — Story 9.3 moderation queue.
+
+    Oldest first (the 7-day SLA is an AGE game), `status`/`error_type`
+    filters, per-row `overdue` flag + a global `overdue_count` so the UI
+    can alert without a second request. Default view = the actionable
+    queue (pending + info_requested).
+    """
 
     permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
 
+    OVERDUE_AFTER = timedelta(days=7)
+
     def get(self, request: Request) -> Response:
-        qs = ProfessionReport.objects.filter(status="pending").select_related(
-            "profession", "reporter"
-        )
+        qs = ProfessionReport.objects.select_related("profession", "reporter")
+        status_filter = request.query_params.get("status")
+        if status_filter in ProfessionReport.Status.values:
+            qs = qs.filter(status=status_filter)
+        else:
+            qs = qs.filter(
+                status__in=[
+                    ProfessionReport.Status.PENDING,
+                    ProfessionReport.Status.INFO_REQUESTED,
+                ]
+            )
+        error_type = request.query_params.get("error_type")
+        if error_type in ProfessionReport.ErrorType.values:
+            qs = qs.filter(error_type=error_type)
+        qs = qs.order_by("created_at")  # oldest first — SLA pressure on top
+
+        overdue_cutoff = timezone.now() - self.OVERDUE_AFTER
+        overdue_count = ProfessionReport.objects.filter(
+            status__in=[
+                ProfessionReport.Status.PENDING,
+                ProfessionReport.Status.INFO_REQUESTED,
+            ],
+            created_at__lt=overdue_cutoff,
+        ).count()
+
         paginator = _ProfessionPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         serializer = ProfessionReportAdminSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        payload = serializer.data
+        for row, report in zip(payload, page, strict=True):
+            row["overdue"] = report.created_at < overdue_cutoff
+            row["admin_note"] = report.admin_note
+        response = paginator.get_paginated_response(payload)
+        response.data["overdue_count"] = overdue_count
+        return response
+
+
+class ProfessionReportActionView(APIView):
+    """POST /api/v1/admin/professions/reports/{id}/{action}/ — Story 9.3.
+
+    `resolve` (optional note) notifies the reporter through the 8.2 engine;
+    `dismiss` REQUIRES a reason and stays silent (story doc §2.4);
+    `request-info` REQUIRES a message and notifies it.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, report_id: str, action: str) -> Response:
+        from apps.professions.services import report_moderation
+
+        report = (
+            ProfessionReport.objects.select_related("profession", "reporter")
+            .filter(pk=report_id)
+            .first()
+        )
+        if report is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        note = (request.data.get("note") or request.data.get("reason") or "").strip()
+        message = (request.data.get("message") or "").strip()
+        try:
+            if action == "resolve":
+                report_moderation.resolve_report(report=report, editor=request.user, note=note)
+            elif action == "dismiss":
+                report_moderation.dismiss_report(report=report, editor=request.user, reason=note)
+            elif action == "request-info":
+                report_moderation.request_report_info(
+                    report=report, editor=request.user, message=message
+                )
+            else:
+                return Response({"detail": "Action inconnue."}, status=status.HTTP_404_NOT_FOUND)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"id": report.pk, "status": report.status})
 
 
 class AdminProfessionListView(APIView):

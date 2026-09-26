@@ -1,0 +1,14 @@
+Bonjour,
+
+Merci pour ton signalement sur la fiche « {{ profession_name }} ». Pour le traiter, l'équipe aurait besoin d'une précision :
+
+« {{ admin_message }} »
+
+Tu peux répondre en re-signalant la fiche avec les détails, quand tu as un moment.
+
+Revoir la fiche : {{ fiche_url }}
+
+---
+Tu reçois cet email car les notifications « {{ category_label }} » sont activées.
+Gérer mes notifications : {{ manage_notifications_url }}
+Se désinscrire : {{ unsubscribe_url }}
