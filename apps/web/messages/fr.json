@@ -572,6 +572,41 @@
       "empty": "Aucune version enregistrée.",
       "loadError": "Les versions n'ont pas pu être chargées.",
       "actionError": "L'action n'a pas abouti."
+    },
+    "auditMl": {
+      "title": "Audit ML",
+      "model": "modèle actif : {version}",
+      "reviewNeeded": "Revue requise",
+      "healthy": "Sain",
+      "loading": "Calcul de l'audit…",
+      "loadError": "L'audit n'a pas pu être chargé.",
+      "insufficient": "n/d",
+      "noData": "Pas encore de décisions journalisées.",
+      "monthlyTitle": "Score moyen (top 1) par mois",
+      "monthlyAria": "Barres du score moyen mensuel de la recommandation principale",
+      "subpopTitle": "Sous-populations (30 derniers jours)",
+      "subpopNote": "Dimensions disponibles côté élève : niveau et filière (cadrage 9.5 — pas de genre ; groupes ≥ 30 décisions). Un écart > 10 % marque le modèle pour revue éthique.",
+      "gap": "écart",
+      "groupsTooSmall": "Aucun groupe n'atteint 30 décisions sur la fenêtre.",
+      "workflowNote": "En cas d'alerte : comparer les versions dans « Modèles IA », puis réentraîner (nouvelle version, porte éthique) ou effectuer un rollback vers une version archivée. L'alerte hebdomadaire part aussi par email aux admins.",
+      "tiles": {
+        "drift": "Drift (KS)",
+        "driftHint": "seuil α=0,05 : {threshold}",
+        "driftFloor": "≥ 50 décisions requises de chaque côté",
+        "maxGap": "Écart inter-groupes max",
+        "maxGapHint": "seuil de revue : 10 %",
+        "baseline": "Baseline",
+        "baselineHint": "top-1 gelés à l'activation"
+      },
+      "dimensions": {
+        "niveau": "Par niveau",
+        "filiere": "Par filière"
+      },
+      "columns": {
+        "group": "Groupe",
+        "meanScore": "Score moyen",
+        "count": "Décisions"
+      }
     }
   }
 }

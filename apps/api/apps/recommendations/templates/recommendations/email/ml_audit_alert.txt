@@ -1,0 +1,11 @@
+Alerte de l'audit ML hebdomadaire (modèle {{ model_version }}).
+
+{% if drift_alert %}- DRIFT détecté : statistique KS {{ drift_statistic }} > seuil {{ drift_threshold }} (baseline vs 30 derniers jours).
+{% endif %}{% if bias_alert %}- BIAIS inter-groupes : écart maximal {{ max_gap_percent }} % (> 10 %) — le modèle actif est marqué « revue éthique requise ».
+{% endif %}
+Workflow de revue proposé :
+1. Consulter le détail : /admin/audit-ml
+2. Comparer les versions et leurs métriques : /admin/modeles
+3. Décider : réentraîner (nouvelle version + porte éthique 9.5) ou rollback vers une version archivée.
+
+Cet email est une alerte opérationnelle interne (aucun destinataire élève).

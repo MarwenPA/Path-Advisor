@@ -37,6 +37,18 @@ BIASED_METRICS = {
 }
 
 
+def _legacy_version():
+    row, _ = ModelVersion.objects.get_or_create(
+        version="0.3.0-statistical",
+        defaults={
+            "name": "Scorer statistique 3.3",
+            "dataset_hash": "unversioned-legacy",
+            "is_active": True,
+        },
+    )
+    return row
+
+
 @pytest.fixture
 def admin(db):
     return PathAdminUserFactory(email="karim-95@test.local", email_verified_at=timezone.now())
@@ -209,7 +221,7 @@ def test_activation_is_ethics_gated_then_exclusive(admin):
     biased.refresh_from_db()
     assert biased.is_active is True
     assert biased.requires_ethics_review is False
-    legacy = ModelVersion.objects.get(version="0.3.0-statistical")
+    legacy = _legacy_version()
     assert legacy.is_active is False  # exactly one active
     assert AuditLog.objects.filter(action="ml.model_version_activated").exists()
 
@@ -263,7 +275,7 @@ def test_model_versions_refuse_non_admin(db):
 @pytest.mark.django_db
 def test_prune_keeps_the_365_day_window():
     student = _mk_student("prune-95@test.local")
-    version = ModelVersion.objects.get(version="0.3.0-statistical")
+    version = _legacy_version()
     with as_path_admin():
         old = ScoringDecision.objects.create(
             user=student, model_version=version, inputs_snapshot={}, top_scores=[]

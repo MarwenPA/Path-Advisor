@@ -190,8 +190,8 @@ development_status:
   9-2-crud-referentiel-formations-ecoles: done  # merge #114
   9-3-file-signalements-moderation-7j: done  # merge #115
   9-4-moderation-motivations-libres: done  # merge #116
-  9-5-versioning-modeles-ia-audit: review
-  9-6-metriques-audit-ml-drift-biais: backlog
+  9-5-versioning-modeles-ia-audit: done  # merge #117
+  9-6-metriques-audit-ml-drift-biais: review
   epic-9-retrospective: optional
 
   # Epic 10 — Fast-follow post-MVP (mois 9-12)

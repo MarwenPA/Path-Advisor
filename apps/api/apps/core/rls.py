@@ -134,6 +134,9 @@ def with_system_actor(*, reason: str, metadata: dict[str, Any] | None = None) ->
        — same shape: audience read + per-student signal matching + outbox
        writes. (Added by the Epic 8 review — the two tasks escalated
        correctly but were missing from this auditable list.)
+    11. `apps.recommendations.tasks.run_ml_audit` (Story 9.6 beat) —
+       cross-user read of `scoring_decisions` + student level profiles for
+       the drift/bias aggregation; flags the active model + emails admins.
 
     Maintainers: any new Celery task that touches RLS-protected tables MUST
     wrap its body in `with_system_actor()` or set GUCs manually.
