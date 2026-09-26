@@ -29,7 +29,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.billing.services.subscription_service import SubscriptionService
-from apps.core.permissions import IsAuthenticatedAndActive, IsSchoolAdmin, IsStudent
+from apps.core.permissions import (
+    IsAuthenticatedAndActive,
+    IsPathAdmin,
+    IsSchoolAdmin,
+    IsStudent,
+)
 from apps.outreach.models import EarlyOutreachRequest
 from apps.outreach.serializers import (
     EarlyOutreachCreateSerializer,
@@ -327,3 +332,221 @@ class EcoleReportingExportView(APIView):
         response = HttpResponse(csv_content, content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="reporting-{school.slug}.csv"'
         return response
+
+
+# ---------------------------------------------------------------------------
+# Story 9.4 — back-office moderation queues (motivations + school comments)
+# ---------------------------------------------------------------------------
+
+MODERATION_SLA_BUSINESS_HOURS = 24
+
+
+def _business_hours_since(moment) -> float:
+    """Whole business hours (Mon-Fri) elapsed since `moment` — the AC's
+    « 24 h ouvrées ». Hour-granular on purpose: an SLA badge, not payroll."""
+    from datetime import timedelta
+
+    from django.utils import timezone as tz
+
+    now = tz.localtime()
+    cursor = tz.localtime(moment)
+    hours = 0.0
+    while cursor < now:
+        step = min(timedelta(hours=1), now - cursor)
+        if cursor.weekday() < 5:  # Mon..Fri
+            hours += step.total_seconds() / 3600
+        cursor += timedelta(hours=1)
+    return hours
+
+
+class AdminModerationMotivationsView(APIView):
+    """GET /api/v1/admin/moderation/motivations/ — Story 9.4 queue.
+
+    Oldest first; each row carries its business-hours age, the >24 h SLA
+    flag and the pre-screening AID (`prescreen`) — the decision stays human.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        from apps.outreach.models import EarlyOutreachRequestStatus
+        from apps.outreach.services.prescreen import prescreen_text
+
+        rows = (
+            EarlyOutreachRequest.objects.filter(
+                status=EarlyOutreachRequestStatus.PENDING_MODERATION
+            )
+            .select_related("student", "school", "profession")
+            .order_by("created_at")[:100]
+        )
+        payload = []
+        overdue_count = 0
+        for outreach in rows:
+            age = _business_hours_since(outreach.created_at)
+            overdue = age > MODERATION_SLA_BUSINESS_HOURS
+            overdue_count += int(overdue)
+            payload.append(
+                {
+                    "id": outreach.pk,
+                    "student_email": outreach.student.email,
+                    "school": {"slug": outreach.school.slug, "name": outreach.school.name},
+                    "profession_name": outreach.profession.name,
+                    "motivation_text": outreach.motivation_text,
+                    "created_at": outreach.created_at.isoformat(),
+                    "business_hours_age": round(age, 1),
+                    "overdue": overdue,
+                    "prescreen": prescreen_text(outreach.motivation_text),
+                }
+            )
+        return Response({"results": payload, "overdue_count": overdue_count})
+
+
+class AdminModerationMotivationActionView(APIView):
+    """POST /api/v1/admin/moderation/motivations/{id}/(approve|reject)/.
+
+    Reuses the 5.5 services verbatim (state machine + student emails);
+    reject REQUIRES the AC's typed category and stores it alongside the
+    free-text reason.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, outreach_id: str, action: str) -> Response:
+        from apps.audit.decorators import record_audit
+        from apps.outreach.exceptions import OutreachModerationStateError
+        from apps.outreach.services.early_outreach import (
+            approve_early_outreach_motivation,
+            reject_early_outreach_motivation,
+        )
+
+        outreach = EarlyOutreachRequest.objects.filter(pk=outreach_id).first()
+        if outreach is None:
+            return Response({"detail": "Not found."}, status=404)
+        try:
+            if action == "approve":
+                approve_early_outreach_motivation(outreach=outreach)
+                audit_action = "moderation.motivation_approved"
+            elif action == "reject":
+                category = (request.data.get("category") or "").strip()
+                reason = (request.data.get("reason") or "").strip()
+                valid = {
+                    c for c, _ in EarlyOutreachRequest._meta.get_field("rejection_category").choices
+                }
+                if category not in valid:
+                    return Response(
+                        {"detail": "Une catégorie de refus est obligatoire."}, status=400
+                    )
+                if not reason:
+                    return Response(
+                        {"detail": "Un commentaire de refus est obligatoire."}, status=400
+                    )
+                reject_early_outreach_motivation(outreach=outreach, reason=reason)
+                outreach.rejection_category = category
+                outreach.save(update_fields=["rejection_category", "updated_at"])
+                audit_action = "moderation.motivation_rejected"
+            else:
+                return Response({"detail": "Action inconnue."}, status=404)
+        except OutreachModerationStateError:
+            return Response(
+                {"detail": "Cette demande n'est plus en attente de modération."}, status=409
+            )
+        record_audit(
+            action=audit_action,
+            result="success",
+            actor=request.user,
+            subject_id=outreach.pk,
+            metadata={"school": outreach.school.slug},
+        )
+        return Response({"id": outreach.pk, "status": outreach.status})
+
+
+class AdminModerationSchoolCommentsView(APIView):
+    """GET /api/v1/admin/moderation/school-comments/ — Story 9.4 amendement
+    (revue Epic 8, P2-5): staff comments awaiting a-priori review."""
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        from apps.outreach.models import EarlyOutreachResponse
+        from apps.outreach.services.prescreen import prescreen_text
+
+        rows = (
+            EarlyOutreachResponse.objects.filter(
+                comment_status=EarlyOutreachResponse.CommentStatus.PENDING
+            )
+            .select_related("request__school", "request__student")
+            .order_by("created_at")[:100]
+        )
+        payload = []
+        overdue_count = 0
+        for response in rows:
+            age = _business_hours_since(response.created_at)
+            overdue = age > MODERATION_SLA_BUSINESS_HOURS
+            overdue_count += int(overdue)
+            payload.append(
+                {
+                    "id": response.pk,
+                    "school": {
+                        "slug": response.request.school.slug,
+                        "name": response.request.school.name,
+                    },
+                    "action": response.action,
+                    "comment": response.comment,
+                    "created_at": response.created_at.isoformat(),
+                    "business_hours_age": round(age, 1),
+                    "overdue": overdue,
+                    "prescreen": prescreen_text(response.comment),
+                }
+            )
+        return Response({"results": payload, "overdue_count": overdue_count})
+
+
+class AdminModerationSchoolCommentActionView(APIView):
+    """POST /api/v1/admin/moderation/school-comments/{id}/(approve|reject)/.
+
+    Approve → the comment becomes visible in-app (/mes-envois); reject →
+    it NEVER reaches the student (the response itself stays — the school's
+    ANSWER was never gated, only its free text). The school is not
+    notified of a rejection (consigné: no reply channel exists)."""
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, response_id: str, action: str) -> Response:
+        from django.utils import timezone as tz
+
+        from apps.audit.decorators import record_audit
+        from apps.outreach.models import EarlyOutreachResponse
+
+        response = (
+            EarlyOutreachResponse.objects.select_related("request__school")
+            .filter(pk=response_id)
+            .first()
+        )
+        if response is None:
+            return Response({"detail": "Not found."}, status=404)
+        if response.comment_status != EarlyOutreachResponse.CommentStatus.PENDING:
+            return Response({"detail": "Ce commentaire n'est plus en attente."}, status=409)
+        if action == "approve":
+            response.comment_status = EarlyOutreachResponse.CommentStatus.APPROVED
+        elif action == "reject":
+            response.comment_status = EarlyOutreachResponse.CommentStatus.REJECTED
+        else:
+            return Response({"detail": "Action inconnue."}, status=404)
+        response.comment_moderated_by = request.user
+        response.comment_moderated_at = tz.now()
+        response.save(
+            update_fields=[
+                "comment_status",
+                "comment_moderated_by",
+                "comment_moderated_at",
+                "updated_at",
+            ]
+        )
+        record_audit(
+            action=f"moderation.school_comment_{action}d",
+            result="success",
+            actor=request.user,
+            subject_id=response.pk,
+            metadata={"school": response.request.school.slug},
+        )
+        return Response({"id": response.pk, "comment_status": response.comment_status})

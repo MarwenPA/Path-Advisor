@@ -95,6 +95,19 @@ class EarlyOutreachRequest(models.Model):
         choices=EarlyOutreachRequestStatus.choices,
         default=EarlyOutreachRequestStatus.PENDING,
     )
+    #: Story 9.4 — the AC's typed rejection (contenu inapproprié, données
+    #: tierces, discrimination, autre) on top of the free-text reason.
+    rejection_category = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        choices=[
+            ("contenu_inapproprie", "Contenu inapproprié"),
+            ("donnees_tierces", "Données personnelles de tiers"),
+            ("discrimination", "Discrimination"),
+            ("autre", "Autre"),
+        ],
+    )
     rejection_reason = models.TextField(
         blank=True,
         help_text="Set when `status=rejected` — explains why to the student (Story 5.5 AC).",
@@ -168,6 +181,28 @@ class EarlyOutreachResponse(models.Model):
     # scope for the MVP; the school follows up externally, per the epic's
     # own "visio externe en MVP" framing).
     alternative_note = models.TextField(blank=True)
+
+    #: Story 9.4 (amendement revue Epic 8, P2-5) — a non-empty free-text
+    #: comment from school staff enters A PRIORI moderation before a minor
+    #: ever sees it: the response email leaves immediately WITHOUT the
+    #: comment; in-app, the comment only appears once approved. Empty
+    #: comments are auto-approved (nothing to moderate).
+    class CommentStatus(models.TextChoices):
+        APPROVED = "approved", "Approuvé"
+        PENDING = "pending", "En attente de modération"
+        REJECTED = "rejected", "Rejeté"
+
+    comment_status = models.CharField(
+        max_length=12, choices=CommentStatus.choices, default=CommentStatus.APPROVED
+    )
+    comment_moderated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    comment_moderated_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

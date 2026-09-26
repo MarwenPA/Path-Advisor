@@ -2,6 +2,7 @@
 
 from django.urls import path
 
+from apps.outreach import views
 from apps.outreach.views import (
     EarlyOutreachDetailView,
     EarlyOutreachListView,
@@ -20,6 +21,27 @@ from apps.outreach.views import (
 app_name = "outreach"
 
 urlpatterns = [
+    # Story 9.4 — back-office moderation (motivations + commentaires écoles).
+    path(
+        "admin/moderation/motivations/",
+        views.AdminModerationMotivationsView.as_view(),
+        name="admin-moderation-motivations",
+    ),
+    path(
+        "admin/moderation/motivations/<str:outreach_id>/<str:action>/",
+        views.AdminModerationMotivationActionView.as_view(),
+        name="admin-moderation-motivation-action",
+    ),
+    path(
+        "admin/moderation/school-comments/",
+        views.AdminModerationSchoolCommentsView.as_view(),
+        name="admin-moderation-school-comments",
+    ),
+    path(
+        "admin/moderation/school-comments/<str:response_id>/<str:action>/",
+        views.AdminModerationSchoolCommentActionView.as_view(),
+        name="admin-moderation-school-comment-action",
+    ),
     path("outreach/requests/", EarlyOutreachListView.as_view(), name="request-list"),
     path("outreach/quota/", OutreachQuotaView.as_view(), name="quota"),
     path(
