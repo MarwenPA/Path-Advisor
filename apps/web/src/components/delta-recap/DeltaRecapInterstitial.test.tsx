@@ -70,9 +70,10 @@ describe("DeltaRecapInterstitial", () => {
 
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAttribute("aria-modal", "true");
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Depuis ta dernière visite",
-    );
+    // h2, not h1 (revue Epic 8 F13): the page below keeps the view's h1.
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Depuis ta dernière visite" }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "École Test a répondu — profil intéressant" }),
     ).toBeInTheDocument();
@@ -122,6 +123,55 @@ describe("DeltaRecapInterstitial", () => {
     await user.click(screen.getByRole("link", { name: "Voir le parcours mis à jour" }));
 
     expect(ackMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("Escape closes WITHOUT acking — unseen deltas are still news (revue P3)", async () => {
+    const user = userEvent.setup();
+    renderWithIntl([makeCard()]);
+
+    screen.getByRole("dialog").focus();
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(ackMock).not.toHaveBeenCalled(); // same semantics as closing the tab
+  });
+
+  it("traps Tab inside the dialog (revue P0-4 — APG modal contract)", async () => {
+    const user = userEvent.setup();
+    renderWithIntl([makeCard()]);
+
+    // Walk forward past the last focusable: focus must WRAP to the first
+    // focusable inside the dialog, never escape to the page behind.
+    const dialog = screen.getByRole("dialog");
+    const cta = screen.getByRole("link", { name: "Voir le parcours mis à jour" });
+    const continueBtn = screen.getByRole("button", { name: "Tout vu, continuer" });
+    continueBtn.focus();
+    await user.tab();
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(cta); // wrapped to the first focusable
+
+    // And backwards from the first: wraps to the last.
+    await user.tab({ shift: true });
+    expect(document.activeElement).toBe(continueBtn);
+  });
+
+  it("locks body scroll while open and restores it on close", async () => {
+    const user = userEvent.setup();
+    renderWithIntl([makeCard()]);
+    expect(document.body.style.overflow).toBe("hidden");
+
+    await user.click(screen.getByRole("button", { name: "Tout vu, continuer" }));
+    expect(document.body.style.overflow).toBe("");
+  });
+
+  it("hides the stat chip when the fields are ABSENT, not just null (revue P3)", () => {
+    const card = makeCard();
+    // Simulate a future kind whose payload omits the stat fields entirely.
+    delete (card as Partial<DeltaRecapCard>).stat_before;
+    delete (card as Partial<DeltaRecapCard>).stat_after;
+    renderWithIntl([card]);
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/%\s*→/)).not.toBeInTheDocument();
   });
 
   it("chrome strings carry no emoji (anti-cirque applies to our copy too)", () => {

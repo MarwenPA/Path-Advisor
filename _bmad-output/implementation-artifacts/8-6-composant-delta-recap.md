@@ -33,3 +33,8 @@ ACs (epic-8) : cartes réponse-école (avec stat avant/après), nouvelles-école
 - **Preuve live** (stack dev) : login session réel → `GET /me/delta-recap/` = **3 cartes** (« École Live Digest 8.5 a répondu — profil intéressant » stat 45→55 ; « 1 nouvelle école correspond à ton profil » ; « Parcoursup : la plateforme ouvre le 14 octobre 2026 », `days_until: 18` — l'exemple de l'AC — + checklist 8.3) → **SSR `/accueil`** contient l'interstitiel (« Depuis ta dernière visite », les 3 cartes, chip `45 % → 55`, « Tout vu, continuer ») → `POST /ack/` 204 → re-GET `{"cards": []}`.
 - **Pièges rejoués** : (1) allauth vérifie SA table `EmailAddress`, pas `email_verified_at` — seed live corrigé ; (2) pa-web servait la **vieille** page (`.next` stale sur volume colima, file-watching) — diagnostiqué par l'absence de la ref du chunk client dans le RSC payload, résolu par `rm -rf /app/.next/*` + restart ; entre-temps deux fausses pistes (cache Next, cookies non transmis) écartées par sondes (fetch node depuis le conteneur = 200 ; logs API).
 - Seed dev conservé : jalon campagne `proof-8-6` (14 oct. 2026, `notified_at` posé pour que le beat 8.3 ne l'emaile jamais) — utile pour démo ; à purger avec les seeds live 8.5.
+
+
+## Amendement post-revue (2026-09-26)
+
+La revue adversariale de l'Epic 8 a corrigé et/ou consigné plusieurs points de cette story — voir `epic-8-review-fixes.md` (lots A→E) pour le détail des décisions qui amendent ce document.

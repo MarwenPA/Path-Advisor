@@ -259,23 +259,11 @@ def test_stable_state_returns_empty_cards(client, student):
 # Tone — every card the backend can produce, linted like 8.3/8.4/8.5
 # ---------------------------------------------------------------------------
 
-BANNED = [
-    r"derni[eè]re chance",
-    r"plus que \d+",
-    r"\bvite\b",
-    r"\burgent",
-    r"!!",
-    r"ne (rate|manque) pas",
-    # 8.4's not-aligned markers — the negative delta must stay constructive.
-    r"mauvaise nouvelle",
-    r"malheureusement",
-    r"\brefus",
-    r"rejet",
-    r"échec",
-    # Anti-cirque (AC « pas confetti, pas 🎉 »).
-    r"🎉",
-    r"bravo !",
-]
+# Shared lists (revue Epic 8): urgency + the 8.4 not-aligned markers — every
+# card the backend can produce is linted against BOTH.
+from apps.notifications.tone import NOT_ALIGNED_MARKERS, URGENCY_MARKERS  # noqa: E402
+
+BANNED = URGENCY_MARKERS + NOT_ALIGNED_MARKERS
 
 
 @pytest.mark.django_db(transaction=True)

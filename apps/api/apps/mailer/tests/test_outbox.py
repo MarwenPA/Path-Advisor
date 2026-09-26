@@ -140,8 +140,21 @@ def test_redelivery_of_sent_row_is_a_noop():
     """acks_late can redeliver after a worker crash — never double-send."""
     row = _row(status=OutboxStatus.SENT, sent_at=timezone.now())
     result = deliver_email.apply(args=[row.pk]).get()
-    assert result == "already-sent"
+    assert result == "not-claimed:sent"
     assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+def test_concurrent_delivery_of_claimed_row_is_a_noop():
+    """Revue Epic 8 (P1-2a) — the CAS claim: a row another worker holds
+    (SENDING) must never be sent by a duplicate task (double enqueue,
+    visibility-timeout redelivery, double retry_failed_emails)."""
+    row = _row(status=OutboxStatus.SENDING)
+    result = deliver_email.apply(args=[row.pk]).get()
+    assert result == "not-claimed:sending"
+    assert len(mail.outbox) == 0
+    row.refresh_from_db()
+    assert row.status == OutboxStatus.SENDING  # untouched — the owner decides
 
 
 # ---------------------------------------------------------------------------

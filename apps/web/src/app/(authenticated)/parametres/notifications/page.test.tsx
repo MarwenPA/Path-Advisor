@@ -58,9 +58,17 @@ describe("NotificationsPage", () => {
     fireEvent.click(toggle);
 
     // Optimistic flip + per-row pending state while the PUT is in flight.
+    // Revue Epic 8 (P2-8a): the switch stays ENABLED (a disabled input
+    // ejects keyboard focus to <body>); racing PUTs are gated in the
+    // handler and the busy state is exposed via aria-busy + the text.
     expect(toggle).not.toBeChecked();
-    expect(toggle).toBeDisabled();
+    expect(toggle).not.toBeDisabled();
+    expect(toggle).toHaveAttribute("aria-busy", "true");
     expect(screen.getByText("Enregistrement…")).toBeInTheDocument();
+
+    // A second click during the flight is ignored — no racing PUT.
+    fireEvent.click(toggle);
+    expect(updatePreferenceMock).toHaveBeenCalledTimes(1);
 
     expect(updatePreferenceMock).toHaveBeenCalledTimes(1);
     expect(updatePreferenceMock).toHaveBeenCalledWith("parcoursup_calendar", false);

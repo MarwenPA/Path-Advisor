@@ -98,11 +98,16 @@ def test_notify_rejects_unknown_category(student):
 
 
 @pytest.mark.django_db
-def test_get_lists_all_categories_enabled_by_default(client):
+def test_get_lists_all_emitting_categories_enabled_by_default(client):
     resp = client.get(PREFS_URL)
     assert resp.status_code == 200
     prefs = resp.json()["preferences"]
-    assert {p["category"] for p in prefs} == set(NotificationCategory.values)
+    # Revue Epic 8 (P2-4): PROFILE_COMPLETION is hidden until it has an
+    # emitter — a toggle that pilots nothing is dishonest UX. Deviation
+    # from the 8.2 "4 catégories" AC, consigned in the story doc.
+    assert {p["category"] for p in prefs} == set(NotificationCategory.values) - {
+        NotificationCategory.PROFILE_COMPLETION
+    }
     assert all(p["enabled"] for p in prefs)  # opt-out model: no row = enabled
 
 

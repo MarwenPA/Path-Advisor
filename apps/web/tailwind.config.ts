@@ -68,6 +68,7 @@ const config: Config = {
           subtle: "hsl(var(--color-text-subtle))",
         },
         "border-strong": "hsl(var(--color-border-strong))",
+        "control-off": "hsl(var(--color-control-off))",
         semantic: {
           audacieux: "hsl(var(--color-semantic-audacieux))",
           realiste: "hsl(var(--color-semantic-realiste))",

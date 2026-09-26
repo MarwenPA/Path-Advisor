@@ -14,6 +14,10 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// The page reads its chrome from fr.json via getTranslations (revue Epic 8
+// — 7.7 convention); the shared mock resolves against the REAL fr.json.
+vi.mock("next-intl/server", () => import("@/test/next-intl-server-mock"));
+
 import type { School } from "@/lib/api/schools";
 
 const fetchMesParisMock = vi.fn();
@@ -182,5 +186,32 @@ describe("AccueilPage", () => {
     render(await AccueilPage());
 
     expect(screen.getByText(/Tu n'as pas encore exploré tes premiers paris/)).toBeInTheDocument();
+  });
+
+  it("revue 8.6/F11 — the interstitial mounts when the recap has cards", async () => {
+    fetchMesParisMock.mockResolvedValue([]);
+    fetchDeltaRecapMock.mockResolvedValue({
+      cards: [{ kind: "new_schools", title: "t", body: "b", cta_label: "c", cta_url: "/schools" }],
+    });
+
+    render(await AccueilPage());
+
+    expect(screen.getByTestId("delta-recap")).toBeInTheDocument();
+  });
+
+  it("revue P1-6 — a malformed delta-recap 200 degrades to no interstitial, never a crash", async () => {
+    fetchMesParisMock.mockResolvedValue([]);
+    // The exact class the 8.8 review fixed for mes-paris: a 200 whose shape
+    // drifted ({}, cards:null) traverses allSettled.
+    fetchDeltaRecapMock.mockResolvedValue({});
+
+    render(await AccueilPage());
+
+    expect(screen.queryByTestId("delta-recap")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Accueil" })).toBeInTheDocument();
+
+    fetchDeltaRecapMock.mockResolvedValue({ cards: null });
+    render(await AccueilPage());
+    expect(screen.queryByTestId("delta-recap")).not.toBeInTheDocument();
   });
 });

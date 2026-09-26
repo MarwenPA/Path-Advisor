@@ -31,6 +31,10 @@
   --color-text-subtle: 60 3% 43%; /* #71716A — 4.7:1 vs bg (AA)       */
   --color-border: 38 11% 86%; /* #E0DDD8                          */
   --color-border-strong: 38 9% 77%; /* #C9C5BE                          */
+  /* Revue Epic 8 (P2-8b): off-state surface for binary controls (switch
+     track). border-strong (1.6:1) and bg-3 (1.2:1) are below the 3:1
+     non-text contrast floor — this tone sits at ≈3.9:1 on --color-bg. */
+  --color-control-off: 45 7% 48%; /* #82806F                          */
   --color-semantic-audacieux: 21 62% 41%; /* #A85428 — "pari audacieux"       */
   --color-semantic-realiste: 152 39% 30%; /* #2F6B4F — "pari réaliste"        */
   --color-semantic-sur: 203 48% 44%; /* #3A7CA5 — "pari sûr"             */

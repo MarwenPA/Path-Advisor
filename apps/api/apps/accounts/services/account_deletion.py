@@ -702,6 +702,23 @@ def hard_delete(request: AccountDeletionRequest) -> dict[str, Any]:
         # so the email send works fine after the cascade.
         user_locked.delete()
 
+        # Revue Epic 8 (P0-3, Art. 17) — the outbox has no FK to `users`
+        # (`to` is plain text), so the cascade leaves the account's entire
+        # email history behind: address, matched profession, school comments
+        # and live unsubscribe tokens. Purge it here, BEFORE enqueueing the
+        # completion email (whose own row is the one documented, prune-bounded
+        # retention exception — DPO note, story 8.1). This also guarantees a
+        # pending/failed row can never be replayed to an erased address.
+        from apps.mailer.models import EmailOutbox
+
+        purged_outbox, _ = EmailOutbox.objects.filter(to__iexact=user_locked.email).delete()
+        if purged_outbox:
+            log.info(
+                "accounts.hard_delete.outbox_purged",
+                deletion_request_id=request_locked.id,
+                rows=purged_outbox,
+            )
+
         # Step 6 — completion email AFTER the cascade. Story 8.1: the outbox
         # row joins this transaction and delivery happens after commit with
         # retry — enqueue failures (the only kind left) are still swallowed:

@@ -51,7 +51,11 @@ export function NotificationPreferencesList({
   };
 
   const handleToggle = async (category: NotificationCategory, next: boolean) => {
-    // Optimistic flip; the switch stays disabled until the PUT settles.
+    // Revue Epic 8 (P2-8a): the switch stays ENABLED during the PUT — a
+    // `disabled` input ejects keyboard focus to <body>, forcing a full
+    // re-tab per toggle. Racing PUTs are prevented HERE instead.
+    if (rows[category]?.pending) return;
+    // Optimistic flip until the PUT settles.
     setRow(category, { enabled: next, pending: true, error: false });
     try {
       const saved = await updateNotificationPreference(category, next);
@@ -94,7 +98,7 @@ export function NotificationPreferencesList({
                 <Switch
                   id={switchId}
                   checked={state.enabled}
-                  disabled={state.pending}
+                  aria-busy={state.pending}
                   aria-describedby={state.error ? errorId : undefined}
                   onChange={(event) => void handleToggle(pref.category, event.target.checked)}
                 />

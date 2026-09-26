@@ -67,12 +67,23 @@ export default async function RootLayout({
   // Story 7.7 — single-locale (`fr`) messages, loaded server-side and
   // handed to the client provider (`src/i18n/request.ts` resolves the
   // catalog; no `[locale]` segment to read here, see `src/i18n/config.ts`).
+  //
+  // Revue Epic 8 (perf) : ce provider est sérialisé dans CHAQUE page,
+  // publiques comprises — celles du gate LCP 2500 ms. Les namespaces
+  // consommés uniquement côté authentifié en sont exclus ici et re-fournis
+  // par le provider de `(authenticated)/layout.tsx`. Un namespace ajouté à
+  // fr.json pour l'espace connecté doit rejoindre AUTH_ONLY_NAMESPACES,
+  // sinon il taxe le LCP des pages publiques.
   const messages = await getMessages();
+  const AUTH_ONLY_NAMESPACES = ["accueil", "deltaRecap", "calendarNotification"] as const;
+  const publicMessages = Object.fromEntries(
+    Object.entries(messages).filter(([ns]) => !AUTH_ONLY_NAMESPACES.includes(ns as never)),
+  );
 
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider messages={publicMessages}>
           <QueryProvider>{children}</QueryProvider>
         </NextIntlClientProvider>
       </body>

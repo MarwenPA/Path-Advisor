@@ -23,6 +23,14 @@ if not _audit_ip_hash_salt or _audit_ip_hash_salt == "path-advisor-local-audit-s
 AUDIT_IP_HASH_SALT = _audit_ip_hash_salt
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Revue Epic 8 (P1-7): with NUM_PROXIES unset, DRF's AnonRateThrottle keys
+# its buckets on the ENTIRE X-Forwarded-For header — client-controlled, so a
+# varying XFF gives a fresh bucket per request and the throttle on the
+# anonymous, DB-writing RUM endpoint becomes decorative. `1` matches the
+# single proxy this deployment sits behind (the same assumption as
+# SECURE_PROXY_SSL_HEADER above); override via env if the topology changes.
+REST_FRAMEWORK = {**REST_FRAMEWORK, "NUM_PROXIES": int(os.environ.get("NUM_PROXIES", "1"))}  # noqa: F405
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_HSTS_SECONDS = 31_536_000

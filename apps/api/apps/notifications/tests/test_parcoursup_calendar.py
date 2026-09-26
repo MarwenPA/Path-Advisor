@@ -27,20 +27,13 @@ from apps.notifications.models import (
     ParcoursupMilestone,
 )
 from apps.notifications.tasks import send_parcoursup_milestone_notifications
-from apps.students.models import StudentLevelProfile, StudentProfile
 
 #: UX-DR28 — urgency markers banned from every rendered variant. Kept as
 #: regexes so « Plus que 18 jours » and « plus que 3 jours » both trip it.
-BANNED = [
-    r"derni[eè]re chance",
-    r"plus que \d+",
-    r"\bvite\b",
-    r"\burgent",
-    r"!!",
-    r"d[ée]p[êe]che",
-    r"ne (rate|manque) pas",
-    r"attention[ !]",
-]
+# Revue Epic 8: the banned list is shared (apps.notifications.tone) so the
+# lints can never drift between stories again.
+from apps.notifications.tone import URGENCY_MARKERS as BANNED
+from apps.students.models import StudentLevelProfile, StudentProfile
 
 
 def _mk_student(email: str, level: str | None = "lycee_terminale") -> User:
