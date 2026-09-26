@@ -496,6 +496,33 @@
         "resultats_principale": "Résultats phase principale",
         "resultats_complementaire": "Résultats phase complémentaire"
       }
+    },
+    "signalements": {
+      "title": "Signalements",
+      "overdueBanner": "{count} signalement(s) au-delà de 7 jours",
+      "overdue": "> 7 jours",
+      "infoRequested": "Précisions demandées",
+      "age": "il y a {days} j",
+      "location": "Emplacement",
+      "typeLabel": "Type",
+      "allTypes": "Tous les types",
+      "types": {
+        "description_inexacte": "Description inexacte",
+        "debouches_perimes": "Débouchés périmés",
+        "lien_casse": "Lien cassé",
+        "autre": "Autre"
+      },
+      "fixFiche": "Corriger la fiche",
+      "resolve": "Marquer résolu",
+      "dismiss": "Rejeter",
+      "requestInfo": "Demander des précisions",
+      "dismissReasonLabel": "Motif du rejet (obligatoire, conservé pour le support)",
+      "infoMessageLabel": "Message envoyé à l'élève",
+      "confirm": "Confirmer",
+      "cancel": "Annuler",
+      "empty": "Aucun signalement en attente — la file est à jour.",
+      "loadError": "La file n'a pas pu être chargée. Réessaie dans un instant.",
+      "actionError": "L'action n'a pas abouti. Réessaie."
     }
   }
 }

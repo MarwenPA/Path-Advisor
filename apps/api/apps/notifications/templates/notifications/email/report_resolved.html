@@ -1,0 +1,6 @@
+{% extends "notifications/email/base.html" %}
+{% block content %}
+<p style="margin:0 0 12px;">Bonjour,</p>
+<p style="margin:0 0 12px;">Tu avais signalé un problème sur la fiche «&nbsp;{{ profession_name }}&nbsp;». Merci — elle vient d'être mise à jour.</p>
+<p style="margin:0 0 16px;"><a href="{{ fiche_url }}" style="display:inline-block;background:#C8312D;color:#ffffff;padding:10px 18px;border-radius:8px;text-decoration:none;">Revoir la fiche</a></p>
+{% endblock %}

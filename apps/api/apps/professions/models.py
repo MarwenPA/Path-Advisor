@@ -153,6 +153,9 @@ class ProfessionReport(models.Model):
         PENDING = "pending", "En attente"
         RESOLVED = "resolved", "Résolu"
         DISMISSED = "dismissed", "Rejeté"
+        #: Story 9.3 — précisions demandées à l'élève ; le signalement RESTE
+        #: dans la file (la balle revient côté admin).
+        INFO_REQUESTED = "info_requested", "Précisions demandées"
 
     id = models.CharField(
         default=_default_report_id,
@@ -184,6 +187,17 @@ class ProfessionReport(models.Model):
         db_index=True,
     )
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    #: Story 9.3 — moderation workflow: rejection reason OR the question
+    #: sent to the student (per the action taken).
+    admin_note = models.TextField(blank=True, default="")
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    handled_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]
