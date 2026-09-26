@@ -94,3 +94,114 @@ def send_parcoursup_milestone_notifications() -> int:
             )
 
     return queued
+
+
+#: Story 8.5 — minimum cumulated signal overlaps (passions + valeurs +
+#: spécialités) for a new school's target profession to count as relevant.
+#: These ARE Story 3.3's criteria dimensions; the full scored ranking calls
+#: the ai-service per student over HTTP, which a weekly batch must not do
+#: (N network calls + an outage would sink the digest). Explicit and tested.
+OVERLAP_MIN = 2
+
+DIGEST_WINDOW_DAYS = 7
+DIGEST_MAX_SCHOOLS_LISTED = 5
+
+
+def _signal_overlap(profile_signals: dict, profession_signals: dict) -> int:
+    total = 0
+    for key in ("passions", "valeurs", "specialites"):
+        mine = set(profile_signals.get(key) or [])
+        theirs = set(profession_signals.get(key) or [])
+        total += len(mine & theirs)
+    return total
+
+
+@shared_task(name="notifications.send_new_schools_digest")
+def send_new_schools_digest() -> int:
+    """Story 8.5 — weekly digest of newly-added relevant schools.
+
+    Exactly-once per ISO week via `NewSchoolsDigestRun` (a same-week re-run
+    or retry sends nothing). Work is proportional to the NEW schools, never
+    to the whole catalog: new schools → their parcours' professions → local
+    signal overlap per student.
+    """
+    from apps.schools.models import Parcours, School
+
+    from .models import NewSchoolsDigestRun
+
+    today = timezone.localdate()
+    week = f"{today.isocalendar().year}-W{today.isocalendar().week:02d}"
+    if NewSchoolsDigestRun.objects.filter(week=week).exists():
+        log.info("notifications.new_schools_digest_already_ran", week=week)
+        return 0
+
+    queued = 0
+    with with_system_actor(reason="notifications.new_schools_digest_beat"):
+        since = timezone.now() - timedelta(days=DIGEST_WINDOW_DAYS)
+        new_schools = list(School.objects.filter(is_active=True, created_at__gte=since))
+        if not new_schools:
+            NewSchoolsDigestRun.objects.create(week=week, emails_queued=0)
+            return 0
+
+        # school → the professions its parcours lead to (with their signals).
+        parcours = Parcours.objects.filter(
+            target_school__in=new_schools, profession__is_active=True
+        ).select_related("profession", "target_school")
+        # Keys uniformly str(): the FK pk type differs across models in this
+        # codebase (char ids vs autoids) and mypy rightly refuses the union.
+        school_professions: dict[str, list] = {}
+        for p in parcours:
+            school_professions.setdefault(str(p.target_school_id), []).append(p.profession)
+
+        students = User.objects.filter(
+            role=UserRole.STUDENT,
+            status=UserStatus.ACTIVE,
+            email_verified_at__isnull=False,
+            student_profile__isnull=False,
+        ).select_related("student_profile__level_profile")
+
+        with transaction.atomic():
+            for student in students:
+                profile = student.student_profile
+                level = getattr(profile, "level_profile", None)
+                profile_signals = {
+                    "passions": profile.passions,
+                    "valeurs": profile.valeurs,
+                    "specialites": (level.specialites if level else []) or [],
+                }
+                matches: list[tuple[School, str]] = []
+                for school in new_schools:
+                    best = 0
+                    best_name = ""
+                    for prof in school_professions.get(str(school.id), []):
+                        overlap = _signal_overlap(profile_signals, prof.signals_json or {})
+                        if overlap > best:
+                            best, best_name = overlap, prof.name
+                    if best >= OVERLAP_MIN:
+                        matches.append((school, best_name))
+                if not matches:
+                    continue
+                listed = matches[:DIGEST_MAX_SCHOOLS_LISTED]
+                row = notify(
+                    user_id=student.id,
+                    email=student.email,
+                    category=NotificationCategory.NEW_SCHOOLS,
+                    template_app="notifications",
+                    template_base="email/new_schools_digest",
+                    context={
+                        "count": len(matches),
+                        "profession_name": listed[0][1],
+                        "schools": [
+                            {"name": s.name, "city": s.city, "profession": pname}
+                            for s, pname in listed
+                        ],
+                        "more_count": max(0, len(matches) - len(listed)),
+                        "explore_url": f"{_site_url()}/schools",
+                    },
+                )
+                if row is not None:
+                    queued += 1
+            NewSchoolsDigestRun.objects.create(week=week, emails_queued=queued)
+
+    log.info("notifications.new_schools_digest_sent", week=week, queued=queued)
+    return queued

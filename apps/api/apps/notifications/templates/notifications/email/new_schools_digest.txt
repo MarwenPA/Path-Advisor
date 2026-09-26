@@ -1,0 +1,13 @@
+Bonjour,
+
+{{ count }} nouvelle{{ count|pluralize }} école{{ count|pluralize }} ajoutée{{ count|pluralize }} récemment correspond{{ count|pluralize:"ent" }} à ton profil.
+
+{% for school in schools %}- {{ school.name }} ({{ school.city }}) — {{ school.profession }}
+{% endfor %}{% if more_count %}… et {{ more_count }} autre{{ more_count|pluralize }} à découvrir depuis ton espace.
+{% endif %}
+Découvrir ces écoles : {{ explore_url }}
+
+---
+Tu reçois cet email car les notifications « {{ category_label }} » sont activées.
+Gérer mes notifications : {{ manage_notifications_url }}
+Se désinscrire : {{ unsubscribe_url }}

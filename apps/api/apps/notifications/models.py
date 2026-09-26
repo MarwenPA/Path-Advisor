@@ -90,3 +90,24 @@ class ParcoursupMilestone(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover — debug nicety
         return f"{self.campaign} {self.kind} @ {self.date} (J-{self.notify_days_before})"
+
+
+class NewSchoolsDigestRun(models.Model):
+    """Story 8.5 — one row per ISO week the digest actually ran.
+
+    The weekly window alone is not idempotent: a manual re-run or a task
+    retry within the same week would re-send the digest. This global row
+    (no personal data) makes the week the unit of exactly-once, mirroring
+    `ParcoursupMilestone.notified_at`'s batch-level dedup. Accepted MVP
+    limitation, on record: a week with beat down is skipped, not caught up.
+    """
+
+    week = models.CharField(max_length=10, unique=True)  # ISO "2026-W39"
+    sent_at = models.DateTimeField(auto_now_add=True)
+    emails_queued = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "new_schools_digest_runs"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"{self.week}: {self.emails_queued} queued"
