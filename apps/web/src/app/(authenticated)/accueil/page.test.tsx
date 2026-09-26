@@ -21,6 +21,18 @@ vi.mock("@/lib/api/mes-paris", () => ({
   fetchMesParis: () => fetchMesParisMock(),
 }));
 
+// Story 8.6: the page now server-fetches the DeltaRecap alongside mes-paris
+// (allSettled). Empty cards here = no interstitial — its own behaviours are
+// covered by DeltaRecapInterstitial.test.tsx.
+const fetchDeltaRecapMock = vi.fn();
+vi.mock("@/lib/api/delta-recap", () => ({
+  fetchDeltaRecap: () => fetchDeltaRecapMock(),
+}));
+vi.mock("@/components/delta-recap/DeltaRecapInterstitial", () => ({
+  DeltaRecapInterstitial: ({ cards }: { cards: unknown[] }) =>
+    cards.length > 0 ? <div data-testid="delta-recap" /> : null,
+}));
+
 vi.mock("./ProgressionModule", () => ({
   // Mirrors the real component's shape post "mets le bloc Tes paris dans
   // Ta progression" (2026-09-05): it's nested inside page.tsx's own "Ta
@@ -66,6 +78,8 @@ function makeSchool(overrides: Partial<School> = {}): School {
 
 beforeEach(() => {
   fetchMesParisMock.mockReset();
+  fetchDeltaRecapMock.mockReset();
+  fetchDeltaRecapMock.mockResolvedValue({ cards: [] });
 });
 
 describe("AccueilPage", () => {

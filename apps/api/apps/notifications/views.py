@@ -14,6 +14,7 @@ the one-click confirm and POSTs.
 from __future__ import annotations
 
 import structlog
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.request import Request
@@ -96,3 +97,41 @@ class UnsubscribeView(APIView):
             )
         log.info("notifications.unsubscribed", category=category)
         return Response({"category": category, "label": NotificationCategory(category).label})
+
+
+class DeltaRecapView(APIView):
+    """Story 8.6 — GET /api/v1/me/delta-recap/ : the "what moved" cards.
+
+    First call ever: creates the baseline cursor at `now` and returns zero
+    cards (a fresh account has no "since your last visit"). Cursor younger
+    than 24 h (UX-DR29's J+1 rule): zero cards. Otherwise: cards computed
+    since the cursor — WITHOUT moving it. The cursor only moves on explicit
+    ACK below; closing the tab re-proposes the same deltas next time.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive]
+
+    def get(self, request: Request) -> Response:
+        from .delta_recap import RECAP_MIN_AGE, compute_cards, get_or_init_cursor
+
+        cursor, created = get_or_init_cursor(request.user)
+        if created or cursor.seen_at > timezone.now() - RECAP_MIN_AGE:
+            return Response({"cards": []})
+        cards = compute_cards(request.user, cursor.seen_at)
+        return Response({"cards": cards})
+
+
+class DeltaRecapAckView(APIView):
+    """Story 8.6 — POST /api/v1/me/delta-recap/ack/ : « Tout vu, continuer ».
+
+    Also fired by any card CTA click (navigating through a card = having
+    seen the recap). Idempotent; always 204.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive]
+
+    def post(self, request: Request) -> Response:
+        from .delta_recap import acknowledge
+
+        acknowledge(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)

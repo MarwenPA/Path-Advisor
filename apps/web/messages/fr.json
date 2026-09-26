@@ -294,5 +294,12 @@
       "invalidBody": "Ce lien est invalide ou incomplet. Ouvre le lien « Se désinscrire » du dernier email reçu, ou gère tes préférences d'emails depuis tes paramètres, une fois connecté(e).",
       "retryError": "La désinscription a échoué. Vérifie ta connexion et réessaie dans un instant."
     }
+  },
+  "deltaRecap": {
+    "title": "Depuis ta dernière visite",
+    "intro": "Voici ce qui a bougé pendant ton absence. Prends le temps de regarder — rien ne presse.",
+    "cardsLabel": "Ce qui a bougé",
+    "statLabel": "Estimation d'admission mise à jour : de {before} % à {after} %",
+    "continue": "Tout vu, continuer"
   }
 }
