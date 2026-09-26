@@ -67,6 +67,14 @@ def respond_to_outreach_request(
         action=action,
         comment=comment,
         proposed_slots=proposed_slots or [],
+        # Story 9.4 (revue Epic 8, P2-5): a non-empty staff comment enters
+        # a-priori moderation before the minor sees it — the response email
+        # leaves immediately WITHOUT it; empty = nothing to moderate.
+        comment_status=(
+            EarlyOutreachResponse.CommentStatus.PENDING
+            if (comment or "").strip()
+            else EarlyOutreachResponse.CommentStatus.APPROVED
+        ),
     )
     outreach.status = EarlyOutreachRequestStatus.RESPONDED
     outreach.save(update_fields=["status", "updated_at"])

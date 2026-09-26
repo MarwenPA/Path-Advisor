@@ -149,12 +149,15 @@ class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
     single-sourced — never recomputed independently here)."""
 
     stat_delta = serializers.SerializerMethodField()
+    comment = serializers.SerializerMethodField()
+    comment_pending = serializers.SerializerMethodField()
 
     class Meta:
         model = EarlyOutreachResponse
         fields = [
             "action",
             "comment",
+            "comment_pending",
             "proposed_slots",
             "accepted_slot",
             "alternative_note",
@@ -162,6 +165,16 @@ class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_comment(self, obj) -> str:
+        # Story 9.4 (revue Epic 8, P2-5): a staff comment reaches the minor
+        # ONLY once approved — pending/rejected render empty here.
+        if obj.comment_status == EarlyOutreachResponse.CommentStatus.APPROVED:
+            return obj.comment or ""
+        return ""
+
+    def get_comment_pending(self, obj) -> bool:
+        return obj.comment_status == EarlyOutreachResponse.CommentStatus.PENDING
 
     def get_stat_delta(self, obj: EarlyOutreachResponse) -> int:
         from apps.schools.services import OUTREACH_RESPONSE_STAT_DELTAS

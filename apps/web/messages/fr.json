@@ -523,6 +523,35 @@
       "empty": "Aucun signalement en attente — la file est à jour.",
       "loadError": "La file n'a pas pu être chargée. Réessaie dans un instant.",
       "actionError": "L'action n'a pas abouti. Réessaie."
+    },
+    "moderation": {
+      "title": "Modération",
+      "humanDecisionNote": "Le pré-screening est une aide à la priorisation — la décision finale est toujours humaine, jamais d'auto-refus.",
+      "tabMotivations": "Motivations élèves ({count})",
+      "tabComments": "Commentaires écoles ({count})",
+      "overdueShort": "{count} > 24 h",
+      "age": "{hours} h ouvrées",
+      "overdue": "SLA 24 h dépassé",
+      "prescreenPii": "Donnée personnelle : {kind}",
+      "prescreenRisk": "Mot à risque",
+      "approve": "Approuver (débloque l'envoi)",
+      "reject": "Refuser",
+      "confirmReject": "Confirmer le refus",
+      "cancel": "Annuler",
+      "rejectCategoryLabel": "Catégorie de refus",
+      "rejectReasonLabel": "Commentaire envoyé à l'élève (il peut corriger et re-soumettre)",
+      "rejectCategories": {
+        "contenu_inapproprie": "Contenu inapproprié",
+        "donnees_tierces": "Données personnelles de tiers",
+        "discrimination": "Discrimination",
+        "autre": "Autre"
+      },
+      "approveComment": "Approuver (visible pour l'élève)",
+      "rejectComment": "Rejeter (jamais montré)",
+      "emptyMotivations": "Aucune motivation en attente — la file est à jour.",
+      "emptyComments": "Aucun commentaire d'école en attente.",
+      "loadError": "Les files n'ont pas pu être chargées. Réessaie dans un instant.",
+      "actionError": "L'action n'a pas abouti. Réessaie."
     }
   }
 }
