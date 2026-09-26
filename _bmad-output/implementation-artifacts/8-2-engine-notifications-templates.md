@@ -35,3 +35,8 @@ So that je suis informé sans être spammé (FR47).
 ## 5. Vérifications prévues (à l'écriture)
 
 Deux lanes (dont politiques RLS de la nouvelle table exercées réellement), gates habituels + RBAC gate (nouvel endpoint AllowAny), preuve vivante Mailpit : email de démo avec footer légal → clic simulé du token → préférence coupée → second envoi bloqué par l'engine (ligne d'audit du no-op).
+
+
+## Amendement post-revue (2026-09-26)
+
+La revue adversariale de l'Epic 8 a corrigé et/ou consigné plusieurs points de cette story — voir `epic-8-review-fixes.md` (lots A→E) pour le détail des décisions qui amendent ce document.

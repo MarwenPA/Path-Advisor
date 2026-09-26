@@ -31,3 +31,8 @@ So that je sois préparée sans angoisse fabriquée (FR47 + UX-DR28).
 - **Preuve vivante** : jalon dû créé en base → tâche invoquée par `celery call` (le chemin exact de beat) → exécutée par `pa-worker` → email dans Mailpit (« Parcoursup : la plateforme ouvre le 14 octobre 2026 »), footer légal 8.2 inclus, `notified_at` marqué. Beat planifié à 07:00 dans `celery.py`.
 - Gates : lane rapide **1503**, lane RLS **154**, ruff/format propres, `mypy apps/notifications` **0**, RBAC **296**.
 - Consigné : le CRUD admin visuel des jalons appartient à l'Epic 9 ; la commande `seed_parcoursup_calendar` (idempotente) tient lieu de « configuration admin » MVP.
+
+
+## Amendement post-revue (2026-09-26)
+
+La revue adversariale de l'Epic 8 a corrigé et/ou consigné plusieurs points de cette story — voir `epic-8-review-fixes.md` (lots A→E) pour le détail des décisions qui amendent ce document.

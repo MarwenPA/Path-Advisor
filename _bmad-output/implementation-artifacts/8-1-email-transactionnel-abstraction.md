@@ -64,3 +64,8 @@ Ma tâche `deliver_email` avait une branche morte : `self.retry(exc=exc)` fait r
 ## 7. Gates finaux
 
 Lane rapide : **1483 passants** (+6 tests AC3, zéro régression sur la baseline 1477) ; lane RLS : **151 passants** (Postgres jetable provisionné comme la CI, la migration `email_outbox` incluse) ; ruff + format propres ; RBAC gate **294 endpoints** ; `mypy apps/mailer` **0 erreur** ; aucune nouvelle erreur mypy sur les apps touchées (diff ligne-à-ligne fait par l'agent sur accounts : jeu d'erreurs identique).
+
+
+## Amendement post-revue (2026-09-26)
+
+La revue adversariale de l'Epic 8 a corrigé et/ou consigné plusieurs points de cette story — voir `epic-8-review-fixes.md` (lots A→E) pour le détail des décisions qui amendent ce document.
