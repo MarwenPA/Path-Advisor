@@ -1,3 +1,5 @@
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -64,21 +66,29 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
   // always redirects before reaching here).
   const safeRole: UserRole = role as UserRole;
 
+  // Revue Epic 8 (perf) : le layout racine ne sérialise plus les namespaces
+  // réservés à l'espace connecté (LCP des pages publiques) — on re-fournit
+  // ici le catalogue COMPLET aux composants clients authentifiés
+  // (DeltaRecapInterstitial, CalendarNotification, …).
+  const messages = await getMessages();
+
   return (
-    <div className="flex min-h-screen bg-bg">
-      <DesktopSidebar role={safeRole} email={email} />
-      <div className="flex min-h-screen flex-1 flex-col">
-        <MobileNav role={safeRole} email={email} />
-        <MfaBanner />
-        <LimitedModeBanner />
-        {/* Code-review fix (2026-09): the bottom-tab-bar space was reserved
+    <NextIntlClientProvider messages={messages}>
+      <div className="flex min-h-screen bg-bg">
+        <DesktopSidebar role={safeRole} email={email} />
+        <div className="flex min-h-screen flex-1 flex-col">
+          <MobileNav role={safeRole} email={email} />
+          <MfaBanner />
+          <LimitedModeBanner />
+          {/* Code-review fix (2026-09): the bottom-tab-bar space was reserved
             unconditionally — roles without a tab bar (parent, counselor,
             school_admin, support, path_admin) got 64px of dead space at the
             bottom of every mobile page. */}
-        <main className={cn("flex-1", hasBottomTabBar(safeRole) && "pb-16 lg:pb-0")}>
-          {children}
-        </main>
+          <main className={cn("flex-1", hasBottomTabBar(safeRole) && "pb-16 lg:pb-0")}>
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </NextIntlClientProvider>
   );
 }
