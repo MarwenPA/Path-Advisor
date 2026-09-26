@@ -18,9 +18,17 @@ family uses a locale-sensitive filter, so no pre-formatting is needed.
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from apps.mailer.service import send_transactional
+from apps.notifications.models import NotificationCategory
+from apps.notifications.services import notify
+
+
+def _site_url() -> str:
+    return os.environ.get("NEXT_PUBLIC_SITE_URL", "http://localhost:3000").rstrip("/")
+
 
 if TYPE_CHECKING:
     from apps.outreach.models import EarlyOutreachRequest
@@ -80,16 +88,32 @@ def send_school_responded_email(*, outreach: EarlyOutreachRequest, response) -> 
     """Story 5.7 — sent to the student the moment a school responds. The
     admission-stat point value ("+14 pts") isn't computed yet (Story 5.8's
     job) — this email is the "someone answered" signal, not the stat
-    update itself."""
+    update itself.
+
+    Story 8.4: routed through the notification ENGINE (category
+    `school_responses`), not straight to the outbox — the engine applies
+    the student's opt-out at the point of send and injects the legal
+    footer links. An opted-out student still sees the response in-app
+    (`/mes-envois`, Story 5.9): `respond_to_outreach_request` persists the
+    response before this function is ever called, so the AC3 "reste
+    visible in-app" guarantee is structural. The other outreach emails
+    (interview slots, staff notices) stay plain transactional sends: they
+    are workflow steps the student initiated, not a subscribable category.
+    """
     if response.action not in _RESPONSE_ACTIONS:
         raise KeyError(response.action)
-    _queue(
-        template_base="school_responded",
-        to=outreach.student.email,
+    notify(
+        user_id=outreach.student.id,
+        email=outreach.student.email,
+        category=NotificationCategory.SCHOOL_RESPONSES,
+        template_app="outreach",
+        template_base="email/school_responded",
         context={
             "school": {"name": outreach.school.name},
-            "outreach": {"profession": {"name": outreach.profession.name}},
+            "outreach": {"id": outreach.id, "profession": {"name": outreach.profession.name}},
             "response": {"action": response.action, "comment": response.comment},
+            "response_url": f"{_site_url()}/mes-envois/{outreach.id}",
+            "explore_url": f"{_site_url()}/schools",
         },
     )
 
