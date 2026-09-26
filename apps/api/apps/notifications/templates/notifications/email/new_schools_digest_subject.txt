@@ -1,0 +1,1 @@
+{{ count }} nouvelle{{ count|pluralize }} école{{ count|pluralize }} correspond{{ count|pluralize:"ent" }} à ton profil {{ profession_name }}

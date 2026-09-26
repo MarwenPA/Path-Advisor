@@ -19,6 +19,12 @@ app.conf.beat_schedule = {
         "task": "notifications.send_parcoursup_milestone_notifications",
         "schedule": crontab(hour=7, minute=0),
     },
+    # Story 8.5 — weekly digest of newly-added relevant schools (AC2: digest
+    # hebdomadaire max, jamais un email par école).
+    "notifications-new-schools-digest": {
+        "task": "notifications.send_new_schools_digest",
+        "schedule": crontab(day_of_week="mon", hour=8, minute=0),
+    },
     "audit-archive-old-logs": {
         "task": "audit.archive_old_logs",
         "schedule": crontab(day_of_month="1", hour=3, minute=0),
