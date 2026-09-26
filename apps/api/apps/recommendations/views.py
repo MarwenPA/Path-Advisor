@@ -222,3 +222,15 @@ class AdminModelVersionActivateView(APIView):
         except EthicsGateError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
         return Response({"id": row.pk, "is_active": row.is_active})
+
+
+class AdminMlAuditView(APIView):
+    """GET /api/v1/admin/ml-audit/ — Story 9.6 dashboard payload (computed
+    on demand from the art. 22 journal; nothing materialised)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        from .ml_audit import build_audit_report
+
+        return Response(build_audit_report())

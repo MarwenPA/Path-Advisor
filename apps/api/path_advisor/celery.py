@@ -44,6 +44,11 @@ app.conf.beat_schedule = {
         "task": "telemetry.prune_rum_vitals",
         "schedule": crontab(hour=4, minute=45),
     },
+    # Story 9.6 — weekly ML audit (drift KS + biais), dimanche 05:00 UTC.
+    "recommendations-run-ml-audit": {
+        "task": "recommendations.run_ml_audit",
+        "schedule": crontab(day_of_week="sun", hour=5, minute=0),
+    },
     # Story 9.5 — art. 22 journal retention (365 j, note DPO story 9.5).
     "recommendations-prune-scoring-decisions": {
         "task": "recommendations.prune_scoring_decisions",

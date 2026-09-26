@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    AdminMlAuditView,
     AdminModelVersionActivateView,
     AdminModelVersionsView,
     RecommendationReviewAdminListView,
@@ -9,6 +10,8 @@ from .views import (
 )
 
 urlpatterns = [
+    # Story 9.6 — tableau d'audit ML (drift, biais).
+    path("admin/ml-audit/", AdminMlAuditView.as_view(), name="admin-ml-audit"),
     # Story 9.5 — gouvernance des versions de modèle (art. 22).
     path(
         "admin/model-versions/",
