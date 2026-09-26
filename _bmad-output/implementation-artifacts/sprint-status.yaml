@@ -185,13 +185,13 @@ development_status:
   epic-8-retrospective: optional
 
   # Epic 9 — Back-office, Administration & Modération
-  epic-9: in-progress
+  epic-9: done  # 6/6 — clos 2026-09-27
   9-1-crud-referentiel-professions: done  # merge #113
   9-2-crud-referentiel-formations-ecoles: done  # merge #114
   9-3-file-signalements-moderation-7j: done  # merge #115
   9-4-moderation-motivations-libres: done  # merge #116
   9-5-versioning-modeles-ia-audit: done  # merge #117
-  9-6-metriques-audit-ml-drift-biais: review
+  9-6-metriques-audit-ml-drift-biais: done  # merge #118
   epic-9-retrospective: optional
 
   # Epic 10 — Fast-follow post-MVP (mois 9-12)
