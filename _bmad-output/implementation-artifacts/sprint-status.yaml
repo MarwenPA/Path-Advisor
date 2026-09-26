@@ -186,8 +186,8 @@ development_status:
 
   # Epic 9 — Back-office, Administration & Modération
   epic-9: in-progress
-  9-1-crud-referentiel-professions: review
-  9-2-crud-referentiel-formations-ecoles: backlog
+  9-1-crud-referentiel-professions: done  # merge #113
+  9-2-crud-referentiel-formations-ecoles: review
   9-3-file-signalements-moderation-7j: backlog
   9-4-moderation-motivations-libres: backlog
   9-5-versioning-modeles-ia-audit: backlog

@@ -130,7 +130,7 @@ class TestParcoursPublicSeoList:
             selectivity_index=2,
             public_private=School.PublicPrivate.PUBLIC,
             official_url="https://test.example",
-            is_active=False,
+            status="archived",  # 9.2: status drives is_active
         )
         Parcours.objects.create(
             profession=profession,

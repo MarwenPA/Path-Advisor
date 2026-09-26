@@ -26,6 +26,18 @@ from django.conf import settings
 from django.db import models
 
 
+class SchoolStatus(models.TextChoices):
+    """Story 9.2 — editorial lifecycle (mirror of `ProfessionStatus`, 9.1).
+
+    `is_active` is KEPT and synced in `save()`: the public catalog, SEO
+    fiches, sitemap and 7.10's deactivated-school UX all filter on it.
+    """
+
+    DRAFT = "draft", "Brouillon"
+    PUBLISHED = "published", "Publié"
+    ARCHIVED = "archived", "Archivé"
+
+
 class School(models.Model):
     """One school / educational institution in the MVP referential."""
 
@@ -90,6 +102,13 @@ class School(models.Model):
         help_text="e.g. IFSI, IUT, Lycée pro, Université",
     )
     is_active = models.BooleanField(default=True, db_index=True)
+    #: Story 9.2 — editorial status; single source of truth for `is_active`.
+    status = models.CharField(
+        max_length=12,
+        choices=SchoolStatus.choices,
+        default=SchoolStatus.PUBLISHED,
+        db_index=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -105,6 +124,15 @@ class School(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.city})"
+
+    def save(self, *args, **kwargs):
+        # Story 9.2 — `status` drives `is_active` (mirror of Profession.save,
+        # 9.1): no write path can desynchronise public visibility from the
+        # editorial state.
+        self.is_active = self.status == SchoolStatus.PUBLISHED
+        if "update_fields" in kwargs and kwargs["update_fields"] is not None:
+            kwargs["update_fields"] = list(set(kwargs["update_fields"]) | {"is_active"})
+        super().save(*args, **kwargs)
 
 
 class Formation(models.Model):
@@ -332,3 +360,36 @@ class SchoolStaff(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user_id} @ {self.school.name}"
+
+
+class SchoolRevision(models.Model):
+    """Story 9.2 — snapshot per WRITE on a School (mirror of
+    `ProfessionRevision`, 9.1): append-only history, rollback re-applies as
+    a NEW revision. No RLS: public referential data.
+    """
+
+    class Action(models.TextChoices):
+        CREATED = "created", "Création"
+        UPDATED = "updated", "Modification"
+        STATUS_CHANGED = "status_changed", "Changement de statut"
+        ROLLED_BACK = "rolled_back", "Rollback"
+        IMPORTED = "imported", "Import CSV"
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    school = models.ForeignKey(School, on_delete=models.CASCADE, related_name="revisions")
+    snapshot = models.JSONField()
+    action = models.CharField(max_length=20, choices=Action.choices)
+    editor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    restored_from = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "school_revisions"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"{self.school_id} {self.action} @ {self.created_at:%Y-%m-%d %H:%M}"

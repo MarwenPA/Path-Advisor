@@ -20,30 +20,43 @@ from __future__ import annotations
 from datetime import timedelta
 from typing import ClassVar
 
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.viewsets import ReadOnlyModelViewSet
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from apps.core.permissions import IsPathAdmin
 from apps.core.throttling import PublicSeoAnonThrottle
 from apps.professions.models import Profession
-from apps.schools.models import AdmissionStat, FavoriteSchool, Formation, Parcours, School
+from apps.schools import referential_admin
+from apps.schools.models import (
+    AdmissionStat,
+    FavoriteSchool,
+    Formation,
+    Parcours,
+    School,
+    SchoolRevision,
+    SchoolStatus,
+)
 from apps.schools.serializers import (
     AdmissionStatSerializer,
     FormationAdminSerializer,
     ParcoursPublicSeoSerializer,
     ParcoursSerializer,
     SchoolAdminSerializer,
+    SchoolAdminWriteSerializer,
     SchoolCatalogSerializer,
     SchoolDetailSerializer,
     SchoolPublicSeoSerializer,
+    SchoolRevisionSerializer,
     SchoolSlugSerializer,
 )
 from apps.schools.services import AdmissionPredictionService
@@ -55,13 +68,111 @@ class _SchoolPagination(PageNumberPagination):
     max_page_size = 500
 
 
-class AdminSchoolViewSet(ReadOnlyModelViewSet):
-    """GET /api/v1/admin/schools/ — paginated list + detail, admin only."""
+class AdminSchoolViewSet(ModelViewSet):
+    """Story 9.2 — back-office CRUD on the schools referential.
+
+    Read-only since 4.x; now the full CRUD, every write routed through
+    `referential_admin` (revision snapshot + audit row in the same
+    transaction, `status` → `is_active` sync). No `destroy`: the AC's
+    "delete" is the `archive` action (a school is referenced by Parcours,
+    favourites, admission stats and early-outreach requests).
+    """
 
     permission_classes: ClassVar = [IsPathAdmin]
     queryset = School.objects.prefetch_related("formations").order_by("name")
     serializer_class = SchoolAdminSerializer
     pagination_class = _SchoolPagination
+    http_method_names = ["get", "post", "patch", "head", "options"]
+    lookup_field = "slug"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        q = (params.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(slug__icontains=q) | Q(city__icontains=q))
+        if params.get("type") in School.Type.values:
+            qs = qs.filter(type=params["type"])
+        region = (params.get("region") or "").strip()
+        if region:
+            qs = qs.filter(region__iexact=region)
+        if params.get("status") in SchoolStatus.values:
+            qs = qs.filter(status=params["status"])
+        return qs
+
+    def get_serializer_class(self):
+        if self.action in ("create", "partial_update"):
+            return SchoolAdminWriteSerializer
+        return SchoolAdminSerializer
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer = SchoolAdminWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        school = referential_admin.create_school(
+            editor=request.user, data=serializer.validated_data
+        )
+        return Response(SchoolAdminSerializer(school).data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request: Request, *args, **kwargs) -> Response:
+        school = self.get_object()
+        serializer = SchoolAdminWriteSerializer(instance=school, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        school = referential_admin.update_school(
+            school=school, editor=request.user, data=serializer.validated_data
+        )
+        return Response(SchoolAdminSerializer(school).data)
+
+    @action(detail=True, methods=["post"])
+    def archive(self, request: Request, slug: str | None = None) -> Response:
+        school = referential_admin.archive_school(school=self.get_object(), editor=request.user)
+        return Response(SchoolAdminSerializer(school).data)
+
+    @action(detail=True, methods=["get"])
+    def revisions(self, request: Request, slug: str | None = None) -> Response:
+        rows = self.get_object().revisions.select_related("editor", "restored_from")[:50]
+        return Response({"revisions": SchoolRevisionSerializer(rows, many=True).data})
+
+    @action(detail=True, methods=["post"], url_path="rollback/(?P<revision_id>[^/]+)")
+    def rollback(
+        self, request: Request, slug: str | None = None, revision_id: str | None = None
+    ) -> Response:
+        school = self.get_object()
+        revision = SchoolRevision.objects.filter(pk=str(revision_id), school=school).first()
+        if revision is None:
+            return Response({"detail": "Révision inconnue."}, status=status.HTTP_404_NOT_FOUND)
+        school = referential_admin.rollback_school(
+            school=school, editor=request.user, revision=revision
+        )
+        return Response(SchoolAdminSerializer(school).data)
+
+    @action(detail=False, methods=["post"], url_path="import-csv")
+    def import_csv(self, request: Request) -> Response:
+        """AC import — semicolon CSV, per-line validation, conflicts report.
+
+        Conflicting slugs never overwrite (manual drill-down resolves via
+        PATCH); created rows land as DRAFTS in one all-or-nothing
+        transaction (a mass import never publishes to students directly).
+        """
+        upload = request.FILES.get("file")
+        if upload is None:
+            return Response(
+                {"detail": "Fichier CSV manquant (champ « file »)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if upload.size > 2 * 1024 * 1024:
+            return Response(
+                {"detail": "Fichier trop volumineux (max 2 Mo)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            content = upload.read().decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return Response(
+                {"detail": "Encodage invalide — le CSV doit être en UTF-8."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        report = referential_admin.import_schools_csv(editor=request.user, content=content)
+        return Response(report)
 
 
 class AdminFormationViewSet(ReadOnlyModelViewSet):

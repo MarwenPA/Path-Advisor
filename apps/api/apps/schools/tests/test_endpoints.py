@@ -142,13 +142,13 @@ class TestAdminSchoolList:
 class TestAdminSchoolDetail:
     @pytest.mark.django_db
     def test_admin_can_access_detail(self, admin_client, school):
-        url = reverse("schools:admin-school-detail", kwargs={"pk": school.pk})
+        url = reverse("schools:admin-school-detail", kwargs={"slug": school.slug})
         response = admin_client.get(url)
         assert response.status_code == 200
 
     @pytest.mark.django_db
     def test_admin_detail_has_all_fields(self, admin_client, school):
-        url = reverse("schools:admin-school-detail", kwargs={"pk": school.pk})
+        url = reverse("schools:admin-school-detail", kwargs={"slug": school.slug})
         response = admin_client.get(url)
         data = response.json()
         for field in (
@@ -169,7 +169,7 @@ class TestAdminSchoolDetail:
 
     @pytest.mark.django_db
     def test_admin_detail_includes_formations(self, admin_client, school, formation):
-        url = reverse("schools:admin-school-detail", kwargs={"pk": school.pk})
+        url = reverse("schools:admin-school-detail", kwargs={"slug": school.slug})
         response = admin_client.get(url)
         data = response.json()
         assert isinstance(data["formations"], list)
@@ -178,15 +178,14 @@ class TestAdminSchoolDetail:
 
     @pytest.mark.django_db
     def test_admin_detail_unknown_id_returns_404(self, admin_client):
-        import uuid
 
-        url = reverse("schools:admin-school-detail", kwargs={"pk": str(uuid.uuid4())})
+        url = reverse("schools:admin-school-detail", kwargs={"slug": "slug-inconnu-404"})
         response = admin_client.get(url)
         assert response.status_code == 404
 
     @pytest.mark.django_db
     def test_student_cannot_access_admin_detail(self, student_client, school):
-        url = reverse("schools:admin-school-detail", kwargs={"pk": school.pk})
+        url = reverse("schools:admin-school-detail", kwargs={"slug": school.slug})
         response = student_client.get(url)
         assert response.status_code == 403
 
@@ -465,7 +464,7 @@ def inactive_school(db):
         selectivity_index=1,
         public_private=School.PublicPrivate.PUBLIC,
         official_url="https://test.example",
-        is_active=False,
+        status="archived",  # 9.2: status drives is_active
     )
 
 

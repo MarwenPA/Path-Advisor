@@ -216,7 +216,7 @@ def test_new_schools_card_counts_matches_only(client, student):
     assert card["cta_label"] == "Voir les nouvelles écoles"
     assert card["cta_url"] == "/schools"
     # Singular agreement on the 1-school variant: deactivate one of the two.
-    School.objects.filter(slug="nouvelle-delta-1").update(is_active=False)
+    School.objects.filter(slug="nouvelle-delta-1").update(is_active=False, status="archived")
     single = next(
         c
         for c in compute_cards(student, timezone.now() - timedelta(days=30))
