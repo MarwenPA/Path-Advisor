@@ -172,8 +172,8 @@ development_status:
   epic-8: in-progress
   8-1-email-transactionnel-abstraction: done  # merge #104
   8-2-engine-notifications-templates: done  # merge #105
-  8-3-notifications-calendrier-parcoursup: review
-  8-4-notification-reponse-ecole: backlog
+  8-3-notifications-calendrier-parcoursup: done  # merge #106
+  8-4-notification-reponse-ecole: review
   8-5-notification-nouvelle-ecole-pertinente: backlog
   8-6-composant-delta-recap: backlog
   8-7-composant-calendar-notification: backlog
