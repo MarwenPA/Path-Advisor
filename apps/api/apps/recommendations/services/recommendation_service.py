@@ -6,10 +6,14 @@ from __future__ import annotations
 import math
 from typing import Any
 
+import structlog
+
 from apps.professions.models import Profession
 from apps.students.models import StudentProfile
 
 from .ai_client import ai_client
+
+log = structlog.get_logger(__name__)
 
 _BULLETINS_ENRICHED = {"partial", "completed"}
 LEVEL_COMPAT_THRESHOLD = 0.6
@@ -159,4 +163,66 @@ def compute_recommendations(user: Any) -> dict[str, Any]:
     niveau = profile_dict.get("niveau", "")
     results, niveau_adapted = _reorder_for_level_threshold(all_results, profession_by_id, niveau)
 
-    return {"results": results, "niveau_adapted": niveau_adapted}
+    # Story 9.5 — art. 22 journal: log the decision (exact inputs + top
+    # scores + the version the ai-service ANSWERED with). A journal failure
+    # must never break the student's recommendations (consigned §2.3): the
+    # UX wins, the ERROR log is the ops alert.
+    decision_id = None
+    model_version = response.get("model_version", "")
+    try:
+        decision_id = _log_scoring_decision(
+            user=user,
+            model_version=model_version,
+            profile_dict=profile_dict,
+            occupation_ids=occupation_ids,
+            professions_data=professions_data,
+            results=results,
+        )
+    except Exception:
+        log.error("recommendations.decision_log_failed", user_id=str(user.pk), exc_info=True)
+
+    return {
+        "results": results,
+        "niveau_adapted": niveau_adapted,
+        "model_version": model_version,
+        "decision_id": decision_id,
+    }
+
+
+def _log_scoring_decision(
+    *,
+    user: Any,
+    model_version: str,
+    profile_dict: dict,
+    occupation_ids: list,
+    professions_data: list,
+    results: list,
+) -> str:
+    """Persist one `ScoringDecision`. An UNKNOWN version answered by the
+    ai-service is a config drift, never silent: a placeholder row is
+    auto-registered with `requires_ethics_review=True` (story §2.5)."""
+    from apps.recommendations.models import ModelVersion, ScoringDecision
+
+    version_row = ModelVersion.objects.filter(version=model_version).first()
+    if version_row is None:
+        version_row = ModelVersion.objects.create(
+            name="auto-enregistrée (dérive de config)",
+            version=model_version or "unknown",
+            dataset_hash="unknown",
+            requires_ethics_review=True,
+        )
+        log.error("recommendations.unknown_model_version", version=model_version)
+
+    decision = ScoringDecision.objects.create(
+        user=user,
+        model_version=version_row,
+        inputs_snapshot={
+            "profile": profile_dict,
+            "occupation_ids": occupation_ids,
+            # The referential slice AT DECISION TIME — a fiche edited later
+            # (9.1) must not change what a replay recomputes (art. 22).
+            "professions_data": professions_data,
+        },
+        top_scores=[{"id": r["id"], "slug": r["slug"], "score": r["score"]} for r in results[:15]],
+    )
+    return decision.pk

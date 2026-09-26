@@ -44,6 +44,11 @@ app.conf.beat_schedule = {
         "task": "telemetry.prune_rum_vitals",
         "schedule": crontab(hour=4, minute=45),
     },
+    # Story 9.5 — art. 22 journal retention (365 j, note DPO story 9.5).
+    "recommendations-prune-scoring-decisions": {
+        "task": "recommendations.prune_scoring_decisions",
+        "schedule": crontab(hour=4, minute=50),
+    },
     "audit-archive-old-logs": {
         "task": "audit.archive_old_logs",
         "schedule": crontab(day_of_month="1", hour=3, minute=0),

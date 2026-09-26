@@ -34,6 +34,14 @@ _WEIGHTS: dict[str, float] = {
     "bulletin_quality": 0.20,
 }
 
+# Story 9.5 — archived, servable model versions (art. 22 replay): every
+# version ever deployed keeps its weights here so a logged decision can be
+# re-scored with `model_version` on /v1/score-metiers. Adding a version =
+# a new immutable entry, NEVER an edit of an existing one.
+MODEL_REGISTRY: dict[str, dict[str, float]] = {
+    MODEL_VERSION: _WEIGHTS,
+}
+
 
 # ─── Feature helpers ──────────────────────────────────────────────────────────
 
@@ -112,6 +120,7 @@ def score_occupations(
     profile: dict,
     occupation_ids: list[str],
     professions_data: list[dict] | None = None,
+    weights: dict[str, float] | None = None,
 ) -> list[OccupationScore]:
     """Score a list of occupations against a student profile.
 
@@ -125,6 +134,7 @@ def score_occupations(
     Returns:
         One OccupationScore per occupation_id.
     """
+    w = weights or _WEIGHTS
     if not occupation_ids:
         return []
 
@@ -151,11 +161,11 @@ def score_occupations(
         f_specialite = _specialite_overlap(profile, signals)
 
         raw_contributions = [
-            f_passion * _WEIGHTS["passion_overlap"] * 100,
-            f_valeur * _WEIGHTS["valeur_alignment"] * 100,
-            f_niveau * _WEIGHTS["niveau_compatibility"] * 100,
-            f_specialite * _WEIGHTS["specialite_overlap"] * 100,
-            f_bulletin * _WEIGHTS["bulletin_quality"] * 100,
+            f_passion * w["passion_overlap"] * 100,
+            f_valeur * w["valeur_alignment"] * 100,
+            f_niveau * w["niveau_compatibility"] * 100,
+            f_specialite * w["specialite_overlap"] * 100,
+            f_bulletin * w["bulletin_quality"] * 100,
         ]
         # Single round on the summed raw to avoid per-contribution rounding divergence (C1)
         final_score = max(0, min(100, round(sum(raw_contributions))))
@@ -167,27 +177,27 @@ def score_occupations(
                 signals_contributifs=[
                     SignalContributif(
                         signal="passion_overlap",
-                        weight=_WEIGHTS["passion_overlap"],
+                        weight=w["passion_overlap"],
                         contribution=round(raw_contributions[0]),
                     ),
                     SignalContributif(
                         signal="valeur_alignment",
-                        weight=_WEIGHTS["valeur_alignment"],
+                        weight=w["valeur_alignment"],
                         contribution=round(raw_contributions[1]),
                     ),
                     SignalContributif(
                         signal="niveau_compatibility",
-                        weight=_WEIGHTS["niveau_compatibility"],
+                        weight=w["niveau_compatibility"],
                         contribution=round(raw_contributions[2]),
                     ),
                     SignalContributif(
                         signal="specialite_overlap",
-                        weight=_WEIGHTS["specialite_overlap"],
+                        weight=w["specialite_overlap"],
                         contribution=round(raw_contributions[3]),
                     ),
                     SignalContributif(
                         signal="bulletin_quality",
-                        weight=_WEIGHTS["bulletin_quality"],
+                        weight=w["bulletin_quality"],
                         contribution=round(raw_contributions[4]),
                     ),
                 ],

@@ -39,6 +39,8 @@ class ScoreMeRequest(BaseModel):
     profile: StudentProfile
     occupation_ids: list[str]
     professions_data: list[ProfessionSignals] | None = None
+    #: Story 9.5 — replay an ARCHIVED version (art. 22). None = current.
+    model_version: str | None = None
 
 
 class SignalContributif(BaseModel):

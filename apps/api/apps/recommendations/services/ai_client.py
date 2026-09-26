@@ -43,6 +43,7 @@ class AIClient:
         profile: dict,
         occupation_ids: list[str],
         professions_data: list[dict] | None = None,
+        model_version: str | None = None,
     ) -> dict:
         """Call POST /v1/score-metiers and return the parsed JSON response.
 
@@ -62,6 +63,9 @@ class AIClient:
         }
         if professions_data is not None:
             payload["professions_data"] = professions_data
+        if model_version is not None:
+            # Story 9.5 — pin an ARCHIVED registry version (decision replay).
+            payload["model_version"] = model_version
         try:
             response = httpx.post(
                 f"{settings.AI_SERVICE_URL}/v1/score-metiers",
