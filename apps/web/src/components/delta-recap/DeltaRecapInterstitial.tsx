@@ -26,6 +26,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import { CalendarNotification } from "@/components/notifications/CalendarNotification";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { acknowledgeDeltaRecap, type DeltaRecapCard } from "@/lib/api/delta-recap";
@@ -84,36 +85,48 @@ export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
           {cards.map((card, index) => (
             <li key={`${card.kind}-${index}`}>
               <Card>
-                <CardHeader>
-                  <h2 className="text-xl font-semibold text-foreground">{card.title}</h2>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-3">
-                  <p className="text-muted-foreground">{card.body}</p>
-                  {card.stat_before !== null && card.stat_after !== null ? (
-                    <StatChip
-                      before={card.stat_before}
-                      after={card.stat_after}
-                      label={t("statLabel", {
-                        before: card.stat_before,
-                        after: card.stat_after,
-                      })}
+                {/* Calendar cards delegate to the shared CalendarNotification
+                    (Story 8.7) — the ONE React renderer for the "calendrier
+                    sans urgence" pattern; other kinds keep the local layout. */}
+                {card.kind === "parcoursup_milestone" ? (
+                  <CardContent className="pt-6">
+                    <CalendarNotification
+                      jalon={card.title}
+                      daysUntil={card.days_until ?? 0}
+                      body={card.body}
+                      recommendedActions={card.recommended_actions ?? []}
+                      ctaLabel={card.cta_label}
+                      ctaUrl={card.cta_url}
+                      onCtaClick={() => void acknowledgeDeltaRecap().catch(() => undefined)}
                     />
-                  ) : null}
-                  {card.recommended_actions && card.recommended_actions.length > 0 ? (
-                    <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                      {card.recommended_actions.map((action) => (
-                        <li key={action}>{action}</li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  <Link
-                    href={card.cta_url}
-                    onClick={() => void acknowledgeDeltaRecap().catch(() => undefined)}
-                    className="inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    {card.cta_label}
-                  </Link>
-                </CardContent>
+                  </CardContent>
+                ) : (
+                  <>
+                    <CardHeader>
+                      <h2 className="text-xl font-semibold text-foreground">{card.title}</h2>
+                    </CardHeader>
+                    <CardContent className="flex flex-col gap-3">
+                      <p className="text-muted-foreground">{card.body}</p>
+                      {card.stat_before !== null && card.stat_after !== null ? (
+                        <StatChip
+                          before={card.stat_before}
+                          after={card.stat_after}
+                          label={t("statLabel", {
+                            before: card.stat_before,
+                            after: card.stat_after,
+                          })}
+                        />
+                      ) : null}
+                      <Link
+                        href={card.cta_url}
+                        onClick={() => void acknowledgeDeltaRecap().catch(() => undefined)}
+                        className="inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                      >
+                        {card.cta_label}
+                      </Link>
+                    </CardContent>
+                  </>
+                )}
               </Card>
             </li>
           ))}
