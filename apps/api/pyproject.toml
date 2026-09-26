@@ -104,6 +104,8 @@ ignore = [
 "apps/telemetry/**" = ["RUF012"]
 # Django convention: Meta.indexes is a class-level list (Story 8.1).
 "apps/mailer/**" = ["RUF012"]
+# Django convention: permission/throttle classes and Meta lists (Story 8.2).
+"apps/notifications/**" = ["RUF012"]
 # Django convention: serializer/Meta fields are class-level lists. DJ001: nullable relationship/custom_message fields intentional (Story 6.1).
 "apps/family/**" = ["RUF012", "DJ001"]
 # Django convention: permission_classes / Meta fields are class-level lists.

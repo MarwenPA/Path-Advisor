@@ -266,5 +266,33 @@
     "signupCtaTitle": "Découvre tes vraies chances d'admission",
     "signupCtaBody": "Crée ton compte gratuit pour voir ta probabilité d'admission personnalisée à {name}.",
     "signupCta": "Crée ton compte pour voir ta proba d'admission personnalisée"
+  },
+  "notifications": {
+    "settings": {
+      "metaTitle": "Notifications | Path-Advisor",
+      "metaDescription": "Choisis les catégories d'emails que tu veux recevoir de Path-Advisor.",
+      "title": "Notifications",
+      "intro": "Choisis les emails que tu veux recevoir. Chaque changement est enregistré immédiatement.",
+      "stateEnabled": "Activé",
+      "stateDisabled": "Désactivé",
+      "statePending": "Enregistrement…",
+      "updateError": "Le changement n'a pas pu être enregistré — le réglage a été remis comme avant. Réessaie dans un instant."
+    },
+    "unsubscribe": {
+      "metaTitle": "Se désinscrire | Path-Advisor",
+      "metaDescription": "Confirme la désinscription d'une catégorie d'emails Path-Advisor.",
+      "title": "Se désinscrire de ces emails",
+      "explanation": "En confirmant, tu ne recevras plus les emails de cette catégorie. Tu pourras changer d'avis à tout moment depuis tes paramètres.",
+      "confirmCta": "Confirmer la désinscription",
+      "pendingCta": "Désinscription en cours…",
+      "successTitle": "Désinscription confirmée",
+      "successBody": "Tu ne recevras plus les emails « {label} ».",
+      "manageBeforeLink": "Tu peux te réinscrire à tout moment depuis ",
+      "manageLink": "tes paramètres de notifications",
+      "manageAfterLink": " (connexion requise).",
+      "invalidTitle": "Lien de désinscription invalide",
+      "invalidBody": "Ce lien est invalide ou incomplet. Ouvre le lien « Se désinscrire » du dernier email reçu, ou gère tes préférences d'emails depuis tes paramètres, une fois connecté(e).",
+      "retryError": "La désinscription a échoué. Vérifie ta connexion et réessaie dans un instant."
+    }
   }
 }

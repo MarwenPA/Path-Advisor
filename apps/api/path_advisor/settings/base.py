@@ -79,6 +79,8 @@ INSTALLED_APPS = [
     "apps.telemetry",
     # Story 8.1 — durable email outbox + Celery delivery with retry.
     "apps.mailer",
+    # Story 8.2 — notification engine + per-user category preferences.
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [

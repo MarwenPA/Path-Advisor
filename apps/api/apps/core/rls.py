@@ -93,6 +93,9 @@ def bypass_rls(*, reason: str, metadata: dict[str, Any] | None = None) -> Iterat
        module's docstring for the full chicken-egg explanation).
     5. `apps.establishments.views` public accept/status endpoints
        (Story 6.5) — anonymous, token-authenticated flows, same shape as #2/#3.
+    6. `apps.notifications.views.UnsubscribeView` (Story 8.2) — the email
+       footer's legal unsubscribe link: signed token proves the claim, the
+       anonymous click must flip the recipient's own RLS-protected row.
 
     `reason` is mandatory and persisted in the audit row so DPO can grep.
     """
