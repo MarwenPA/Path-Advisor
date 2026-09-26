@@ -8,9 +8,11 @@ thin, opinionated layer over Story 8.1's `send_transactional`:
    sender (8.3-8.5) cannot forget it.
 2. **Legal footer injection** (AC2): every category email gets
    `manage_notifications_url` and a per-(user, category) signed
-   `unsubscribe_url` in its context; the shared base template renders
-   them. A category template that skips the base loses the footer — the
-   demo template shows the intended `{% extends %}` shape.
+   `unsubscribe_url` — built by `deliver_email` at RENDER time from the
+   row's `notification_user_id`/`notification_category` (review fix P2-6:
+   a signed no-expiry capability URL must never be persisted in the outbox
+   `context`). The shared base template renders them; a category template
+   that skips the base loses the footer.
 
 Deliberately NOT handled here: rendering, retry, durability — that is the
 outbox's job (8.1). One responsibility per layer.
@@ -18,21 +20,14 @@ outbox's job (8.1). One responsibility per layer.
 
 from __future__ import annotations
 
-import os
-
 import structlog
 
 from apps.mailer.models import EmailOutbox
 from apps.mailer.service import send_transactional
 
 from .models import NotificationCategory, is_enabled
-from .tokens import make_unsubscribe_token
 
 log = structlog.get_logger(__name__)
-
-
-def _site_url() -> str:
-    return os.environ.get("NEXT_PUBLIC_SITE_URL", "http://localhost:3000").rstrip("/")
 
 
 def notify(
@@ -60,16 +55,13 @@ def notify(
         log.info("notifications.skipped_opted_out", user_id=user_id, category=category)
         return None
 
-    footer = {
-        "manage_notifications_url": f"{_site_url()}/parametres/notifications",
-        "unsubscribe_url": (
-            f"{_site_url()}/desinscription/{make_unsubscribe_token(user_id, category)}"
-        ),
-        "category_label": NotificationCategory(category).label,
-    }
     return send_transactional(
         template_app=template_app,
         template_base=template_base,
         to=email,
-        context={**context, **footer},
+        context=context,
+        # The delivery task re-checks the opt-out (P2-11) and builds the
+        # footer URLs at render time (P2-6) from these two fields.
+        notification_user_id=user_id,
+        notification_category=category,
     )

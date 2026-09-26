@@ -18,11 +18,22 @@ the same way `prune_rum_vitals` does for telemetry.
 from __future__ import annotations
 
 from django.db import models
+from django.utils import timezone
 
 
 class OutboxStatus(models.TextChoices):
     QUEUED = "queued", "Queued"
+    #: Claimed by exactly one worker via a compare-and-swap UPDATE (review
+    #: fix P1-2): concurrent deliveries of the same row (double enqueue,
+    #: visibility-timeout redelivery) fail the CAS and no-op instead of
+    #: double-sending. A worker crash mid-send leaves the row SENDING —
+    #: `sweep_stale_outbox` re-queues it after a grace period (deliberate
+    #: at-least-once: the SMTP-accept→UPDATE window is irreducible).
+    SENDING = "sending", "Sending"
     SENT = "sent", "Sent"
+    #: Opt-out honoured at DELIVERY time (review fix P2-11): the student
+    #: unsubscribed between enqueue and delivery. Terminal, prunable.
+    SKIPPED = "skipped", "Skipped"
     # Terminal only after retries are exhausted or on a non-retryable
     # (programming) error — never a silent state: `last_error` is filled and
     # the task logs at ERROR level.
@@ -44,7 +55,18 @@ class EmailOutbox(models.Model):
     )
     attempts = models.PositiveSmallIntegerField(default=0)
     last_error = models.TextField(blank=True, default="")
+    #: Set ONLY by the notifications engine (`notify()`, review fix P2-6):
+    #: lets `deliver_email` (1) re-check the opt-out at delivery time and
+    #: (2) build the legal-footer URLs — including the signed unsubscribe
+    #: token — at RENDER time, so no capability URL is ever persisted in
+    #: `context`. Empty for non-category emails (invitations, GDPR, ...).
+    notification_user_id = models.CharField(max_length=32, blank=True, default="")
+    notification_category = models.CharField(max_length=32, blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    #: Last state transition. NOT auto_now: the CAS claim goes through
+    #: `.update()` (which would skip auto_now) — every transition sets it
+    #: explicitly so `sweep_stale_outbox` can spot stuck rows.
+    updated_at = models.DateTimeField(default=timezone.now)
     sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:

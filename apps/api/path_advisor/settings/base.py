@@ -372,6 +372,12 @@ GDPR_USER_OWNED_S3_PREFIXES: list[tuple[str, str]] = [
 # --- Celery ---
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/1")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost:6379/2")
+
+# Revue Epic 8 (P1-2b) — Redis visibility_timeout must exceed the longest
+# retry countdown (mailer BACKOFF_CAP = 3600 s): with the 3600 s default,
+# kombu restores the ETA message exactly when the original fires and the
+# last retry is structurally delivered twice.
+CELERY_BROKER_TRANSPORT_OPTIONS = {"visibility_timeout": 4 * 3600}
 CELERY_TASK_ALWAYS_EAGER = False
 
 # --- Storage (S3-compatible, MinIO in local) ---

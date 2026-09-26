@@ -168,14 +168,7 @@ def test_opted_out_student_is_skipped(django_capture_on_commit_callbacks):
 # Tone — same executable-calm contract as 8.3/8.4
 # ---------------------------------------------------------------------------
 
-BANNED = [
-    r"derni[eè]re chance",
-    r"plus que \d+",
-    r"\bvite\b",
-    r"\burgent",
-    r"!!",
-    r"ne (rate|manque) pas",
-]
+from apps.notifications.tone import URGENCY_MARKERS as BANNED  # noqa: E402
 
 
 @pytest.mark.parametrize("count", [1, 5])

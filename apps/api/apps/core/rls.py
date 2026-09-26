@@ -127,6 +127,13 @@ def with_system_actor(*, reason: str, metadata: dict[str, Any] | None = None) ->
     8. `apps.audit.tasks.archive_old_logs` / `verify_chain_integrity` /
        `export_csv_to_s3` — read-only on `audit_logs` (RLS-exempt) but they
        may join with `users` so the wrap is defensive.
+    9. `apps.notifications.tasks.send_parcoursup_milestone_notifications`
+       (Story 8.3 beat) — cross-user audience read on `users` +
+       `notification_preferences`, writes `email_outbox` rows.
+    10. `apps.notifications.tasks.send_new_schools_digest` (Story 8.5 beat)
+       — same shape: audience read + per-student signal matching + outbox
+       writes. (Added by the Epic 8 review — the two tasks escalated
+       correctly but were missing from this auditable list.)
 
     Maintainers: any new Celery task that touches RLS-protected tables MUST
     wrap its body in `with_system_actor()` or set GUCs manually.

@@ -15,15 +15,34 @@ app.autodiscover_tasks()
 # Audit maintenance — monthly archival + integrity check (Story 1.13 §AC6).
 app.conf.beat_schedule = {
     # Story 8.3 — Parcoursup calendar notifications (daily, calm by design).
+    # Beat runs in UTC (project-wide convention, cf. accounts-sweep below):
+    # 07:00 UTC = 08:00/09:00 Paris selon la saison — consigné, revue Epic 8.
     "notifications-parcoursup-calendar": {
         "task": "notifications.send_parcoursup_milestone_notifications",
         "schedule": crontab(hour=7, minute=0),
     },
     # Story 8.5 — weekly digest of newly-added relevant schools (AC2: digest
-    # hebdomadaire max, jamais un email par école).
+    # hebdomadaire max, jamais un email par école). 08:00 UTC lundi =
+    # 09:00/10:00 Paris — consigné, revue Epic 8.
     "notifications-new-schools-digest": {
         "task": "notifications.send_new_schools_digest",
         "schedule": crontab(day_of_week="mon", hour=8, minute=0),
+    },
+    # Revue Epic 8 (P1-1) — unstick outbox rows whose enqueue hook or retry
+    # ETA message was lost, and rows stuck SENDING after a worker crash.
+    "mailer-sweep-stale-outbox": {
+        "task": "mailer.sweep_stale_outbox",
+        "schedule": crontab(minute="*/15"),
+    },
+    # Revue Epic 8 (P0-2) — the 90-day retention the public RGPD page
+    # promises must actually RUN. Daily, in the 04:xx maintenance band.
+    "mailer-prune-email-outbox": {
+        "task": "mailer.prune_email_outbox",
+        "schedule": crontab(hour=4, minute=40),
+    },
+    "telemetry-prune-rum-vitals": {
+        "task": "telemetry.prune_rum_vitals",
+        "schedule": crontab(hour=4, minute=45),
     },
     "audit-archive-old-logs": {
         "task": "audit.archive_old_logs",

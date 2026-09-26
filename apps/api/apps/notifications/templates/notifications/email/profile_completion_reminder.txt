@@ -1,4 +1,4 @@
-Bonjour {{ first_name }},
+Bonjour,
 
 Ton profil Path-Advisor est complété à {{ completion_percent }} %.
 Complète-le pour des recommandations plus précises : {{ profile_url }}

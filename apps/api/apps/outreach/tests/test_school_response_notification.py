@@ -65,15 +65,8 @@ def outreach_request(db) -> EarlyOutreachRequest:
         )
 
 
-#: AC2 (« conformité émotionnelle ») — banned from the not-aligned variant.
-BANNED_NOT_ALIGNED = [
-    r"mauvaise nouvelle",
-    r"malheureusement",
-    r"\brefus",
-    r"rejet",
-    r"échec",
-    r"pas retenu",
-]
+#: AC2 (« conformité émotionnelle ») — shared list (revue Epic 8).
+from apps.notifications.tone import NOT_ALIGNED_MARKERS as BANNED_NOT_ALIGNED  # noqa: E402
 
 
 def _render_response(action: str, comment: str = "") -> str:

@@ -31,6 +31,8 @@ def send_transactional(
     template_base: str,
     to: str,
     context: dict[str, object],
+    notification_user_id: str = "",
+    notification_category: str = "",
 ) -> EmailOutbox:
     """Queue a transactional email; returns its durable outbox row.
 
@@ -38,6 +40,12 @@ def send_transactional(
     restart) — enforced here so a model instance slipped into a context
     fails at the call site, not later inside a worker where the traceback
     points at nothing useful.
+
+    `notification_user_id`/`notification_category` are set ONLY by the
+    notifications engine: they let `deliver_email` re-check the opt-out at
+    delivery time and build the legal footer (unsubscribe token included)
+    at render time instead of persisting capability URLs in `context`
+    (review fixes P2-6 / P2-11).
     """
     try:
         json.dumps(context)
@@ -52,6 +60,12 @@ def send_transactional(
         template_app=template_app,
         template_base=template_base,
         context=context,
+        notification_user_id=notification_user_id,
+        notification_category=notification_category,
     )
-    transaction.on_commit(lambda: deliver_email.delay(row.pk))
+    # robust=True (review fix P1-1): during batch sends, one hook that fails
+    # on a broker blip must not abandon the remaining hooks — Django logs
+    # the exception and keeps going; the stale-QUEUED sweeper is the safety
+    # net for the row whose hook failed.
+    transaction.on_commit(lambda: deliver_email.delay(row.pk), robust=True)
     return row
