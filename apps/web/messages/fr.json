@@ -328,5 +328,79 @@
       "description": "Explore tous les établissements du référentiel : type, ville, sélectivité.",
       "linkLabel": "Voir la liste des établissements"
     }
+  },
+  "admin": {
+    "title": "Back-office",
+    "navLabel": "Sections du back-office",
+    "nav": {
+      "metiers": "Métiers",
+      "ecoles": "Écoles",
+      "calendrier": "Calendrier Parcoursup",
+      "signalements": "Signalements",
+      "moderation": "Modération"
+    },
+    "metiers": {
+      "title": "Référentiel métiers",
+      "create": "Nouveau métier",
+      "searchLabel": "Rechercher",
+      "searchPlaceholder": "Nom, slug ou secteur…",
+      "statusLabel": "Statut",
+      "statusAll": "Tous les statuts",
+      "status": {
+        "published": "Publié",
+        "draft": "Brouillon",
+        "archived": "Archivé"
+      },
+      "columns": {
+        "name": "Nom",
+        "sector": "Secteur",
+        "statusCol": "Statut",
+        "updated": "Modifié le"
+      },
+      "empty": "Aucun métier ne correspond à ces critères.",
+      "loadError": "Le référentiel n'a pas pu être chargé. Réessaie dans un instant.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "form": {
+        "createTitle": "Nouveau métier",
+        "editTitle": "Modifier « {name} »",
+        "createSubmit": "Créer le métier",
+        "save": "Enregistrer",
+        "saved": "Modifications enregistrées.",
+        "rolledBack": "Version restaurée — une nouvelle révision a été créée.",
+        "saveError": "L'enregistrement n'a pas abouti. Vérifie les champs et réessaie.",
+        "invalidJson": "Un des champs JSON est mal formé — corrige-le avant d'enregistrer.",
+        "archive": "Archiver (retire de tout le public)",
+        "jsonSection": "Champs structurés (JSON)",
+        "statusDraft": "Brouillon",
+        "statusPublished": "Publié",
+        "statusArchived": "Archivé",
+        "fields": {
+          "name": "Nom",
+          "slug": "Slug",
+          "sector": "Secteur",
+          "status": "Statut éditorial",
+          "medianSalary": "Salaire médian (EUR/an)",
+          "romeCode": "Code ROME",
+          "description": "Description (100-300 mots)",
+          "dailyRoutine": "Journée type (2e personne)",
+          "prospects": "Débouchés / évolutions",
+          "signals": "Signaux (passions / valeurs / spécialités)",
+          "levels": "Niveaux compatibles",
+          "requirements": "Prérequis",
+          "salaryRange": "Fourchette de salaire",
+          "sources": "Sources"
+        },
+        "history": {
+          "title": "Historique",
+          "created": "Création",
+          "updated": "Modification",
+          "statusChanged": "Changement de statut",
+          "rolledBack": "Rollback",
+          "rollback": "Restaurer cette version",
+          "empty": "Aucune révision pour l'instant."
+        }
+      }
+    }
   }
 }

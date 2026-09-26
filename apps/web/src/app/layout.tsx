@@ -75,7 +75,7 @@ export default async function RootLayout({
   // fr.json pour l'espace connecté doit rejoindre AUTH_ONLY_NAMESPACES,
   // sinon il taxe le LCP des pages publiques.
   const messages = await getMessages();
-  const AUTH_ONLY_NAMESPACES = ["accueil", "deltaRecap", "calendarNotification"] as const;
+  const AUTH_ONLY_NAMESPACES = ["accueil", "deltaRecap", "calendarNotification", "admin"] as const;
   const publicMessages = Object.fromEntries(
     Object.entries(messages).filter(([ns]) => !AUTH_ONLY_NAMESPACES.includes(ns as never)),
   );

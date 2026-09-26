@@ -312,7 +312,7 @@ class TestRecommendationReviewCreate:
             signals_json={"passions": [], "valeurs": [], "specialites": [], "keywords": []},
             level_compatibility=["lycee_1ere_tle_general"],
             sector="santé",
-            is_active=False,
+            status="archived",  # 9.1: status drives is_active
         )
         url = reverse("recommendation-review-create")
         payload = {"profession_slug": inactive.slug, "reason": "autre"}
