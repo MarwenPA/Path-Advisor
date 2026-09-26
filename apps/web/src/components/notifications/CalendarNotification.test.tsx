@@ -10,9 +10,20 @@
  */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CalendarNotification } from "./CalendarNotification";
+import messages from "../../../messages/fr.json";
+
+import { CalendarNotification, type CalendarNotificationProps } from "./CalendarNotification";
+
+function renderWithIntl(props: CalendarNotificationProps) {
+  return render(
+    <NextIntlClientProvider locale="fr" messages={messages}>
+      <CalendarNotification {...props} />
+    </NextIntlClientProvider>,
+  );
+}
 
 const PROPS = {
   jalon: "Parcoursup : la plateforme ouvre le 14 octobre 2026",
@@ -28,7 +39,7 @@ const PROPS = {
 
 describe("CalendarNotification", () => {
   it("renders factual title, calm body and the non-blocking checklist verbatim", () => {
-    render(<CalendarNotification {...PROPS} />);
+    renderWithIntl(PROPS);
 
     expect(screen.getByRole("heading", { name: PROPS.jalon })).toBeInTheDocument();
     expect(screen.getByText(PROPS.body)).toBeInTheDocument();
@@ -42,7 +53,7 @@ describe("CalendarNotification", () => {
   it("shows exactly one calm CTA and forwards clicks", async () => {
     const onCtaClick = vi.fn();
     const user = userEvent.setup();
-    render(<CalendarNotification {...PROPS} onCtaClick={onCtaClick} />);
+    renderWithIntl({ ...PROPS, onCtaClick });
 
     expect(screen.getAllByRole("link")).toHaveLength(1);
     const cta = screen.getByRole("link", { name: "Revoir mes paris" });
@@ -61,23 +72,24 @@ describe("CalendarNotification", () => {
     });
 
     it("is static muted text — no timer, no aria-live, no alarm styling", () => {
-      render(<CalendarNotification {...PROPS} />);
+      renderWithIntl(PROPS);
 
       const badge = screen.getByTestId("calendar-days-until");
       expect(badge).toHaveTextContent("dans 18 jours");
       expect(badge).not.toHaveAttribute("aria-live");
-      expect(badge.className).toContain("text-muted-foreground");
+      expect(badge.className).toContain("text-text-muted");
       expect(badge.className).not.toMatch(/red|destructive|animate|pulse/);
       // No countdown machinery was ever started by rendering this.
       expect(setInterval).not.toHaveBeenCalled();
     });
 
     it.each([
+      [-3, "aujourd'hui"], // negative = upstream data bug — clamp, never show
       [0, "aujourd'hui"],
       [1, "dans 1 jour"],
       [18, "dans 18 jours"],
     ])("agrees in French (daysUntil=%s → %s)", (daysUntil, expected) => {
-      render(<CalendarNotification {...PROPS} daysUntil={daysUntil as number} />);
+      renderWithIntl({ ...PROPS, daysUntil: daysUntil as number });
       expect(screen.getByTestId("calendar-days-until")).toHaveTextContent(expected as string);
     });
   });

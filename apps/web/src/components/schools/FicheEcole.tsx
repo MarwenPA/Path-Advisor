@@ -12,6 +12,10 @@ interface FicheEcoleProps {
   className?: string;
   isSelected?: boolean;
   onSelect?: (schoolId: string) => void;
+  /** Card-variant heading level override (revue Epic 8, P2-10): on /accueil
+   * the cards sit under the « Tes paris » h3 — an h2 school name broke the
+   * outline (h1 > h2 > h3 > h2). Default keeps every existing call site. */
+  headingLevel?: "h2" | "h3" | "h4";
 }
 
 function SelectivityStars({ index }: { index: number }) {
@@ -73,6 +77,7 @@ export function FicheEcole({
   className,
   isSelected,
   onSelect,
+  headingLevel = "h2",
 }: FicheEcoleProps) {
   const t = useTranslations("ficheEcole");
   const tuition =
@@ -120,8 +125,15 @@ export function FicheEcole({
   // /formations/{slug} (public SEO) and /schools/{slug} (authenticated) — no
   // other <h1> exists on those pages, so it must provide it (RGAA 9.1). The
   // card variant lives under a page-level <h1> (accueil, mes-paris) → <h2>.
-  const HeadingTag = variant === "expanded" ? "h1" : "h2";
-  const SectionHeadingTag = variant === "expanded" ? "h2" : "h3";
+  const HeadingTag = variant === "expanded" ? "h1" : headingLevel;
+  const SectionHeadingTag =
+    variant === "expanded"
+      ? "h2"
+      : headingLevel === "h4"
+        ? "h5"
+        : headingLevel === "h3"
+          ? "h4"
+          : "h3";
 
   // Distinguish "field omitted" (anonymous public payload — the
   // SchoolPublicSeoSerializer never sends `admission_stat`) from "field

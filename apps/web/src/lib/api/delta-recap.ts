@@ -37,12 +37,22 @@ export interface DeltaRecapResponse {
 }
 
 export async function fetchDeltaRecap(): Promise<DeltaRecapResponse> {
-  return apiFetch<DeltaRecapResponse>("/api/v1/me/delta-recap/");
+  return apiFetch<DeltaRecapResponse>("/api/v1/me/delta-recap/", {
+    // Short leash (revue Epic 8, P2-9b): this fetch sits on /accueil's
+    // critical path via allSettled — the default 15 s timeout would hold
+    // the whole home hostage to a slow (not failing) backend. A missed
+    // recap re-proposes next visit; a 15 s blank home does not.
+    signal: AbortSignal.timeout(2500),
+  });
 }
 
 export async function acknowledgeDeltaRecap(): Promise<void> {
   return apiFetch<void>("/api/v1/me/delta-recap/ack/", {
     method: "POST",
     csrfToken: readCsrfCookie() ?? undefined,
+    // The ack often fires right before a navigation or tab close — keepalive
+    // lets the browser finish it after unload (revue Epic 8, P3; same
+    // rationale as the RUM beacon).
+    keepalive: true,
   });
 }

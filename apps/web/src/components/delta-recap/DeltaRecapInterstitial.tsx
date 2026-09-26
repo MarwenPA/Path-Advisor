@@ -15,9 +15,20 @@
  * only local strings are chrome (heading, continue button, stat aria) in
  * `messages/fr.json#deltaRecap` (7.7 conventions).
  *
- * Every card CTA also acks (fire-and-forget) before navigating: going
- * through a card = having seen the recap. Closing the tab without acking
- * re-proposes the same deltas next visit (backend cursor semantics).
+ * Dialog semantics (revue Epic 8, P0-4 — APG modal contract):
+ * - Tab/Shift+Tab are TRAPPED inside the dialog (aria-modal alone only
+ *   hides the page from assistive tech; sighted keyboard users could tab
+ *   into invisible content behind the opaque overlay).
+ * - body scroll is locked while open.
+ * - On close, focus lands on the revealed page's h1 (`#accueil-title`).
+ * - The heading is an h2: the page below keeps the single h1 of the view
+ *   (double-h1 outline was the review's F13).
+ *
+ * Two ways out, two meanings (revue, P3 — consigned):
+ * - "Tout vu, continuer" and every card CTA ACK (seen = cursor moves).
+ * - Escape only CLOSES — same semantics as closing the tab: unseen deltas
+ *   are still news and re-propose next visit. A reflex Esc must not
+ *   silently consume a month of updates.
  *
  * Émotionnel: no confetti, no emoji, one primary CTA per card (AC).
  */
@@ -32,8 +43,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { acknowledgeDeltaRecap, type DeltaRecapCard } from "@/lib/api/delta-recap";
 
 function StatChip({ before, after, label }: { before: number; after: number; label: string }) {
+  // sr-only text + aria-hidden visual (revue P1-8): the old aria-label sat
+  // on a <p> — a role where naming is prohibited (ARIA 1.2), so screen
+  // readers never voiced the one number the card exists for.
   return (
-    <p className="text-sm text-muted-foreground" aria-label={label}>
+    <p className="text-sm text-text-muted">
+      <span className="sr-only">{label}</span>
       <span aria-hidden="true">
         {before} % → {after} %
       </span>
@@ -41,24 +56,79 @@ function StatChip({ before, after, label }: { before: number; after: number; lab
   );
 }
 
+const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
   const t = useTranslations("deltaRecap");
   const [dismissed, setDismissed] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const open = cards.length > 0 && !dismissed;
 
-  // Move focus into the dialog on open (RGAA: the interstitial takes over
-  // the page; keyboard users must land inside it, not behind it).
+  // Focus in + body scroll lock while open; both restored on close/unmount.
   useEffect(() => {
-    if (cards.length > 0 && !dismissed) dialogRef.current?.focus();
-  }, [cards.length, dismissed]);
+    if (!open) return;
+    dialogRef.current?.focus();
+    // Plain reset on close: nothing else in the app sets body overflow, and
+    // capturing the "previous" value telescopes wrong when two instances
+    // ever overlap (each would restore the other's "hidden").
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
 
-  if (cards.length === 0 || dismissed) return null;
+  if (!open) return null;
 
-  const dismiss = () => {
-    // Fire-and-forget: the cursor move must never block the unmount (a
-    // failed ack only means the recap shows again next visit — harmless).
-    void acknowledgeDeltaRecap().catch(() => undefined);
+  const ackAndForget = () => {
+    // Fire-and-forget with keepalive: the cursor move must never block the
+    // unmount or a navigation — but a silent failure loop (e.g. stale CSRF
+    // cookie) would re-propose the same recap forever, so it is at least
+    // observable (revue P3).
+    void acknowledgeDeltaRecap().catch((error) => {
+      console.warn("[delta-recap] ack failed — recap will re-propose next visit", error);
+    });
+  };
+
+  const dismissWithAck = () => {
+    ackAndForget();
     setDismissed(true);
+    restoreFocusToPage();
+  };
+
+  const closeWithoutAck = () => {
+    setDismissed(true);
+    restoreFocusToPage();
+  };
+
+  const restoreFocusToPage = () => {
+    // After the overlay unmounts, the keyboard user must land on the
+    // revealed home, not on <body> (revue F13).
+    requestAnimationFrame(() => {
+      document.getElementById("accueil-title")?.focus();
+    });
+  };
+
+  const trapTab = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      closeWithoutAck();
+      return;
+    }
+    if (event.key !== "Tab" || !dialogRef.current) return;
+    // No visibility filtering needed: the dialog is an opaque overlay whose
+    // every focusable is rendered (and offsetParent is unreliable both in
+    // JSDOM and under position:fixed).
+    const focusables = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (!first || !last) return;
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || active === dialogRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   };
 
   return (
@@ -69,15 +139,13 @@ export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
       aria-labelledby="delta-recap-title"
       tabIndex={-1}
       className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-background px-4 py-10"
-      onKeyDown={(event) => {
-        if (event.key === "Escape") dismiss();
-      }}
+      onKeyDown={trapTab}
     >
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h1 id="delta-recap-title" className="text-h1 font-semibold text-text">
+          <h2 id="delta-recap-title" className="text-h1 font-semibold text-text md:text-h1-desktop">
             {t("title")}
-          </h1>
+          </h2>
           <p className="text-body text-text-muted">{t("intro")}</p>
         </header>
 
@@ -97,17 +165,22 @@ export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
                       recommendedActions={card.recommended_actions ?? []}
                       ctaLabel={card.cta_label}
                       ctaUrl={card.cta_url}
-                      onCtaClick={() => void acknowledgeDeltaRecap().catch(() => undefined)}
+                      onCtaClick={ackAndForget}
+                      headingLevel="h3"
                     />
                   </CardContent>
                 ) : (
                   <>
                     <CardHeader>
-                      <h2 className="text-xl font-semibold text-foreground">{card.title}</h2>
+                      <h3 className="text-xl font-semibold text-text">{card.title}</h3>
                     </CardHeader>
                     <CardContent className="flex flex-col gap-3">
-                      <p className="text-muted-foreground">{card.body}</p>
-                      {card.stat_before !== null && card.stat_after !== null ? (
+                      <p className="text-text-muted">{card.body}</p>
+                      {/* typeof guard (revue P3): a future kind whose stat
+                          fields are ABSENT (undefined ≠ null) must hide the
+                          chip, never render "undefined % → undefined %". */}
+                      {typeof card.stat_before === "number" &&
+                      typeof card.stat_after === "number" ? (
                         <StatChip
                           before={card.stat_before}
                           after={card.stat_after}
@@ -119,7 +192,7 @@ export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
                       ) : null}
                       <Link
                         href={card.cta_url}
-                        onClick={() => void acknowledgeDeltaRecap().catch(() => undefined)}
+                        onClick={ackAndForget}
                         className="inline-block w-fit rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                       >
                         {card.cta_label}
@@ -133,7 +206,7 @@ export function DeltaRecapInterstitial({ cards }: { cards: DeltaRecapCard[] }) {
         </ul>
 
         <div className="pb-4">
-          <Button variant="outline" onClick={dismiss}>
+          <Button variant="outline" onClick={dismissWithAck}>
             {t("continue")}
           </Button>
         </div>

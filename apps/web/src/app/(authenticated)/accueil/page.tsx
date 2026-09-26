@@ -30,6 +30,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { DeltaRecapInterstitial } from "@/components/delta-recap/DeltaRecapInterstitial";
 import { FicheEcole } from "@/components/schools/FicheEcole";
 import { fetchDeltaRecap } from "@/lib/api/delta-recap";
+import { getTranslations } from "next-intl/server";
+
 import { fetchMesParis } from "@/lib/api/mes-paris";
 import type { School } from "@/lib/api/schools";
 
@@ -38,6 +40,10 @@ import { ProgressionModule } from "./ProgressionModule";
 export const metadata = { title: "Accueil — Path Advisor" };
 
 const MAX_ITEMS = 3;
+
+/** Chrome strings live in fr.json#accueil (revue Epic 8 — 7.7 convention,
+ * and fr.json is under the front tone lint). */
+type Translator = Awaited<ReturnType<typeof getTranslations>>;
 
 function topMesParis(schools: unknown): School[] {
   if (!Array.isArray(schools)) return [];
@@ -82,39 +88,39 @@ function ExploreModule({
   );
 }
 
-function MetiersModule() {
+function MetiersModule({ t }: { t: Translator }) {
   return (
     <ExploreModule
       headingId="accueil-metiers-title"
-      title="Tes métiers"
-      description="Découvre tous les métiers du référentiel, avec description, quotidien type et perspectives d'évolution."
+      title={t("metiers.title")}
+      description={t("metiers.description")}
       href="/metiers"
-      linkLabel="Voir la liste des métiers"
+      linkLabel={t("metiers.linkLabel")}
     />
   );
 }
 
-function EcolesModule() {
+function EcolesModule({ t }: { t: Translator }) {
   return (
     <ExploreModule
       headingId="accueil-ecoles-title"
-      title="Tes écoles"
-      description="Explore tous les établissements du référentiel : type, ville, sélectivité."
+      title={t("ecoles.title")}
+      description={t("ecoles.description")}
       href="/schools"
-      linkLabel="Voir la liste des établissements"
+      linkLabel={t("ecoles.linkLabel")}
     />
   );
 }
 
 /** "Ta progression" — now the single card for the whole "personal" row,
  * with "Tes paris" nested inside as a subsection (2026-09-05). */
-function TaProgressionModule({ schools }: { schools: School[] }) {
+function TaProgressionModule({ schools, t }: { schools: School[]; t: Translator }) {
   return (
     <section aria-labelledby="accueil-progression-title">
       <Card>
         <CardHeader>
           <h2 id="accueil-progression-title" className="text-xl font-semibold text-foreground">
-            Ta progression
+            {t("progression.title")}
           </h2>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -122,19 +128,16 @@ function TaProgressionModule({ schools }: { schools: School[] }) {
 
           <div aria-labelledby="accueil-mesparis-title">
             <h3 id="accueil-mesparis-title" className="mb-3 text-lg font-semibold text-foreground">
-              Tes paris
+              {t("mesParis.title")}
             </h3>
             {schools.length === 0 ? (
               <div className="space-y-4">
-                <p className="text-muted-foreground">
-                  Tu n&apos;as pas encore exploré tes premiers paris. Va voir tes métiers
-                  recommandés et clique sur &laquo;&nbsp;Voir le parcours&nbsp;&raquo;.
-                </p>
+                <p className="text-muted-foreground">{t("mesParis.emptyBody")}</p>
                 <Link
                   href="/mes-metiers"
                   className="inline-block rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                 >
-                  Voir mes métiers
+                  {t("mesParis.emptyCta")}
                 </Link>
               </div>
             ) : (
@@ -142,7 +145,7 @@ function TaProgressionModule({ schools }: { schools: School[] }) {
                 <ul className="flex flex-col gap-4" data-testid="accueil-mesparis-list">
                   {schools.map((s) => (
                     <li key={s.id}>
-                      <FicheEcole school={s} variant="card" />
+                      <FicheEcole school={s} variant="card" headingLevel="h4" />
                     </li>
                   ))}
                 </ul>
@@ -150,7 +153,7 @@ function TaProgressionModule({ schools }: { schools: School[] }) {
                   href="/mes-paris"
                   className="mt-4 inline-block text-sm text-primary hover:underline"
                 >
-                  Voir tous mes paris
+                  {t("mesParis.seeAll")}
                 </Link>
               </>
             )}
@@ -162,6 +165,7 @@ function TaProgressionModule({ schools }: { schools: School[] }) {
 }
 
 export default async function AccueilPage() {
+  const t = await getTranslations("accueil");
   // Promise.allSettled (never Promise.all, §4.4): a failing endpoint must
   // only degrade its own module, never take down the whole page. The
   // DeltaRecap fetch (Story 8.6) rides the same rule: if it fails, the
@@ -171,21 +175,41 @@ export default async function AccueilPage() {
     fetchDeltaRecap(),
   ]);
 
+  // allSettled degrades silently BY DESIGN, but never invisibly (revue
+  // Epic 8, P2-9c): a recap endpoint failing for weeks would otherwise go
+  // completely unnoticed — no interstitial, no signal.
+  if (mesParisResult.status === "rejected") {
+    console.error("[accueil] fetchMesParis failed", mesParisResult.reason);
+  }
+  if (deltaRecapResult.status === "rejected") {
+    console.error("[accueil] fetchDeltaRecap failed", deltaRecapResult.reason);
+  }
+
   const schools = mesParisResult.status === "fulfilled" ? topMesParis(mesParisResult.value) : [];
-  const deltaCards = deltaRecapResult.status === "fulfilled" ? deltaRecapResult.value.cards : [];
+  // Array.isArray guard (revue Epic 8, P1-6): a malformed 200 ({}, null
+  // cards) traverses allSettled — without the guard it crashed the whole
+  // home at SSR time. Same class as the 8.8-review fix on topMesParis.
+  const deltaCards =
+    deltaRecapResult.status === "fulfilled" && Array.isArray(deltaRecapResult.value?.cards)
+      ? deltaRecapResult.value.cards
+      : [];
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
       {/* Story 8.6 — full-screen interstitial ABOVE the home when the
           student returns at J+1+ with deltas; renders nothing otherwise. */}
       <DeltaRecapInterstitial cards={deltaCards} />
-      <h1 className="text-2xl font-bold">Accueil</h1>
+      {/* tabIndex -1: the interstitial hands focus back here on close
+          (revue Epic 8, P0-4 — focus restoration). */}
+      <h1 id="accueil-title" tabIndex={-1} className="text-2xl font-bold outline-none">
+        {t("title")}
+      </h1>
 
-      <TaProgressionModule schools={schools} />
+      <TaProgressionModule schools={schools} t={t} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <MetiersModule />
-        <EcolesModule />
+        <MetiersModule t={t} />
+        <EcolesModule t={t} />
       </div>
     </main>
   );

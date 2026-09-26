@@ -113,7 +113,9 @@ export default function RgpdPolicyPage() {
             </li>
             <li>
               <strong>Communication transactionnelle</strong> — vérification d’email,
-              réinitialisation de mot de passe, notifications produit que tu choisis d’activer.
+              réinitialisation de mot de passe, notifications produit (activées par défaut : tu peux
+              les couper à tout moment depuis tes paramètres, et chaque email contient un lien de
+              désinscription).
             </li>
             <li>
               <strong>Amélioration produit</strong> — analytics anonymisé (PostHog) pour comprendre
@@ -191,6 +193,10 @@ export default function RgpdPolicyPage() {
               <strong>Bulletins scolaires originaux</strong> : supprimés immédiatement après
               extraction des données nécessaires aux recommandations (OCR), sauf si tu choisis de
               les conserver dans ton espace.
+            </li>
+            <li>
+              <strong>Journal des emails envoyés</strong> : 90 jours au maximum, puis suppression
+              automatique. À la suppression de ton compte, cet historique est effacé immédiatement.
             </li>
           </ul>
         </section>

@@ -301,5 +301,32 @@
     "cardsLabel": "Ce qui a bougé",
     "statLabel": "Estimation d'admission mise à jour : de {before} % à {after} %",
     "continue": "Tout vu, continuer"
+  },
+  "calendarNotification": {
+    "today": "aujourd'hui",
+    "inDays": "dans {days, plural, one {# jour} other {# jours}}"
+  },
+  "accueil": {
+    "title": "Accueil",
+    "metaTitle": "Accueil — Path Advisor",
+    "progression": {
+      "title": "Ta progression"
+    },
+    "mesParis": {
+      "title": "Tes paris",
+      "emptyBody": "Tu n'as pas encore exploré tes premiers paris. Va voir tes métiers recommandés et clique sur « Voir le parcours ».",
+      "emptyCta": "Voir mes métiers",
+      "seeAll": "Voir tous mes paris"
+    },
+    "metiers": {
+      "title": "Tes métiers",
+      "description": "Découvre tous les métiers du référentiel, avec description, quotidien type et perspectives d'évolution.",
+      "linkLabel": "Voir la liste des métiers"
+    },
+    "ecoles": {
+      "title": "Tes écoles",
+      "description": "Explore tous les établissements du référentiel : type, ville, sélectivité.",
+      "linkLabel": "Voir la liste des établissements"
+    }
   }
 }
