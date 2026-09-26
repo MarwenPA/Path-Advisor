@@ -118,6 +118,13 @@ _PUBLIC_ENDPOINT_WHITELIST: dict[str, str] = {
     #     (`rum_ingest`). See apps/telemetry/models.py for the
     #     privacy-by-construction contract.
     "rum-ingest": "Anonymous Core Web Vitals beacon — Story 8.9",
+    # --- Tokenized unsubscribe (Story 8.2). The signed token IS the auth
+    #     proof (same shape as parental-consent decide): the recipient of an
+    #     email has no session yet must be able to flip their own
+    #     preference — a legal obligation with no login wall allowed.
+    #     POST-only (prefetchers follow GETs), throttled, bypass_rls with a
+    #     nominal reason at the single call site.
+    "notification-unsubscribe": "Tokenized email unsubscribe — Story 8.2 (legal footer link)",
 }
 
 

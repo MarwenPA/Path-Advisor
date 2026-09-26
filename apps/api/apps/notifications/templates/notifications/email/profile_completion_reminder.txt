@@ -1,0 +1,9 @@
+Bonjour {{ first_name }},
+
+Ton profil Path-Advisor est complété à {{ completion_percent }} %.
+Complète-le pour des recommandations plus précises : {{ profile_url }}
+
+---
+Tu reçois cet email car les notifications « {{ category_label }} » sont activées.
+Gérer mes notifications : {{ manage_notifications_url }}
+Se désinscrire : {{ unsubscribe_url }}

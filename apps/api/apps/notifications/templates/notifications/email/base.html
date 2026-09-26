@@ -1,0 +1,41 @@
+{# Story 8.2 — responsive base for every category notification (AC2). #}
+{# Hand-rolled "MJML ou similaire": inline-styled tables render everywhere; #}
+{# the legal footer is IN the base so a category template cannot lose it. #}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+  </head>
+  <body style="margin:0;padding:0;background:#FAFAF7;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAFAF7;">
+      <tr>
+        <td align="center" style="padding:24px 12px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                 style="max-width:560px;background:#FFFFFF;border:1px solid #E0DDD8;border-radius:8px;">
+            <tr>
+              <td style="padding:20px 24px;border-bottom:1px solid #E0DDD8;">
+                <span style="font-family:Arial,Helvetica,sans-serif;font-size:18px;font-weight:bold;color:#C8312D;">
+                  Path-Advisor
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:24px;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:22px;color:#1A1A1A;">
+                {% block content %}{% endblock %}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 24px;border-top:1px solid #E0DDD8;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#666660;">
+                Tu reçois cet email car les notifications « {{ category_label }} » sont activées sur ton compte.<br />
+                <a href="{{ manage_notifications_url }}" style="color:#C8312D;">Gérer mes notifications</a>
+                &nbsp;·&nbsp;
+                <a href="{{ unsubscribe_url }}" style="color:#666660;">Se désinscrire de « {{ category_label }} »</a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

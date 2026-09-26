@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-05-14
-last_updated: 2026-09-20  # epic-7 close ; 8.9 (RUM) implementee -> review
+last_updated: 2026-09-26  # 8.1 mergee -> done ; 8.2 (engine notifications) demarree
 project: Path-Advisor
 project_key: NOKEY
 tracking_system: file-system
@@ -170,8 +170,8 @@ development_status:
   # 8-8 lancée en avance (hors ordre) à la demande utilisateur — ne dépend
   # d'aucune autre story 8.x (pas de dépendance sur email/notifications).
   epic-8: in-progress
-  8-1-email-transactionnel-abstraction: review
-  8-2-engine-notifications-templates: backlog
+  8-1-email-transactionnel-abstraction: done  # merge #104
+  8-2-engine-notifications-templates: review
   8-3-notifications-calendrier-parcoursup: backlog
   8-4-notification-reponse-ecole: backlog
   8-5-notification-nouvelle-ecole-pertinente: backlog
