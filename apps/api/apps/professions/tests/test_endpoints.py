@@ -208,7 +208,7 @@ class TestPublicProfessionList:
             description="x" * 20,
             daily_routine="x" * 20,
             prospects_text="x",
-            is_active=False,
+            status="archived",  # 9.1: status drives is_active
         )
         url = reverse("professions:public-list")
         response = student_client.get(url)
@@ -454,7 +454,7 @@ class TestPublicProfessionSlugs:
             daily_routine="Routine " * 10,
             prospects_text="Prospects",
             median_salary_eur=25000,
-            is_active=False,
+            status="archived",  # 9.1: status drives is_active
         )
         client = APIClient()
         url = reverse("professions:public-profession-slugs")
