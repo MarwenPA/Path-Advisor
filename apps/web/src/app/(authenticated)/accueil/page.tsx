@@ -27,7 +27,9 @@
 import Link from "next/link";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DeltaRecapInterstitial } from "@/components/delta-recap/DeltaRecapInterstitial";
 import { FicheEcole } from "@/components/schools/FicheEcole";
+import { fetchDeltaRecap } from "@/lib/api/delta-recap";
 import { fetchMesParis } from "@/lib/api/mes-paris";
 import type { School } from "@/lib/api/schools";
 
@@ -161,13 +163,22 @@ function TaProgressionModule({ schools }: { schools: School[] }) {
 
 export default async function AccueilPage() {
   // Promise.allSettled (never Promise.all, §4.4): a failing endpoint must
-  // only degrade its own module, never take down the whole page.
-  const [mesParisResult] = await Promise.allSettled([fetchMesParis()]);
+  // only degrade its own module, never take down the whole page. The
+  // DeltaRecap fetch (Story 8.6) rides the same rule: if it fails, the
+  // interstitial simply doesn't show — the home must never be hostage.
+  const [mesParisResult, deltaRecapResult] = await Promise.allSettled([
+    fetchMesParis(),
+    fetchDeltaRecap(),
+  ]);
 
   const schools = mesParisResult.status === "fulfilled" ? topMesParis(mesParisResult.value) : [];
+  const deltaCards = deltaRecapResult.status === "fulfilled" ? deltaRecapResult.value.cards : [];
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6">
+      {/* Story 8.6 — full-screen interstitial ABOVE the home when the
+          student returns at J+1+ with deltas; renders nothing otherwise. */}
+      <DeltaRecapInterstitial cards={deltaCards} />
       <h1 className="text-2xl font-bold">Accueil</h1>
 
       <TaProgressionModule schools={schools} />

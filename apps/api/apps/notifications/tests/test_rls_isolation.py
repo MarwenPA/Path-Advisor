@@ -100,3 +100,29 @@ def test_anonymous_session_sees_nothing(skip_if_sqlite):
         _set_gucs(cur, user_id=alice.id, actor_role="student")
         cur.execute("SELECT count(*) FROM notification_preferences")
         assert cur.fetchone()[0] == 1
+
+
+# ---------------------------------------------------------------------------
+# Story 8.6 — `delta_recap_cursors` (same policy shape, migration 0006)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cross_user_delta_cursor_is_invisible_and_unwritable(skip_if_sqlite):
+    from apps.notifications.models import DeltaRecapCursor
+
+    alice = _make_student("alice-delta@test.local")
+    bob = _make_student("bob-delta@test.local")
+    with as_path_admin():
+        DeltaRecapCursor.objects.create(user=alice, seen_at=timezone.now())
+        bob_cursor = DeltaRecapCursor.objects.create(user=bob, seen_at=timezone.now())
+
+    with transaction.atomic(), connection.cursor() as cur:
+        _set_gucs(cur, user_id=alice.id, actor_role="student")
+        cur.execute("SELECT user_id FROM delta_recap_cursors")
+        visible = {r[0] for r in cur.fetchall()}
+        assert alice.id in visible  # positive control — the session is live
+        assert bob.id not in visible, "RLS must hide other users' recap cursors."
+        # Cross-user UPDATE matches nothing (USING filters it out).
+        cur.execute("UPDATE delta_recap_cursors SET seen_at = now() WHERE id = %s", [bob_cursor.pk])
+        assert cur.rowcount == 0

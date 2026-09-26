@@ -111,3 +111,34 @@ class NewSchoolsDigestRun(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover — debug nicety
         return f"{self.week}: {self.emails_queued} queued"
+
+
+class DeltaRecapCursor(models.Model):
+    """Story 8.6 — the "since when" reference of the DeltaRecap screen.
+
+    NOT `User.last_login`: allauth updates that at login time, so by the
+    time the front asks for the recap the reference would already be "now"
+    and the delta always empty. This cursor moves only on explicit ACK
+    ("Tout vu, continuer" or a card CTA click) — closing the tab without
+    acking re-proposes the same deltas next time (unseen = still news).
+
+    First GET with no row: the view creates one at `now` (baseline) and
+    returns zero cards — a fresh account has no "since your last visit",
+    and without this a daily user would never get a baseline at all.
+
+    Personal data (when the student last consumed their recap) → RLS from
+    migration 0005, policies mirroring `notification_preferences`.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="delta_recap_cursor",
+    )
+    seen_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "delta_recap_cursors"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"{self.user_id} seen_at={self.seen_at:%Y-%m-%d %H:%M}"
