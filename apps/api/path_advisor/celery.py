@@ -14,6 +14,11 @@ app.autodiscover_tasks()
 
 # Audit maintenance — monthly archival + integrity check (Story 1.13 §AC6).
 app.conf.beat_schedule = {
+    # Story 8.3 — Parcoursup calendar notifications (daily, calm by design).
+    "notifications-parcoursup-calendar": {
+        "task": "notifications.send_parcoursup_milestone_notifications",
+        "schedule": crontab(hour=7, minute=0),
+    },
     "audit-archive-old-logs": {
         "task": "audit.archive_old_logs",
         "schedule": crontab(day_of_month="1", hour=3, minute=0),
