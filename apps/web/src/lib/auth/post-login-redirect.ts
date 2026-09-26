@@ -35,8 +35,8 @@ const ROLE_TO_PATH: Record<UserRole, string> = {
   parent: "/parent",
   counselor: MVP_FALLBACK_PATH, // Epic 6 — B2B counselor dashboard placeholder.
   school_admin: MVP_FALLBACK_PATH, // Epics 5/6 — school space placeholder.
-  // path_admin uses Django admin (separate cookie auth there) — frontend
-  // opens it in a new tab rather than nav'ing the SPA.
+  // Story 9.1: /admin is now the real Next back-office (référentiel,
+  // signalements, modération) — Django admin stays the break-glass tool.
   path_admin: "/admin/",
   support: MVP_FALLBACK_PATH, // Story 1.7 — support role; future support dashboard.
 };

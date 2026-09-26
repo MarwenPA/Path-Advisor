@@ -3,8 +3,11 @@
 from django.urls import path
 
 from apps.professions.views import (
+    AdminProfessionArchiveView,
     AdminProfessionDetailView,
     AdminProfessionListView,
+    AdminProfessionRevisionsView,
+    AdminProfessionRollbackView,
     ProfessionReportAdminListView,
     ProfessionReportCreateView,
     PublicProfessionDetailView,
@@ -22,6 +25,21 @@ urlpatterns = [
         "admin/professions/reports/",
         ProfessionReportAdminListView.as_view(),
         name="admin-reports-list",
+    ),
+    path(
+        "admin/professions/<slug:slug>/archive/",
+        AdminProfessionArchiveView.as_view(),
+        name="admin-archive",
+    ),
+    path(
+        "admin/professions/<slug:slug>/revisions/",
+        AdminProfessionRevisionsView.as_view(),
+        name="admin-revisions",
+    ),
+    path(
+        "admin/professions/<slug:slug>/rollback/<str:revision_id>/",
+        AdminProfessionRollbackView.as_view(),
+        name="admin-rollback",
     ),
     path(
         "admin/professions/<slug:slug>/", AdminProfessionDetailView.as_view(), name="admin-detail"

@@ -160,7 +160,88 @@ class ProfessionAdminSerializer(serializers.ModelSerializer):
             "rome_code",
             "sources_json",
             "is_active",
+            "status",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
+
+
+class ProfessionAdminWriteSerializer(serializers.ModelSerializer):
+    """Story 9.1 — create/update payload for the back-office CRUD.
+
+    Validates the JSON shapes the rest of the product depends on — above
+    all `signals_json`: the 8.5 digest and the 8.6 DeltaRecap match on its
+    three list dimensions, so a malformed shape here would silently break
+    the matching for every student.
+    """
+
+    class Meta:
+        model = Profession
+        fields = [
+            "slug",
+            "name",
+            "description",
+            "daily_routine",
+            "requirements_json",
+            "prospects_text",
+            "median_salary_eur",
+            "salary_range_json",
+            "signals_json",
+            "level_compatibility",
+            "sector",
+            "rome_code",
+            "sources_json",
+            "status",
+        ]
+
+    def validate_signals_json(self, value: dict) -> dict:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("signals_json doit être un objet JSON.")
+        for key in ("passions", "valeurs", "specialites"):
+            entries = value.get(key, [])
+            if not isinstance(entries, list) or not all(isinstance(x, str) for x in entries):
+                raise serializers.ValidationError(
+                    f"signals_json.{key} doit être une liste de chaînes "
+                    "(le matching 8.5/8.6 repose sur ces trois dimensions)."
+                )
+        return value
+
+    def validate_level_compatibility(self, value: list) -> list:
+        if not isinstance(value, list) or not all(isinstance(x, str) for x in value):
+            raise serializers.ValidationError(
+                "level_compatibility doit être une liste de niveaux (chaînes)."
+            )
+        return value
+
+    def validate_requirements_json(self, value: list) -> list:
+        if not isinstance(value, list):
+            raise serializers.ValidationError("requirements_json doit être une liste.")
+        for entry in value:
+            if not isinstance(entry, dict) or "label" not in entry:
+                raise serializers.ValidationError(
+                    'Chaque prérequis doit être un objet avec au moins "label".'
+                )
+        return value
+
+    def validate_sources_json(self, value: list) -> list:
+        if not isinstance(value, list) or not all(isinstance(x, str) for x in value):
+            raise serializers.ValidationError("sources_json doit être une liste de chaînes.")
+        return value
+
+
+class ProfessionRevisionSerializer(serializers.ModelSerializer):
+    """Story 9.1 — history panel rows."""
+
+    editor_email = serializers.SerializerMethodField()
+    restored_from_id = serializers.CharField(source="restored_from.id", default=None)
+
+    class Meta:
+        from apps.professions.models import ProfessionRevision
+
+        model = ProfessionRevision
+        fields = ["id", "action", "snapshot", "editor_email", "restored_from_id", "created_at"]
+        read_only_fields = fields
+
+    def get_editor_email(self, obj) -> str | None:
+        return obj.editor.email if obj.editor else None

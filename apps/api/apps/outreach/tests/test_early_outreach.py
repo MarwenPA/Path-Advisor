@@ -198,8 +198,10 @@ class TestCreateEarlyOutreachRequest:
 
     def test_inactive_profession_returns_404(self, premium_client, school, profession):
         with bypass_rls(reason="test_setup.deactivate_profession"):
-            profession.is_active = False
-            profession.save(update_fields=["is_active"])
+            # Story 9.1: `status` is the source of truth — `save()` derives
+            # `is_active` from it, so the legacy direct flip is overridden.
+            profession.status = "archived"
+            profession.save(update_fields=["status"])
 
         response = premium_client.post(
             _url(school.slug), {"profession_id": profession.id}, format="json"

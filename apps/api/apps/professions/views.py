@@ -9,6 +9,7 @@ Routes:
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import status
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
@@ -20,16 +21,29 @@ from apps.audit.decorators import record_audit
 from apps.audit.models import AuditResult
 from apps.core.permissions import IsAuthenticatedAndActive, IsPathAdmin, IsStudent
 from apps.core.throttling import PublicSeoAnonThrottle
-from apps.professions.models import Profession, ProfessionReport
+from apps.professions.models import (
+    Profession,
+    ProfessionReport,
+    ProfessionRevision,
+    ProfessionStatus,
+)
 from apps.professions.serializers import (
     ProfessionAdminSerializer,
+    ProfessionAdminWriteSerializer,
     ProfessionCatalogSerializer,
     ProfessionPublicSeoSerializer,
     ProfessionPublicSerializer,
     ProfessionReportAdminSerializer,
     ProfessionReportCreateSerializer,
     ProfessionReportResponseSerializer,
+    ProfessionRevisionSerializer,
     ProfessionSlugSerializer,
+)
+from apps.professions.services.referential_admin import (
+    archive_profession,
+    create_profession,
+    rollback_profession,
+    update_profession,
 )
 
 
@@ -96,31 +110,115 @@ class ProfessionReportAdminListView(APIView):
 
 
 class AdminProfessionListView(APIView):
-    """GET /api/v1/admin/professions/ — paginated list, admin only."""
+    """GET/POST /api/v1/admin/professions/ — Story 9.1 back-office list + create.
+
+    The list covers EVERY editorial status (a draft is invisible everywhere
+    else by construction); `q` searches name/slug/sector, `status` filters,
+    `sort` accepts name|-name|updated_at|-updated_at.
+    """
 
     permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
 
+    _SORTS = {"name", "-name", "updated_at", "-updated_at"}
+
     def get(self, request: Request) -> Response:
-        qs = Profession.objects.filter(is_active=True).order_by("name")
+        qs = Profession.objects.all()
+        q = (request.query_params.get("q") or "").strip()
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(slug__icontains=q) | Q(sector__icontains=q))
+        status_filter = request.query_params.get("status")
+        if status_filter in ProfessionStatus.values:
+            qs = qs.filter(status=status_filter)
+        sort = request.query_params.get("sort", "name")
+        if sort not in self._SORTS:
+            sort = "name"
+        qs = qs.order_by(sort)
         paginator = _ProfessionPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         serializer = ProfessionAdminSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    def post(self, request: Request) -> Response:
+        serializer = ProfessionAdminWriteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profession = create_profession(editor=request.user, data=serializer.validated_data)
+        return Response(ProfessionAdminSerializer(profession).data, status=status.HTTP_201_CREATED)
+
 
 class AdminProfessionDetailView(APIView):
-    """GET /api/v1/admin/professions/{slug}/ — full detail, admin only."""
+    """GET/PATCH /api/v1/admin/professions/{slug}/ — Story 9.1 (any status)."""
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def _get(self, slug: str) -> Profession | None:
+        return Profession.objects.filter(slug=slug).first()
+
+    def get(self, request: Request, slug: str) -> Response:
+        profession = self._get(slug)
+        if profession is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ProfessionAdminSerializer(profession).data)
+
+    def patch(self, request: Request, slug: str) -> Response:
+        profession = self._get(slug)
+        if profession is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ProfessionAdminWriteSerializer(
+            instance=profession, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        profession = update_profession(
+            profession=profession, editor=request.user, data=serializer.validated_data
+        )
+        return Response(ProfessionAdminSerializer(profession).data)
+
+
+class AdminProfessionArchiveView(APIView):
+    """POST /api/v1/admin/professions/{slug}/archive/ — the AC's "delete".
+
+    Archiving, never a hard delete: the fiche is referenced by Parcours,
+    reports and early-outreach requests (story doc §2.3).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, slug: str) -> Response:
+        profession = Profession.objects.filter(slug=slug).first()
+        if profession is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        profession = archive_profession(profession=profession, editor=request.user)
+        return Response(ProfessionAdminSerializer(profession).data)
+
+
+class AdminProfessionRevisionsView(APIView):
+    """GET /api/v1/admin/professions/{slug}/revisions/ — history panel."""
 
     permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
 
     def get(self, request: Request, slug: str) -> Response:
-        try:
-            profession = Profession.objects.get(slug=slug, is_active=True)
-        except Profession.DoesNotExist:
+        profession = Profession.objects.filter(slug=slug).first()
+        if profession is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        revisions = profession.revisions.select_related("editor", "restored_from")[:50]
+        return Response({"revisions": ProfessionRevisionSerializer(revisions, many=True).data})
 
-        serializer = ProfessionAdminSerializer(profession)
-        return Response(serializer.data)
+
+class AdminProfessionRollbackView(APIView):
+    """POST /api/v1/admin/professions/{slug}/rollback/{revision_id}/."""
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, slug: str, revision_id: str) -> Response:
+        profession = Profession.objects.filter(slug=slug).first()
+        if profession is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        revision = ProfessionRevision.objects.filter(pk=revision_id, profession=profession).first()
+        if revision is None:
+            return Response({"detail": "Révision inconnue."}, status=status.HTTP_404_NOT_FOUND)
+        profession = rollback_profession(
+            profession=profession, editor=request.user, revision=revision
+        )
+        return Response(ProfessionAdminSerializer(profession).data)
 
 
 class PublicProfessionListView(APIView):
