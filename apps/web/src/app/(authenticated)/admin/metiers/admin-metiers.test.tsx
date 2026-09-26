@@ -138,8 +138,12 @@ describe("ProfessionForm", () => {
     await user.type(salary, "35000");
     await user.click(screen.getByRole("button", { name: "Enregistrer" }));
 
-    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
-    expect(updateMock.mock.calls[0][1]).toMatchObject({ median_salary_eur: 35000 });
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith(
+        "cartographe-marin",
+        expect.objectContaining({ median_salary_eur: 35000 }),
+      ),
+    );
     expect(await screen.findByRole("status")).toHaveTextContent("enregistrées");
   });
 
