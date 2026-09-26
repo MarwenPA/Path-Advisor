@@ -216,8 +216,9 @@ class TestMesParisListView:
         payload must now carry `is_active: false` so the frontend can render
         the "n'est plus référencé" notice instead of a normal card."""
         FavoriteSchool.objects.create(user=user_a, school=school_alpha)
-        school_alpha.is_active = False
-        school_alpha.save(update_fields=["is_active"])
+        # 9.2: status is the source of truth — save() derives is_active.
+        school_alpha.status = "archived"
+        school_alpha.save(update_fields=["status"])
         url = reverse("schools:mes-paris")
         response = auth_client.get(url)
         assert response.status_code == 200
@@ -230,8 +231,9 @@ class TestMesParisListView:
         """AC3: DELETE favorite must keep working for a deactivated school —
         SchoolFavoriteView deliberately does not filter on is_active."""
         FavoriteSchool.objects.create(user=user_a, school=school_alpha)
-        school_alpha.is_active = False
-        school_alpha.save(update_fields=["is_active"])
+        # 9.2: status is the source of truth — save() derives is_active.
+        school_alpha.status = "archived"
+        school_alpha.save(update_fields=["status"])
         url = reverse("schools:school-favorite", kwargs={"slug": school_alpha.slug})
         response = auth_client.delete(url)
         assert response.status_code == 200

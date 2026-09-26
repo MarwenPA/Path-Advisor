@@ -401,6 +401,101 @@
           "empty": "Aucune révision pour l'instant."
         }
       }
+    },
+    "ecoles": {
+      "title": "Référentiel écoles",
+      "create": "Nouvelle école",
+      "importCsv": "Importer un CSV",
+      "importing": "Import en cours…",
+      "csvHint": "CSV en UTF-8, séparateur « ; » — colonnes : slug;name;type;city;region;postal_code;public_private (+ selectivity_index, official_url, description). Les lignes en conflit (slug existant) ne sont jamais écrasées ; les écoles créées arrivent en brouillon.",
+      "searchLabel": "Rechercher",
+      "typeLabel": "Type",
+      "allTypes": "Tous les types",
+      "regionLabel": "Région",
+      "statusLabel": "Statut",
+      "allStatuses": "Tous les statuts",
+      "status": {
+        "published": "Publié",
+        "draft": "Brouillon",
+        "archived": "Archivé"
+      },
+      "columns": {
+        "name": "Nom",
+        "type": "Type",
+        "region": "Région",
+        "statusCol": "Statut"
+      },
+      "empty": "Aucune école ne correspond à ces critères.",
+      "loadError": "Le référentiel n'a pas pu être chargé. Réessaie dans un instant.",
+      "previous": "Précédent",
+      "next": "Suivant",
+      "report": {
+        "summary": "{created} créée(s) · {conflicts} conflit(s) · {errors} erreur(s)",
+        "createdAsDrafts": "Les écoles créées sont en brouillon — publie-les après relecture.",
+        "conflictLine": "Ligne {line} — « {slug} » existe déjà.",
+        "existing": "existant",
+        "incoming": "entrant",
+        "resolve": "Ouvrir la fiche pour arbitrer",
+        "errorLine": "Ligne {line} invalide"
+      },
+      "form": {
+        "createTitle": "Nouvelle école",
+        "editTitle": "Modifier « {name} »",
+        "createSubmit": "Créer l'école",
+        "save": "Enregistrer",
+        "saved": "Modifications enregistrées.",
+        "rolledBack": "Version restaurée — une nouvelle révision a été créée.",
+        "saveError": "L'enregistrement n'a pas abouti. Vérifie les champs et réessaie.",
+        "archive": "Archiver (retire de tout le public)",
+        "statusDraft": "Brouillon",
+        "statusPublished": "Publié",
+        "statusArchived": "Archivé",
+        "fields": {
+          "name": "Nom",
+          "slug": "Slug",
+          "type": "Type",
+          "city": "Ville",
+          "region": "Région",
+          "postal_code": "Code postal",
+          "public_private": "Public / privé",
+          "selectivity_index": "Indice de sélectivité",
+          "official_url": "Site officiel",
+          "description": "Description",
+          "status": "Statut éditorial"
+        },
+        "history": {
+          "title": "Historique",
+          "created": "Création",
+          "updated": "Modification",
+          "statusChanged": "Changement de statut",
+          "rolledBack": "Rollback",
+          "imported": "Import CSV",
+          "rollback": "Restaurer cette version",
+          "empty": "Aucune révision pour l'instant."
+        }
+      }
+    },
+    "calendrier": {
+      "title": "Calendrier Parcoursup",
+      "campaign": "Campagne",
+      "create": "Ajouter le jalon",
+      "empty": "Aucun jalon — ajoute la campagne à venir.",
+      "loadError": "Le calendrier n'a pas pu être chargé.",
+      "saveError": "L'enregistrement n'a pas abouti.",
+      "notifiedLocked": "Notifié aux élèves — date verrouillée",
+      "fields": {
+        "kind": "Jalon",
+        "campaign": "Campagne",
+        "date": "Date",
+        "notifyDaysBefore": "J-notification"
+      },
+      "kinds": {
+        "ouverture": "Ouverture Parcoursup",
+        "j30_fermeture_voeux": "J-30 fermeture des vœux",
+        "fermeture_voeux": "Fermeture des vœux",
+        "resultats_principale": "Résultats phase principale",
+        "resultats_complementaire": "Résultats phase complémentaire"
+      }
     }
   }
 }

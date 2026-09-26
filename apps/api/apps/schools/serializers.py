@@ -58,6 +58,7 @@ class SchoolAdminSerializer(serializers.ModelSerializer):
             "parcoursup_dates",
             "affelnet_dates",
             "official_url",
+            "status",
             "formations",
             "created_at",
             "updated_at",
@@ -463,3 +464,51 @@ class ParcoursSerializer(serializers.ModelSerializer):
         except Exception:
             logger.exception("get_nodes_with_stats failed for parcours %s", parcours.id)
             return list(parcours.nodes)
+
+
+class SchoolAdminWriteSerializer(serializers.ModelSerializer):
+    """Story 9.2 — create/update payload for the back-office CRUD + the CSV
+    import (each CSV line goes through THIS validation)."""
+
+    class Meta:
+        model = School
+        fields = (
+            "slug",
+            "name",
+            "type",
+            "city",
+            "region",
+            "postal_code",
+            "lat",
+            "lon",
+            "tuition_min_eur",
+            "tuition_max_eur",
+            "apprenticeship",
+            "internship",
+            "selectivity_index",
+            "public_private",
+            "description",
+            "top_debouches",
+            "parcoursup_dates",
+            "affelnet_dates",
+            "official_url",
+            "school_type",
+            "status",
+        )
+
+
+class SchoolRevisionSerializer(serializers.ModelSerializer):
+    """Story 9.2 — history panel rows (mirror of ProfessionRevision, 9.1)."""
+
+    editor_email = serializers.SerializerMethodField()
+    restored_from_id = serializers.CharField(source="restored_from.id", default=None)
+
+    class Meta:
+        from apps.schools.models import SchoolRevision
+
+        model = SchoolRevision
+        fields = ("id", "action", "snapshot", "editor_email", "restored_from_id", "created_at")
+        read_only_fields = fields
+
+    def get_editor_email(self, obj) -> str | None:
+        return obj.editor.email if obj.editor else None

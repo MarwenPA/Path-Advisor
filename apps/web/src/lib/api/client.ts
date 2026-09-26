@@ -17,7 +17,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 // Two URLs because Server Components run inside the `web` container and must reach
 // the API via the Docker network (http://api:8000), while Client Components run in
 // the user's browser and need a host-reachable URL (http://localhost:8000 in dev).
-const API_BASE_URL =
+export const API_BASE_URL =
   typeof window === "undefined"
     ? (process.env.API_URL_SERVER ?? "http://api:8000")
     : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");

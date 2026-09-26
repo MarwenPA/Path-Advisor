@@ -23,11 +23,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import UserRole
-from apps.core.permissions import IsAuthenticatedAndActive
+from apps.audit.decorators import record_audit
+from apps.core.permissions import IsAuthenticatedAndActive, IsPathAdmin
 from apps.core.rls import bypass_rls
 from apps.core.throttling import PublicSeoAnonThrottle
 
-from .models import NotificationCategory, NotificationPreference
+from .models import (
+    MilestoneKind,
+    NotificationCategory,
+    NotificationPreference,
+    ParcoursupMilestone,
+)
+from .serializers import AdminMilestoneSerializer
 from .tokens import read_unsubscribe_token
 
 log = structlog.get_logger(__name__)
@@ -173,3 +180,92 @@ class DeltaRecapAckView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         acknowledge(request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AdminMilestoneListView(APIView):
+    """Story 9.2 (amendement 8.3) — GET/POST /api/v1/admin/parcoursup-milestones/.
+
+    The visual CRUD the 8.3 seed command was standing in for. No DELETE
+    anywhere: the 8.3 exactly-once dedup lives on the row (`notified_at`).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        rows = ParcoursupMilestone.objects.order_by("-campaign", "date")
+        return Response(
+            {
+                "milestones": [
+                    {
+                        "id": m.pk,
+                        "kind": m.kind,
+                        "kind_label": MilestoneKind(m.kind).label,
+                        "campaign": m.campaign,
+                        "date": m.date.isoformat(),
+                        "notify_days_before": m.notify_days_before,
+                        "notified_at": m.notified_at.isoformat() if m.notified_at else None,
+                    }
+                    for m in rows
+                ]
+            }
+        )
+
+    def post(self, request: Request) -> Response:
+        serializer = AdminMilestoneSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            milestone = ParcoursupMilestone.objects.create(**serializer.validated_data)
+        except IntegrityError:
+            return Response(
+                {"detail": "Ce jalon existe déjà pour cette campagne."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        record_audit(
+            action="referential.milestone_created",
+            result="success",
+            actor=request.user,
+            subject_id=str(milestone.pk),
+            metadata={"kind": milestone.kind, "campaign": milestone.campaign},
+        )
+        return Response({"id": milestone.pk}, status=status.HTTP_201_CREATED)
+
+
+class AdminMilestoneDetailView(APIView):
+    """PATCH /api/v1/admin/parcoursup-milestones/{id}/.
+
+    A NOTIFIED milestone's date/window are LOCKED (amendement): the email
+    left — changing the date would rewrite what students were told. Kind
+    and campaign are immutable by construction (unique constraint = the
+    8.3 dedup identity).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def patch(self, request: Request, milestone_id: int) -> Response:
+        milestone = ParcoursupMilestone.objects.filter(pk=milestone_id).first()
+        if milestone is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if milestone.notified_at is not None:
+            return Response(
+                {
+                    "detail": (
+                        "Ce jalon a déjà été notifié aux élèves — sa date ne peut "
+                        "plus être modifiée. Crée un jalon pour la campagne suivante."
+                    )
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        serializer = AdminMilestoneSerializer(instance=milestone, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        changed = sorted(serializer.validated_data.keys())
+        for field, value in serializer.validated_data.items():
+            setattr(milestone, field, value)
+        milestone.save()
+        record_audit(
+            action="referential.milestone_updated",
+            result="success",
+            actor=request.user,
+            subject_id=str(milestone.pk),
+            metadata={"changed_fields": changed},
+        )
+        return Response({"id": milestone.pk})
