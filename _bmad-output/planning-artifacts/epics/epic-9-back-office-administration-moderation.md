@@ -46,6 +46,11 @@ So that je puisse maintenir la qualité du référentiel 100+ formations MVP (FR
 **When** je modifie une école
 **Then** l'historique est tracé + le job de recalcul des stats d'admission impactées s'exécute en background
 
+**Given** le calendrier Parcoursup (délégué par la Story 8.3 — « un CRUD visuel appartient à l'Epic 9 »)
+**When** je vais dans "Référentiel" → "Calendrier Parcoursup"
+**Then** je peux créer/modifier les jalons d'une campagne (kind, date, J-notification) sans passer par la seed command
+**And** un jalon déjà notifié (`notified_at` posé) est affiché comme tel et sa date n'est plus modifiable (l'email est parti)
+
 ## Story 9.3 : File de signalements + workflow modération sous 7 jours
 
 As a admin Path-Advisor,
@@ -96,6 +101,11 @@ So that les contenus inappropriés / discriminatoires / les données personnelle
 **Then** un pré-screening automatique (mots-clés à risque, données personnelles détectées) m'aide à prioriser
 **But** la décision finale est toujours humaine (pas d'auto-refus)
 
+**Given** les commentaires libres des écoles (délégué par la revue Epic 8, P2-5 : un commentaire de staff école part aujourd'hui verbatim dans l'email d'un mineur)
+**When** une école répond à un envoi anticipé avec un commentaire non vide
+**Then** le commentaire entre dans la même file de modération (a priori) avant d'être visible de l'élève
+**And** l'email « réponse école » part immédiatement SANS le commentaire (l'information de la réponse ne doit pas attendre la modération) — le commentaire apparaît in-app après approbation
+
 ## Story 9.5 : Versioning modèles IA + audit trail dataset
 
 As a admin Path-Advisor,
@@ -116,7 +126,7 @@ So that les décisions IA soient auditables (RGPD art. 22 + NFR-M3 + ADD-10).
 
 **Given** la conformité éthique (audit biais)
 **When** je consulte les métriques d'évaluation d'un modèle
-**Then** je vois les performance disaggregées par sous-population (genre, région, type d'établissement)
+**Then** je vois les performance disaggregées par sous-population — **cadrage (revue Epic 8)** : le modèle User ne porte NI genre ni autre attribut sensible (privacy by construction) ; les dimensions d'audit sont celles déjà présentes (région, type d'établissement, niveau scolaire). Introduire le genre exigerait une décision produit + DPO préalable, hors périmètre de cette story
 **And** un écart > 10 % inter-groupes déclenche une alerte avant déploiement
 
 ## Story 9.6 : Métriques audit ML (drift, biais)
@@ -129,7 +139,7 @@ So that je détecte les dégradations du modèle en production (FR52).
 
 **Given** la production envoie des décisions de scoring
 **When** je vais dans Back-office → "Audit ML"
-**Then** je vois des métriques temps réel : distribution des scores vocationnels par mois, drift par rapport au baseline, distribution par sous-population (genre, région, niveau scolaire)
+**Then** je vois des métriques temps réel : distribution des scores vocationnels par mois, drift par rapport au baseline, distribution par sous-population (région, type d'établissement, niveau scolaire — cf. cadrage 9.5 : pas de genre sans décision produit+DPO)
 
 **Given** un drift est détecté (KS-test ou similaire au-dessus du seuil)
 **When** la métrique devient critique
