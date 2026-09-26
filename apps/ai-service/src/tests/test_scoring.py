@@ -127,3 +127,43 @@ def test_score_metiers_with_professions_data(auth_client: TestClient) -> None:
         "passion_overlap contribution must be non-zero when passions overlap"
     )
     assert occ["score"] > 20
+
+
+# ---------------------------------------------------------------------------
+# Story 9.5 — archived-version replay
+# ---------------------------------------------------------------------------
+
+_REPLAY_BODY = {
+    "student_id": "usr_replay",
+    "profile": {"passions": ["mer"], "valeurs": [], "specialites": [], "niveau": "postbac"},
+    "occupation_ids": ["occ_1"],
+    "professions_data": [
+        {
+            "occupation_id": "occ_1",
+            "signals_json": {"passions": ["mer"], "valeurs": [], "specialites": []},
+            "level_compatibility": ["postbac"],
+        }
+    ],
+}
+
+
+def test_scoring_serves_an_archived_registry_version(auth_client) -> None:
+    """`model_version` in the request pins the served version — the art. 22
+    replay contract: the response echoes THAT version, not the current one."""
+    body = {**_REPLAY_BODY, "model_version": "0.3.0-statistical"}
+    response = auth_client.post("/v1/score-metiers", json=body)
+    assert response.status_code == 200
+    assert response.json()["model_version"] == "0.3.0-statistical"
+
+
+def test_scoring_refuses_a_version_absent_from_the_registry(auth_client) -> None:
+    body = {**_REPLAY_BODY, "model_version": "9.9.9-fantome"}
+    response = auth_client.post("/v1/score-metiers", json=body)
+    assert response.status_code == 422
+    assert "inconnue du registre" in response.json()["detail"]
+
+
+def test_omitted_version_serves_the_current_model(auth_client) -> None:
+    response = auth_client.post("/v1/score-metiers", json=_REPLAY_BODY)
+    assert response.status_code == 200
+    assert response.json()["model_version"] == "0.3.0-statistical"

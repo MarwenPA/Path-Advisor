@@ -76,3 +76,7 @@ class RecommendationReview(models.Model):
 
     def __str__(self) -> str:
         return f"ReviewRequest({self.reason}) by {self.student_id} on {self.profession_id}"
+
+
+# Story 9.5 — versioning + journal art. 22 (module dedie, voir docstring).
+from .models_versioning import ModelVersion, ScoringDecision  # noqa: E402, F401

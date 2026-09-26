@@ -189,8 +189,8 @@ development_status:
   9-1-crud-referentiel-professions: done  # merge #113
   9-2-crud-referentiel-formations-ecoles: done  # merge #114
   9-3-file-signalements-moderation-7j: done  # merge #115
-  9-4-moderation-motivations-libres: review
-  9-5-versioning-modeles-ia-audit: backlog
+  9-4-moderation-motivations-libres: done  # merge #116
+  9-5-versioning-modeles-ia-audit: review
   9-6-metriques-audit-ml-drift-biais: backlog
   epic-9-retrospective: optional
 

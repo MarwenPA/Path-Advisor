@@ -46,6 +46,10 @@ class RecommendationsView(APIView):
                 "results": data["results"],
                 "niveau_adapted": data["niveau_adapted"],
                 "computed_at": timezone.now().isoformat(),
+                # Story 9.5 — art. 22: every scoring answer carries the model
+                # version that produced it + its journal entry id.
+                "model_version": data.get("model_version", ""),
+                "decision_id": data.get("decision_id"),
             }
         )
 
@@ -140,3 +144,81 @@ class RecommendationReviewAdminListView(APIView):
         page = paginator.paginate_queryset(qs, request, view=self)
         serializer = RecommendationReviewAdminSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+class AdminModelVersionsView(APIView):
+    """GET/POST /api/v1/admin/model-versions/ — Story 9.5 governance list +
+    registration (dataset hash computed at registration time)."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        from .models import ModelVersion
+
+        rows = ModelVersion.objects.select_related("deployed_by").all()
+        return Response(
+            {
+                "versions": [
+                    {
+                        "id": row.pk,
+                        "name": row.name,
+                        "version": row.version,
+                        "dataset_hash": row.dataset_hash,
+                        "hyperparameters": row.hyperparameters_json,
+                        "evaluation_metrics": row.evaluation_metrics_json,
+                        "max_subpopulation_gap": round(row.max_subpopulation_gap(), 4),
+                        "is_active": row.is_active,
+                        "requires_ethics_review": row.requires_ethics_review,
+                        "ethics_review_note": row.ethics_review_note,
+                        "deployed_at": row.deployed_at.isoformat() if row.deployed_at else None,
+                        "deployed_by": row.deployed_by.email if row.deployed_by else None,
+                        "decisions_count": row.decisions.count(),
+                        "created_at": row.created_at.isoformat(),
+                    }
+                    for row in rows
+                ]
+            }
+        )
+
+    def post(self, request: Request) -> Response:
+        from .model_governance import register_model_version
+
+        name = (request.data.get("name") or "").strip()
+        version = (request.data.get("version") or "").strip()
+        hyperparameters = request.data.get("hyperparameters") or {}
+        if not name or not version or not isinstance(hyperparameters, dict):
+            return Response(
+                {"detail": "name, version et hyperparameters (objet) sont requis."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        row = register_model_version(
+            editor=request.user,
+            name=name,
+            version=version,
+            hyperparameters=hyperparameters,
+            evaluation_metrics=request.data.get("evaluation_metrics") or {},
+        )
+        return Response({"id": row.pk, "dataset_hash": row.dataset_hash}, status=201)
+
+
+class AdminModelVersionActivateView(APIView):
+    """POST /api/v1/admin/model-versions/{id}/activate/ — ethics-gated."""
+
+    permission_classes: ClassVar = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def post(self, request: Request, version_id: str) -> Response:
+        from .model_governance import EthicsGateError, activate_model_version
+        from .models import ModelVersion
+
+        row = ModelVersion.objects.filter(pk=version_id).first()
+        if row is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            row = activate_model_version(
+                version_row=row,
+                editor=request.user,
+                ethics_note=(request.data.get("ethics_note") or ""),
+            )
+        except EthicsGateError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_409_CONFLICT)
+        return Response({"id": row.pk, "is_active": row.is_active})

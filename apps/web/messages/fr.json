@@ -337,7 +337,9 @@
       "ecoles": "Écoles",
       "calendrier": "Calendrier Parcoursup",
       "signalements": "Signalements",
-      "moderation": "Modération"
+      "moderation": "Modération",
+      "modeles": "Modèles IA",
+      "auditMl": "Audit ML"
     },
     "metiers": {
       "title": "Référentiel métiers",
@@ -552,6 +554,24 @@
       "emptyComments": "Aucun commentaire d'école en attente.",
       "loadError": "Les files n'ont pas pu être chargées. Réessaie dans un instant.",
       "actionError": "L'action n'a pas abouti. Réessaie."
+    },
+    "modeles": {
+      "title": "Versions du modèle IA",
+      "intro": "Chaque décision de scoring référence sa version (art. 22). L'activation est exclusive ; un écart inter-groupes > 10 % exige une note de revue éthique avant déploiement.",
+      "active": "Active",
+      "ethicsRequired": "Écart inter-groupes {gap} % — revue éthique requise",
+      "decisions": "{count} décision(s) journalisée(s)",
+      "deployedAt": "déployée le {date} par {by}",
+      "hyperparameters": "Hyperparamètres",
+      "ethicsNote": "Note de revue éthique",
+      "ethicsNoteLabel": "Note de revue éthique (obligatoire — consignée et auditée)",
+      "activate": "Activer",
+      "activateWithReview": "Activer (revue éthique requise)",
+      "confirmActivate": "Activer avec cette note",
+      "cancel": "Annuler",
+      "empty": "Aucune version enregistrée.",
+      "loadError": "Les versions n'ont pas pu être chargées.",
+      "actionError": "L'action n'a pas abouti."
     }
   }
 }

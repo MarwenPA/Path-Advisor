@@ -18,6 +18,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin/calendrier", label: t("nav.calendrier") },
     { href: "/admin/signalements", label: t("nav.signalements") },
     { href: "/admin/moderation", label: t("nav.moderation") },
+    { href: "/admin/modeles", label: t("nav.modeles") },
+    { href: "/admin/audit-ml", label: t("nav.auditMl") },
   ];
 
   return (
