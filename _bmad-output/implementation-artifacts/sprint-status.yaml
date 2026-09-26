@@ -169,14 +169,14 @@ development_status:
   # Epic 8 — Continuité temporelle & Notifications
   # 8-8 lancée en avance (hors ordre) à la demande utilisateur — ne dépend
   # d'aucune autre story 8.x (pas de dépendance sur email/notifications).
-  epic-8: in-progress
+  epic-8: done  # 9/9 — clos 2026-09-26
   8-1-email-transactionnel-abstraction: done  # merge #104
   8-2-engine-notifications-templates: done  # merge #105
   8-3-notifications-calendrier-parcoursup: done  # merge #106
   8-4-notification-reponse-ecole: done  # merge #107
   8-5-notification-nouvelle-ecole-pertinente: done  # merge #108
   8-6-composant-delta-recap: done  # merge #109
-  8-7-composant-calendar-notification: review
+  8-7-composant-calendar-notification: done  # merge #110
   8-8-dashboard-accueil-eleve: done
   # Ajoutee 2026-09-08 : les budgets CWV sont calibres sur une metrique SIMULEE,
   # sans aucune mesure de terrain — c'est ce manque qui a permis 2 mauvais
