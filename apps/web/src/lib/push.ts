@@ -26,12 +26,14 @@ export function isPushSupported(): boolean {
   );
 }
 
-/** The `applicationServerKey` wants raw bytes, the API serves base64url. */
-function urlBase64ToUint8Array(base64url: string): Uint8Array {
+/** The `applicationServerKey` wants raw bytes, the API serves base64url.
+ * Explicit `ArrayBuffer` backing: CI's stricter TS rejects
+ * `Uint8Array<ArrayBufferLike>` where `BufferSource` is expected. */
+function urlBase64ToUint8Array(base64url: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64url.length % 4)) % 4);
   const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
-  const output = new Uint8Array(raw.length);
+  const output = new Uint8Array(new ArrayBuffer(raw.length));
   for (let i = 0; i < raw.length; i += 1) output[i] = raw.charCodeAt(i);
   return output;
 }
