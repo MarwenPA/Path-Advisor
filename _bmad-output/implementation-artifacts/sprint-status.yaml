@@ -195,11 +195,11 @@ development_status:
   epic-9-retrospective: optional
 
   # Epic 10 — Fast-follow post-MVP (mois 9-12)
-  epic-10: in-progress  # demarre 2026-09-27
+  epic-10: done  # 6/6 — clos 2026-09-27
   10-1-detection-profils-a-risque: done  # merge #122
   10-2-push-web-notifications: done  # merge #121
   10-3-tableau-qualite-referentiel: done  # merge #123
   10-4-rdv-visio-ecole-eleve: done  # merge #124
-  10-5-parrainage-lien-tracable: review
+  10-5-parrainage-lien-tracable: done  # merge #125
   10-6-composant-side-flow: done  # merge #120
   epic-10-retrospective: optional
