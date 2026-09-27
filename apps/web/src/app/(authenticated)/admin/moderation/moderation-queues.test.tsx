@@ -72,8 +72,11 @@ describe("ModerationQueues", () => {
     withIntl(<ModerationQueues />);
 
     expect(await screen.findByText(/la décision finale est toujours humaine/)).toBeInTheDocument();
-    expect(screen.getByText(/SLA 24 h dépassé/)).toBeInTheDocument();
-    expect(screen.getByText("Donnée personnelle : telephone")).toBeInTheDocument();
+    // findBy : la note ci-dessus est STATIQUE (rendue avant le fetch mocké) —
+    // getBy sur les données async perdait la course sur les runners CI lents
+    // (attrapé 2× : PR #124 et #125, jamais reproduit localement).
+    expect(await screen.findByText(/SLA 24 h dépassé/)).toBeInTheDocument();
+    expect(await screen.findByText("Donnée personnelle : telephone")).toBeInTheDocument();
   });
 
   it("reject demands category AND reason before arming", async () => {
