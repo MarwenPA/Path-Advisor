@@ -274,3 +274,62 @@ def test_smtp_outage_leaves_nonsilent_outbox_row(django_capture_on_commit_callba
     assert row.attempts == MAX_RETRIES + 1
     assert "SMTPException: smtp down" in row.last_error
     assert len(mail.outbox) == 0  # nothing delivered — and nothing swallowed
+
+
+# ─── Story 10.6 — `parental_consent_state` on GET /api/v1/auth/user/ ──────────
+# The SideFlow banner keys its copy + CTA on this field: "pending" is the only
+# state where "Relancer mon parent" can succeed (resend 404s otherwise).
+
+
+def _user_details(user) -> dict:
+    client = APIClient()
+    client.force_authenticate(user=user)
+    response = client.get("/api/v1/auth/user/")
+    assert response.status_code == 200, response.content
+    return response.json()
+
+
+def test_user_details_consent_state_pending_while_parent_undecided():
+    user, _consent = _make_pending_consent()
+    assert _user_details(user)["parental_consent_state"] == "pending"
+
+
+def test_user_details_consent_state_granted_when_decided_but_email_unverified():
+    from apps.accounts.services.parental_consent import record_decision
+
+    user, consent = _make_pending_consent(email_verified=False)
+    record_decision(
+        consent=consent,
+        decision="granted",
+        content_hash=_VALID_HASH,
+        client_accepted_at=timezone.now(),
+        ip="1.2.3.4",
+        user_agent="Mozilla/5.0",
+    )
+    user.refresh_from_db()
+    assert user.status == UserStatus.PENDING_PARENTAL_CONSENT
+    assert _user_details(user)["parental_consent_state"] == "granted"
+
+
+def test_user_details_consent_state_expired_after_window():
+    user, consent = _make_pending_consent()
+    consent.expires_at = timezone.now() - timedelta(days=1)
+    consent.save(update_fields=["expires_at"])
+    assert _user_details(user)["parental_consent_state"] == "expired"
+
+
+def test_user_details_consent_state_null_for_active_user():
+    user, consent = _make_pending_consent(email_verified=True)
+    from apps.accounts.services.parental_consent import record_decision
+
+    record_decision(
+        consent=consent,
+        decision="granted",
+        content_hash=_VALID_HASH,
+        client_accepted_at=timezone.now(),
+        ip="1.2.3.4",
+        user_agent="Mozilla/5.0",
+    )
+    user.refresh_from_db()
+    assert user.status == UserStatus.ACTIVE
+    assert _user_details(user)["parental_consent_state"] is None

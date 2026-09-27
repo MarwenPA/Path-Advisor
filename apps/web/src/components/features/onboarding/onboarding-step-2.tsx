@@ -40,9 +40,9 @@ export function OnboardingStep2() {
   // Django session-cookie auth via `apiFetch`/`fetchCurrentUser`, not
   // NextAuth). The import couldn't resolve, so `/onboarding/step-2` 500'd
   // outright. Same fetch-current-user-on-mount pattern already used by
-  // `limited-mode-banner.tsx` and `accueil/ProgressionModule.tsx` (no
-  // shared hook exists yet for this in the repo — kept consistent with
-  // those rather than introducing one here).
+  // `accueil/ProgressionModule.tsx` (Story 10.6 introduced a shared
+  // `use-current-user` hook for banners; migrating this one-shot read
+  // is left to a dedicated cleanup).
   const [userId, setUserId] = React.useState<string | null | undefined>(undefined);
   React.useEffect(() => {
     let cancelled = false;

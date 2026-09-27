@@ -329,6 +329,20 @@
       "linkLabel": "Voir la liste des établissements"
     }
   },
+  "sideFlow": {
+    "parentalConsent": {
+      "pendingMessage": "Ton parent reçoit l'email — tu peux continuer pendant qu'on vérifie.",
+      "resend": "Relancer mon parent",
+      "resending": "Envoi en cours…",
+      "resendSuccess": "Email renvoyé à ton parent.",
+      "rateLimited": "Email déjà renvoyé récemment — réessaie dans une heure.",
+      "resendFailed": "Impossible de renvoyer l'email pour l'instant.",
+      "grantedMessage": "Ton parent a validé ton inscription — il ne reste qu'à confirmer ton adresse email.",
+      "expiredMessage": "La demande de validation parentale a expiré. Passe par la page support pour la relancer.",
+      "goToSupport": "Contacter le support",
+      "resolvedToast": "Ton compte est entièrement actif maintenant."
+    }
+  },
   "admin": {
     "title": "Back-office",
     "navLabel": "Sections du back-office",

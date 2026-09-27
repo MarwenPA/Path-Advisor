@@ -7,32 +7,9 @@ import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Toast, useToast } from "@/components/ui/toast";
 import { useRequestRecommendationReview } from "@/hooks/useRequestRecommendationReview";
 import { ReviewRequestForm } from "./ReviewRequestForm";
-
-// ─── Simple toast using state + aria-live (no external dep) ──────────────────
-
-function useToast() {
-  const [message, setMessage] = React.useState<string | null>(null);
-  const tidRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    return () => {
-      if (tidRef.current !== null) clearTimeout(tidRef.current);
-    };
-  }, []);
-
-  const showToast = React.useCallback((msg: string, durationMs = 4000) => {
-    if (tidRef.current !== null) clearTimeout(tidRef.current);
-    setMessage(msg);
-    tidRef.current = setTimeout(() => {
-      setMessage(null);
-      tidRef.current = null;
-    }, durationMs);
-  }, []);
-
-  return { message, showToast };
-}
 
 // ─── Mobile detection ─────────────────────────────────────────────────────────
 // Server snapshot returns false (desktop) so SSR and initial client render agree.
@@ -137,15 +114,7 @@ export function ReviewRequestButton({
       {triggerButton}
 
       {/* Toast — aria-live so screen readers announce it (AC8) */}
-      {toastMessage && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-foreground px-4 py-3 text-sm text-background shadow-lg"
-        >
-          {toastMessage}
-        </div>
-      )}
+      <Toast message={toastMessage} />
 
       {/* Mobile: bottom sheet */}
       {isMobile ? (
