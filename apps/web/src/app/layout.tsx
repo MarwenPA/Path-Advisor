@@ -81,6 +81,9 @@ export default async function RootLayout({
     "calendarNotification",
     "admin",
     "sideFlow",
+    // Story 10.2 (revue perf) : la page Paramètres > notifications est
+    // authentifiée — seul `notifications.unsubscribe` doit voyager public.
+    "notificationSettings",
   ] as const;
   const publicMessages = Object.fromEntries(
     Object.entries(messages).filter(([ns]) => !AUTH_ONLY_NAMESPACES.includes(ns as never)),

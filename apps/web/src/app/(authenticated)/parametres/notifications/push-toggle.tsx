@@ -31,7 +31,7 @@ interface ToggleState {
 const HIDDEN: ToggleState = { visible: false, enabled: false, pending: false, notice: "none" };
 
 export function PushToggle() {
-  const t = useTranslations("notifications.settings.push");
+  const t = useTranslations("notificationSettings.push");
   const [state, setState] = useState<ToggleState>(HIDDEN);
 
   useEffect(() => {

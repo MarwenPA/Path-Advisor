@@ -36,7 +36,7 @@ interface NotificationPreferencesListProps {
 export function NotificationPreferencesList({
   initialPreferences,
 }: NotificationPreferencesListProps) {
-  const t = useTranslations("notifications.settings");
+  const t = useTranslations("notificationSettings");
   const [rows, setRows] = useState<Record<string, RowState>>(() =>
     Object.fromEntries(
       initialPreferences.map((pref) => [
