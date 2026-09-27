@@ -72,7 +72,7 @@ export function MobileNav({ role, email }: MobileNavProps) {
               </Link>
             );
           })}
-          <AccountMenu email={email} variant="compact" placement="down" />
+          <AccountMenu email={email} role={role} variant="compact" placement="down" />
         </div>
       </header>
     );
@@ -109,7 +109,7 @@ export function MobileNav({ role, email }: MobileNavProps) {
         {/* Code-review fix (2026-09): "up" — this trigger sits in a
             `fixed bottom-0` bar, so the popover's previous downward default
             rendered below the viewport edge and was unreachable. */}
-        <AccountMenu email={email} variant="compact" placement="up" />
+        <AccountMenu email={email} role={role} variant="compact" placement="up" />
       </div>
     </nav>
   );

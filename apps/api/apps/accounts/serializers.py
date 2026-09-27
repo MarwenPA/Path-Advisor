@@ -46,6 +46,10 @@ class SignupSerializer(RegisterSerializer):
     consent_cgu_version = serializers.CharField(required=True, max_length=20)
     # Optional; mandatory iff age < 15 (enforced in `validate()` once both fields are known).
     parent_email = serializers.EmailField(required=False, allow_blank=False)
+    # Story 10.5 — code de parrainage optionnel (lien /r/{code}). Jamais
+    # d'erreur de champ : un code invalide est ignoré en silence au signal
+    # (pas d'oracle d'énumération des codes).
+    referral_code = serializers.CharField(required=False, allow_blank=True, max_length=32)
 
     def validate_consent_rgpd_accepted(self, value: bool) -> bool:
         if not value:
@@ -102,6 +106,7 @@ class SignupSerializer(RegisterSerializer):
                 "consent_rgpd_accepted": self.validated_data.get("consent_rgpd_accepted"),
                 "consent_cgu_version": self.validated_data.get("consent_cgu_version"),
                 "parent_email": self.validated_data.get("parent_email"),
+                "referral_code": self.validated_data.get("referral_code"),
             }
         )
         return cleaned

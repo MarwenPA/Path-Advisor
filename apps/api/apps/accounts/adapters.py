@@ -55,6 +55,8 @@ class PathAdvisorAccountAdapter(DefaultAccountAdapter):
         # Request), so `request.data` is unavailable in the handler. Re-reading the
         # body there would force a second JSON parse and tie us to a Content-Type.
         user._parent_email_pending = parent_email  # type: ignore[attr-defined]
+        # Story 10.5 — même mécanique pour le code de parrainage.
+        user._referral_code_pending = cleaned.get("referral_code")  # type: ignore[attr-defined]
         return user
 
     def get_email_confirmation_url(self, request: HttpRequest, emailconfirmation: Any) -> str:

@@ -10,6 +10,8 @@ app_name = "accounts"
 
 urlpatterns = [
     path("csrf/", views.csrf, name="csrf"),
+    # Story 10.5 — parrainage (code + lien + compteur)
+    path("referral/", views.ReferralView.as_view(), name="referral"),
     # Story 1.4 — parental-consent flow. The `/decide/` rate-limit key uses `post:token`
     # rather than IP because legitimate parents and ISP-NATted teenagers may share an IP.
     path(
