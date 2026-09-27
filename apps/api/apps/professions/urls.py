@@ -8,6 +8,7 @@ from apps.professions.views import (
     AdminProfessionListView,
     AdminProfessionRevisionsView,
     AdminProfessionRollbackView,
+    AdminReferentialQualityView,
     ProfessionReportActionView,
     ProfessionReportAdminListView,
     ProfessionReportCreateView,
@@ -21,6 +22,12 @@ app_name = "professions"
 
 urlpatterns = [
     # Admin endpoints (IsPathAdmin)
+    # Story 10.3 — tableau qualité référentiel (agrège professions/écoles/files)
+    path(
+        "admin/referential-quality/",
+        AdminReferentialQualityView.as_view(),
+        name="admin-referential-quality",
+    ),
     path("admin/professions/", AdminProfessionListView.as_view(), name="admin-list"),
     path(
         "admin/professions/reports/<str:report_id>/<str:action>/",
