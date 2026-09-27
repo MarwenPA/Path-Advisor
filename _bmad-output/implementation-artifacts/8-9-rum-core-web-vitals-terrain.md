@@ -1,10 +1,39 @@
 # Story 8.9 : Métriques utilisateur réelles (RUM) sur les Core Web Vitals
 
-**Status:** review
+**Status:** done
+
+## 0bis. Réévaluation AC5 (2026-09-27) — faite, verdict : budgets ASSUMÉS tels quels, chiffres à l'appui
+
+**Le terrain n'existe pas encore.** À J+19 de la pose du thermomètre, la table
+`rum_vitals` contient **3 lignes — toutes du même instant (22/09 08:14:12)** :
+les restes de la preuve live de cette story. L'application n'est pas déployée
+en production ; il n'y a pas de visiteurs, donc pas de p75 de terrain.
+Recalibrer les budgets sur 3 points d'un run de la machine de dev serait la
+pseudo-science exacte que la 7.6 a payée (budget relevé à 3000 sur une
+hypothèse fausse). **Décision : les budgets restent à 2500 ms, inchangés.**
+AC5 est réputée exécutée dans sa branche « assumés tels quels avec les
+chiffres à l'appui » ; le recalibrage terrain redevient dû quand la prod
+aura 2-4 semaines de trafic (dépendance : déploiement production, hors plan).
+
+**Les chiffres à l'appui (CI, epic 10, 27/09)** : sur 6 PRs, le job
+lighthouse a échoué 8-9 fois. Deux échecs étaient de vraies régressions
+(query-core dans le bundle public : +11,5 Ko / +200 ms ; chaînes i18n
+Paramètres dans le payload public) — la gate a fait son travail et les
+causes ont été corrigées, pas contournées. Le reste : les trois fiches SSR
+publiques mesurent entre **2100 et 2580 ms de LCP simulé selon la VM du
+runner**, à bundle octet pour octet identique à main (prouvé par diff de
+chunks), avec un spread intra-run observé jusqu'à **460 ms**
+(ex. 2118/2581/2550 sur /formations). Un budget à 2500 posé au milieu de
+cette bande fait de chaque PR un tirage au sort.
+
+**Levier livré (instrument, pas seuil)** : `numberOfRuns` 3 → 5. La médiane
+de 3 bascule sur un seul outlier (2 des 3 valeurs au-dessus suffisent) ; la
+médiane de 5 en absorbe deux. Coût : ~+3 min de job (~10 → ~13 min). La
+sévérité du seuil est intacte — on stabilise la mesure, pas la note.
 
 ## 0. Résultat (2026-09-20)
 
-**AC1-AC4 livrées ; AC5 est datée par nature** (réexamen des budgets après 2-4 semaines de données — un rappel est posé dans la section AC5).
+**AC1-AC4 livrées ; AC5 réévaluée le 2026-09-27 — voir §0bis** (verdict : budgets assumés, recalibrage terrain re-dû au premier déploiement production).
 
 **Backend** — nouvelle app `apps/telemetry` : `POST /api/v1/rum/vitals/` (AllowAny, throttle `rum_ingest` 60/min/IP, `authentication_classes = []` pour que le beacon d'un élève connecté ne soit jamais rattachable à sa session) et `GET /api/v1/admin/rum/summary/` (path_admin, p75 rang-le-plus-proche par métrique × type de page, segmenté device/connexion — fenêtre 28 j par défaut, 90 j max, alignée CrUX). Rétention : commande `prune_rum_vitals` (90 j). **13 tests**, dont un qui épingle le schéma : la table n'a *aucune colonne* utilisateur/IP/URL — la vie privée est par construction, pas par politique. `mypy apps/telemetry` : 0 erreur.
 
