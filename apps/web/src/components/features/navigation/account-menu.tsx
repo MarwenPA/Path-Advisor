@@ -17,7 +17,7 @@
  * disclosure popover (`aria-expanded` on the trigger + regular
  * links/buttons, which Tab already reaches in order).
  */
-import { LogOut, Settings } from "lucide-react";
+import { LogOut, Settings, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +33,8 @@ const SETTINGS_PATH = "/parametres/confidentialite";
 
 export interface AccountMenuProps {
   email: string;
+  /** Story 10.5 — l'entrée « Parrainer un pote » n'apparaît que pour un élève. */
+  role?: string;
   /** "sidebar" renders a wide trigger with the email visible; "compact" (mobile) is icon-only. */
   variant?: "sidebar" | "compact";
   /**
@@ -49,7 +51,12 @@ function initialOf(email: string): string {
   return email.trim().charAt(0).toUpperCase() || "?";
 }
 
-export function AccountMenu({ email, variant = "sidebar", placement = "down" }: AccountMenuProps) {
+export function AccountMenu({
+  email,
+  role,
+  variant = "sidebar",
+  placement = "down",
+}: AccountMenuProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -142,6 +149,17 @@ export function AccountMenu({ email, variant = "sidebar", placement = "down" }: 
             <Settings className="h-4 w-4" aria-hidden="true" />
             Paramètres
           </Link>
+          {role === "student" ? (
+            // Story 10.5 — élèves uniquement (l'endpoint est IsStudent).
+            <Link
+              href="/parametres/parrainage"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 rounded-md px-3 py-2 text-body-sm text-text hover:bg-muted"
+            >
+              <Share2 className="h-4 w-4" aria-hidden="true" />
+              Parrainer un pote
+            </Link>
+          ) : null}
           <button
             type="button"
             onClick={handleLogout}

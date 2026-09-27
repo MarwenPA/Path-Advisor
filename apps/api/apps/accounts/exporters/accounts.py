@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 @register_exporter("accounts")
 def export_account_profile(user: User) -> Iterable[ExporterEntry]:
     """Yield a single `profile/profile.json` document."""
-    profile = {
+    profile: dict[str, object] = {
         "id": user.id,
         "email": user.email,
         "role": user.role,
@@ -29,6 +29,15 @@ def export_account_profile(user: User) -> Iterable[ExporterEntry]:
         "tenant_id": str(user.tenant_id) if user.tenant_id else None,
         "created_at": user.created_at.isoformat() if user.created_at else None,
         "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+    }
+    # Story 10.5 — parrainage : le code de l'utilisateur, le nombre de
+    # filleuls (jamais leurs identités) et s'il a lui-même été parrainé
+    # (sans révéler par qui — la donnée du parrain n'est pas la sienne).
+    referral_code = getattr(user, "referral_code", None)
+    profile["referral"] = {
+        "code": referral_code.code if referral_code else None,
+        "referred_count": user.referrals_made.count(),
+        "was_referred": hasattr(user, "referred_by"),
     }
     yield ExporterEntry(
         archive_path="profile/profile.json",

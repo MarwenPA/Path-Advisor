@@ -99,7 +99,7 @@ export function DesktopSidebar({ role, email }: DesktopSidebarProps) {
       </ul>
 
       <div className="border-t border-border p-2">
-        <AccountMenu email={email} variant="sidebar" placement="up" />
+        <AccountMenu email={email} role={role} variant="sidebar" placement="up" />
       </div>
     </nav>
   );

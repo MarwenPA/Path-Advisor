@@ -85,7 +85,7 @@ const SignupSchema = z
 
 type SignupFormValues = z.infer<typeof SignupSchema>;
 
-export function SignupForm() {
+export function SignupForm({ referralCode }: { referralCode?: string } = {}) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
 
@@ -126,6 +126,8 @@ export function SignupForm() {
         // Only send parent_email when the user is a minor — sending an empty string
         // would trigger ParentEmailNotApplicable on the API for ≥ 15 ans.
         ...(isMinor && values.parent_email ? { parent_email: values.parent_email } : {}),
+        // Story 10.5 — attribution silencieuse du parrainage (lien /r/{code}).
+        ...(referralCode ? { referral_code: referralCode } : {}),
       });
       setSubmitted(true);
     } catch (error) {

@@ -17,6 +17,8 @@ export interface SignupPayload {
   consent_cgu_version: string;
   /** Required when the student is < 15 years old (Story 1.4). */
   parent_email?: string;
+  /** Story 10.5 — code de parrainage optionnel (lien /r/{code}). */
+  referral_code?: string;
 }
 
 export interface CsrfResponse {
@@ -229,4 +231,16 @@ export async function confirmPasswordReset(
     body: payload,
     csrfToken,
   });
+}
+
+// --- Story 10.5 — Parrainage -------------------------------------------------
+
+export interface ReferralInfo {
+  code: string;
+  url: string;
+  referred_count: number;
+}
+
+export async function fetchReferralInfo(): Promise<ReferralInfo> {
+  return apiFetch<ReferralInfo>("/api/v1/auth/referral/");
 }

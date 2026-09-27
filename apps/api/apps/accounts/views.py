@@ -40,6 +40,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+from rest_framework.views import APIView
 
 from apps.accounts.gdpr_exceptions import (
     AccountDeleted,
@@ -85,7 +86,7 @@ from apps.core.exceptions import (
     ParentalConsentNotFound,
     RateLimited,
 )
-from apps.core.permissions import IsB2C, IsOwner, IsStudent
+from apps.core.permissions import IsAuthenticatedAndActive, IsB2C, IsOwner, IsStudent
 from apps.core.rls import bypass_rls
 from apps.core.text import mask_email
 
@@ -1714,3 +1715,29 @@ def mfa_regenerate_recovery_codes_view(request: Request) -> Response:
 
 # Rate-limit decorators applied via wrappers — see urls.py (we use api_view
 # above so the existing `@ratelimit` chain works at URL-wire time).
+
+
+class ReferralView(APIView):
+    """GET /api/v1/auth/referral/ — Story 10.5 « Parrainer un pote ».
+
+    Crée le code au premier accès (lazy). `referred_count` est un simple
+    compte — aucun incentive, aucune identité de filleul (AC : pas de dark
+    pattern, V2 pour les récompenses).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsStudent]  # noqa: RUF012
+
+    def get(self, request: Request) -> Response:
+        import os
+
+        from apps.accounts.models import Referral, ReferralCode
+
+        referral_code, _ = ReferralCode.objects.get_or_create(user_id=request.user.pk)
+        site = os.environ.get("NEXT_PUBLIC_SITE_URL", "http://localhost:3000").rstrip("/")
+        return Response(
+            {
+                "code": referral_code.code,
+                "url": f"{site}/r/{referral_code.code}",
+                "referred_count": Referral.objects.filter(referrer_id=request.user.pk).count(),
+            }
+        )

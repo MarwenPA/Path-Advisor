@@ -73,6 +73,10 @@ packages = ["path_advisor"]
 line-length = 100
 target-version = "py312"
 exclude = ["migrations", ".venv"]
+# Le hook lefthook passe les fichiers stagés EXPLICITEMENT, ce qui outrepasse
+# `exclude` (comportement ruff) — sans ceci, toute nouvelle migration bloque
+# le commit sur RUF012 (les listes generees par makemigrations).
+force-exclude = true
 
 [tool.ruff.lint]
 select = [

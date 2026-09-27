@@ -79,6 +79,30 @@ describe("SignupForm", () => {
     });
   });
 
+  it("forwards the referral code from /r/{code} into the signup payload (Story 10.5)", async () => {
+    signupMock.mockResolvedValueOnce({} as never);
+
+    render(<SignupForm referralCode="aBc123Xy" />);
+
+    fireEvent.change(screen.getByLabelText(/adresse email/i), {
+      target: { value: "pote@example.test" },
+    });
+    fireEvent.change(screen.getByLabelText(/^mot de passe$/i), {
+      target: { value: "Path-Advisor-2026!" },
+    });
+    fireEvent.change(screen.getByLabelText(/confirme le mot de passe/i), {
+      target: { value: "Path-Advisor-2026!" },
+    });
+    fireEvent.change(screen.getByLabelText(/date de naissance/i), {
+      target: { value: "2008-01-15" },
+    });
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: /créer mon compte/i }));
+
+    await waitFor(() => expect(signupMock).toHaveBeenCalledOnce());
+    expect(signupMock.mock.calls[0]?.[0]).toMatchObject({ referral_code: "aBc123Xy" });
+  });
+
   it("surfaces the API Problem detail when signup fails", async () => {
     signupMock.mockRejectedValueOnce(
       new ApiError(400, "Tu dois accepter les CGU et la politique RGPD pour continuer.", {

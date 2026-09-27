@@ -29,6 +29,9 @@ class NotificationCategory(models.TextChoices):
     #: seulement si émettrice » (revue Epic 8, P2-4) : elle émet dès sa
     #: naissance.
     REPORT_UPDATES = "report_updates", "Suivi de tes signalements"
+    #: Story 10.5 — parrainage : « ton pote a rejoint ». Émet dès sa
+    #: naissance (règle P2-4) via le signal d'inscription.
+    REFERRALS = "referrals", "Parrainage"
 
 
 class NotificationPreference(models.Model):

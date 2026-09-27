@@ -591,3 +591,51 @@ class ParentalConsent(models.Model):
         # Inclusive of the boundary: an `expires_at` equal to `now()` is past the
         # 60-day window. Story 1.4 review §P19 — eliminates a 1-second loophole.
         return self.expires_at <= timezone.now()
+
+
+def _default_referral_code() -> str:
+    # Court, opaque, URL-safe : jamais l'usr_ id dans un lien partageable
+    # (déviation consignée de l'exemple /r/{my_id} de l'AC — un identifiant
+    # utilisateur dans une URL WhatsApp est une fuite d'énumération).
+    import secrets
+
+    return secrets.token_urlsafe(6)
+
+
+class ReferralCode(models.Model):
+    """Story 10.5 — le code de parrainage d'un élève (créé au premier accès
+    à la page « Parrainer un pote »). Le code est l'unique identifiant qui
+    voyage dans le lien partagé."""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="referral_code")
+    code = models.CharField(max_length=16, unique=True, default=_default_referral_code)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "referral_codes"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"ReferralCode({self.user_id}, {self.code})"
+
+
+class Referral(models.Model):
+    """Story 10.5 — une inscription attribuée à un parrainage.
+
+    Le filleul est OneToOne (une inscription = au plus une attribution).
+    CASCADE des deux côtés : la suppression de compte (1.12) emporte les
+    attributions — donnée minimale, pas d'historique orphelin. Pas de RLS :
+    ligne à deux parties, frontière applicative (patron CounselorConsent),
+    toujours requêtée par `referrer=request.user` côté lecture. Aucune
+    identité du filleul n'est jamais exposée au parrain (seul un compte).
+    Incentives : V2, hors périmètre (AC) — aucun compteur incitatif.
+    """
+
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="referrals_made")
+    referee = models.OneToOneField(User, on_delete=models.CASCADE, related_name="referred_by")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "referrals"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"Referral({self.referrer_id} -> {self.referee_id})"

@@ -24,6 +24,12 @@ def _on_user_signed_up(sender, request, user, **kwargs) -> None:
     """
     record_signup_event(user=user)
 
+    # Story 10.5 — attribution de parrainage (best-effort : un code invalide
+    # ou l'auto-parrainage sont ignorés en silence, jamais un 500 du signup).
+    referral_code = getattr(user, "_referral_code_pending", None)
+    if referral_code:
+        _attribute_referral(user, referral_code)
+
     if user.status == UserStatus.PENDING_PARENTAL_CONSENT:
         # Allauth fires this with a plain WSGIRequest (no `.data`); the adapter stashes
         # the parent_email on the user object as a transient attribute. Reading from
@@ -66,6 +72,49 @@ def _on_user_signed_up(sender, request, user, **kwargs) -> None:
         # outside the atomic block above so the consent row commits first
         # regardless; returns True (queued) which we don't act on here.
         send_request_to_parent(consent)
+
+
+def _attribute_referral(referee, code: str) -> None:
+    """Story 10.5 — crée la ligne d'attribution + notifie le parrain.
+
+    Anonyme au moment du signup → `bypass_rls` (même rationale que le
+    consentement parental ci-dessus). La notification ne divulgue JAMAIS
+    l'identité du filleul (pas de first_name sur User par construction —
+    la copie dit « quelqu'un », le parrain sait à qui il a envoyé son lien).
+    """
+    import structlog
+
+    from apps.accounts.models import Referral, ReferralCode
+    from apps.notifications.models import NotificationCategory
+    from apps.notifications.services import notify
+
+    log = structlog.get_logger(__name__)
+    try:
+        with (
+            transaction.atomic(),
+            bypass_rls(reason="referral.signup_signal", metadata={"referee_id": referee.id}),
+        ):
+            referral_code = ReferralCode.objects.select_related("user").filter(code=code).first()
+            if referral_code is None or referral_code.user_id == referee.id:
+                return  # code inconnu ou auto-parrainage : silence (pas d'oracle)
+            referrer = referral_code.user
+            Referral.objects.create(referrer=referrer, referee=referee)
+            notify(
+                user_id=referrer.id,
+                email=referrer.email,
+                category=NotificationCategory.REFERRALS,
+                template_app="accounts",
+                template_base="email/referral_joined",
+                context={},
+                push={
+                    "title": "Ton pote vient de rejoindre Path-Advisor",
+                    "body": "Ton lien de parrainage a fait mouche.",
+                    "url": "/parametres/parrainage",
+                },
+            )
+    except Exception:
+        # L'inscription du filleul prime toujours sur l'attribution.
+        log.warning("referral.attribution_failed", referee_id=referee.id, exc_info=True)
 
 
 @receiver(email_confirmed)
