@@ -198,8 +198,8 @@ development_status:
   epic-10: in-progress  # demarre 2026-09-27
   10-1-detection-profils-a-risque: done  # merge #122
   10-2-push-web-notifications: done  # merge #121
-  10-3-tableau-qualite-referentiel: review
-  10-4-rdv-visio-ecole-eleve: backlog
+  10-3-tableau-qualite-referentiel: done  # merge #123
+  10-4-rdv-visio-ecole-eleve: review
   10-5-parrainage-lien-tracable: backlog
   10-6-composant-side-flow: done  # merge #120
   epic-10-retrospective: optional

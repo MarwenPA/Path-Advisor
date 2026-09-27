@@ -151,6 +151,8 @@ class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
     stat_delta = serializers.SerializerMethodField()
     comment = serializers.SerializerMethodField()
     comment_pending = serializers.SerializerMethodField()
+    # Story 10.4 — le RDV visio né de l'acceptation d'un créneau.
+    meeting = serializers.SerializerMethodField()
 
     class Meta:
         model = EarlyOutreachResponse
@@ -162,9 +164,19 @@ class EarlyOutreachResponseSerializer(serializers.ModelSerializer):
             "accepted_slot",
             "alternative_note",
             "stat_delta",
+            "meeting",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_meeting(self, obj: EarlyOutreachResponse) -> dict | None:
+        meeting = getattr(obj.request, "meeting", None)
+        if meeting is None:
+            return None
+        return {
+            "scheduled_at": meeting.scheduled_at.isoformat(),
+            "visio_url": meeting.visio_url,
+        }
 
     def get_comment(self, obj) -> str:
         # Story 9.4 (revue Epic 8, P2-5): a staff comment reaches the minor

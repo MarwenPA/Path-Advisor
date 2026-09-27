@@ -1,13 +1,18 @@
 "use client";
 
 /**
- * <InterviewResponseForm> — Story 5.7.
+ * <InterviewResponseForm> — Story 5.7, upgraded Story 10.4.
  *
  * Shown on `/mes-envois` for a request whose school response is
  * `interview_requested` and still undecided: lets the student accept one
  * of the proposed slots, or (single round, §2 scope decision — no
  * back-and-forth negotiation loop) suggest one free-text alternative
  * instead.
+ *
+ * Story 10.4 (AC1 "mini-calendrier") : les créneaux sont groupés par jour
+ * avec l'heure en bouton, fuseau **Europe/Paris explicite** — le rendu
+ * serveur de /mes-envois et le navigateur de l'élève doivent afficher la
+ * même heure (incohérence 5.7 consignée).
  */
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -20,6 +25,30 @@ import { acceptInterviewSlot, proposeInterviewAlternative } from "@/lib/api/outr
 export interface InterviewResponseFormProps {
   outreachId: string;
   proposedSlots: string[];
+}
+
+/** Mini-calendrier : créneaux groupés par jour (Europe/Paris). */
+function groupSlotsByDay(slots: string[]) {
+  const days = new Map<string, { iso: string; hour: string }[]>();
+  for (const iso of slots) {
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) continue;
+    const day = date.toLocaleDateString("fr-FR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "Europe/Paris",
+    });
+    const hour = date.toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Paris",
+    });
+    const bucket = days.get(day) ?? [];
+    bucket.push({ iso, hour });
+    days.set(day, bucket);
+  }
+  return Array.from(days.entries(), ([day, daySlots]) => ({ day, slots: daySlots }));
 }
 
 export function InterviewResponseForm({ outreachId, proposedSlots }: InterviewResponseFormProps) {
@@ -63,15 +92,26 @@ export function InterviewResponseForm({ outreachId, proposedSlots }: InterviewRe
       ) : null}
       {mode === "choose" ? (
         <div className="mt-2 flex flex-col gap-2">
-          {proposedSlots.map((slot) => (
-            <Button
-              key={slot}
-              variant="outline"
-              onClick={() => accept(slot)}
-              disabled={status === "submitting"}
+          {groupSlotsByDay(proposedSlots).map(({ day, slots }) => (
+            <div
+              key={day}
+              className="flex flex-col gap-2 rounded-md border border-border bg-bg p-3"
             >
-              {new Date(slot).toLocaleString("fr-FR")}
-            </Button>
+              <span className="text-body-sm font-medium capitalize text-text">{day}</span>
+              <div className="flex flex-wrap gap-2">
+                {slots.map(({ iso, hour }) => (
+                  <Button
+                    key={iso}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => accept(iso)}
+                    disabled={status === "submitting"}
+                  >
+                    {hour}
+                  </Button>
+                ))}
+              </div>
+            </div>
           ))}
           <Button
             variant="ghost"

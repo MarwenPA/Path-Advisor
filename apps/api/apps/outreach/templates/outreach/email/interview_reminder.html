@@ -1,0 +1,13 @@
+{% extends "notifications/email/base.html" %}
+{% block content %}
+<h1 style="font-size: 20px; margin-top: 0;">Rappel : ton entretien approche</h1>
+<p>Salut,</p>
+<p>
+  Ton entretien avec <strong>{{ school.name }}</strong>
+  {% if meeting %}a lieu {{ meeting.date_label }}.{% endif %}
+</p>
+{% if meeting %}
+<p><a href="{{ meeting.visio_url }}">Rejoindre la visio</a></p>
+<p style="color: #555; font-size: 14px;">Aucune vidéo n'est enregistrée ni conservée.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,10 @@
+Salut,
+
+Petit rappel : ton entretien avec {{ school.name }} a lieu
+{% if meeting %}{{ meeting.date_label }}.
+
+Lien visio : {{ meeting.visio_url }}
+
+Aucune vidéo n'est enregistrée ni conservée.
+{% endif %}
+L'équipe Path-Advisor

@@ -122,6 +122,46 @@ describe("MesEnvoisPage", () => {
     expect(screen.getByText("+7 pts")).toBeInTheDocument();
   });
 
+  it("renders the confirmed visio meeting card (Story 10.4)", async () => {
+    fetchOutreachRequestsMock.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: "reach_meet",
+          school_name: "École Test",
+          profession_name: "Infirmier·ère",
+          status: "responded",
+          rejection_reason: "",
+          response: {
+            action: "interview_requested",
+            comment: "",
+            proposed_slots: ["2026-10-01T10:00:00Z"],
+            accepted_slot: "2026-10-01T10:00:00Z",
+            alternative_note: "",
+            stat_delta: 7,
+            meeting: {
+              scheduled_at: "2026-10-01T10:00:00+00:00",
+              visio_url: "https://meet.jit.si/path-advisor-abc123",
+            },
+            created_at: "2026-09-10T00:00:00Z",
+          },
+          created_at: "2026-09-10T00:00:00Z",
+        },
+      ],
+    });
+
+    render(await MesEnvoisPage());
+
+    expect(screen.getByText(/Entretien confirmé/)).toBeInTheDocument();
+    // Europe/Paris explicite : 10:00 UTC = 12:00 à Paris (été).
+    expect(screen.getByText(/12:00/)).toBeInTheDocument();
+    const join = screen.getByRole("link", { name: "Rejoindre la visio" });
+    expect(join).toHaveAttribute("href", "https://meet.jit.si/path-advisor-abc123");
+    expect(screen.getByText(/Aucune vidéo n'est enregistrée/)).toBeInTheDocument();
+  });
+
   it("groups a positive response under Réponses positives", async () => {
     fetchOutreachRequestsMock.mockResolvedValue({
       count: 1,

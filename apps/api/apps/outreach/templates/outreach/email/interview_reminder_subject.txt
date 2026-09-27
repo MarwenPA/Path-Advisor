@@ -1,0 +1,1 @@
+{% if horizon == "1h" %}Ton entretien avec {{ school.name }} commence dans une heure{% else %}Ton entretien avec {{ school.name }} a lieu demain{% endif %}

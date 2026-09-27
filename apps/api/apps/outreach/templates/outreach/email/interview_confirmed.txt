@@ -1,0 +1,13 @@
+Salut,
+
+C'est noté : ton entretien avec {{ school.name }} aura lieu
+{% if meeting %}{{ meeting.date_label }}.
+
+Le jour J, rejoins la visio avec ce lien :
+{{ meeting.visio_url }}
+
+Aucune vidéo n'est enregistrée ni conservée — l'échange reste entre vous.
+{% endif %}
+Tu retrouves tout dans "Mes envois" depuis ton espace.
+
+L'équipe Path-Advisor

@@ -213,3 +213,59 @@ class EarlyOutreachResponse(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - debug helper
         return f"EarlyOutreachResponse({self.id}, {self.request_id}, {self.action})"
+
+
+def _default_meeting_id() -> str:
+    return generate_id("meet")
+
+
+def _default_room_slug() -> str:
+    # Unguessable Jitsi-style room: the URL is the only credential —
+    # 16 bytes urlsafe ≈ 128 bits, préfixé pour l'hygiène côté instance.
+    import secrets
+
+    return f"path-advisor-{secrets.token_urlsafe(16)}"
+
+
+class InterviewMeeting(models.Model):
+    """Story 10.4 — le RDV visio né de l'acceptation d'un créneau (5.7).
+
+    OneToOne sur la demande (une réponse = un entretien au plus, comme
+    `EarlyOutreachResponse`). `scheduled_at` est le créneau accepté TYPÉ
+    (les slots 5.7 restent des chaînes ISO — consigné) ; `room_slug` porte
+    le lien visio (instance Jitsi via `settings.VISIO_BASE_URL`, transit
+    only : Path-Advisor ne stocke ni flux ni enregistrement — AC3).
+
+    `reminder_24h_sent_at` / `reminder_1h_sent_at` sont les colonnes de
+    claim du beat de rappel (patron milestone 8.3 : UPDATE conditionnel,
+    exactement-une-fois ; un ETA Redis > 4 h serait redélivré —
+    `visibility_timeout`).
+
+    Pas de RLS : comme le reste d'outreach, la frontière est applicative
+    (deux parties — élève et staff école — qu'un RLS mono-owner ne sait
+    pas exprimer), consigné.
+    """
+
+    id = models.CharField(
+        primary_key=True, max_length=32, default=_default_meeting_id, editable=False
+    )
+    outreach = models.OneToOneField(
+        EarlyOutreachRequest, on_delete=models.CASCADE, related_name="meeting"
+    )
+    scheduled_at = models.DateTimeField(db_index=True)
+    room_slug = models.CharField(max_length=64, unique=True, default=_default_room_slug)
+    reminder_24h_sent_at = models.DateTimeField(null=True, blank=True)
+    reminder_1h_sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "interview_meetings"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"InterviewMeeting({self.id}, {self.scheduled_at:%Y-%m-%d %H:%M})"
+
+    @property
+    def visio_url(self) -> str:
+        from django.conf import settings as django_settings
+
+        return f"{django_settings.VISIO_BASE_URL.rstrip('/')}/{self.room_slug}"

@@ -27,6 +27,10 @@ export interface OutreachResponse {
   /** Story 5.8 — the exact point delta already applied to the student's
    * AdmissionStat for this school (+15/+7/-15). */
   stat_delta: number;
+  /** Story 9.4 — a staff comment awaiting a priori moderation. */
+  comment_pending?: boolean;
+  /** Story 10.4 — the visio meeting born from an accepted interview slot. */
+  meeting: { scheduled_at: string; visio_url: string } | null;
   created_at: string;
 }
 

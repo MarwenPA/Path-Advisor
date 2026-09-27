@@ -1,0 +1,1 @@
+Ton entretien avec {{ school.name }} est confirmé
