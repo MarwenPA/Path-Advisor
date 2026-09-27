@@ -391,3 +391,20 @@ class PublicProfessionSlugsView(APIView):
         professions = Profession.objects.filter(is_active=True).order_by("slug")
         serializer = ProfessionSlugSerializer(professions, many=True)
         return Response(serializer.data)
+
+
+class AdminReferentialQualityView(APIView):
+    """GET /api/v1/admin/referential-quality/ — Story 10.3 (FR-FF3).
+
+    Calculé à la demande (patron 9.6) : KPIs de couverture vs cibles FR48,
+    fraîcheur 12 mois, files ouvertes (signalements 9.3, modérations 9.4)
+    et tendances 6 mois. Les seuils d'alerte de l'AC vivent dans
+    `referential_quality.py` ; les CTA sont côté front.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive, IsPathAdmin]
+
+    def get(self, request: Request) -> Response:
+        from .referential_quality import build_quality_report
+
+        return Response(build_quality_report())

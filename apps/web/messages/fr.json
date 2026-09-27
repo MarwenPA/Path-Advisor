@@ -362,7 +362,8 @@
       "signalements": "Signalements",
       "moderation": "Modération",
       "modeles": "Modèles IA",
-      "auditMl": "Audit ML"
+      "auditMl": "Audit ML",
+      "qualite": "Qualité référentiel"
     },
     "metiers": {
       "title": "Référentiel métiers",
@@ -630,6 +631,34 @@
         "meanScore": "Score moyen",
         "count": "Décisions"
       }
+    },
+    "qualite": {
+      "title": "Qualité du référentiel",
+      "loading": "Chargement du tableau…",
+      "loadError": "Le tableau n'a pas pu être chargé. Réessaie dans un instant.",
+      "attentionNeeded": "À traiter",
+      "healthy": "Sain",
+      "noData": "—",
+      "tiles": {
+        "professions": "Métiers publiés",
+        "professionsHint": "{draft} brouillon(s) · cible growth {growth}",
+        "schools": "Écoles publiées",
+        "schoolsHint": "{draft} brouillon(s) · cible growth {growth}",
+        "freshness": "Fraîcheur métiers (12 mois)",
+        "freshnessHint": "Écoles : {schools} · seuil {threshold} %",
+        "reports": "Signalements ouverts",
+        "reportsHint": "{overdue} au-delà de 7 jours · seuil {threshold}",
+        "moderation": "Modérations en attente",
+        "moderationHint": "{motivations} motivation(s) · {comments} commentaire(s) d'école",
+        "manage": "Gérer le référentiel",
+        "goToQueue": "Traiter la file"
+      },
+      "trendEditsTitle": "Éditions de fiches métiers par mois",
+      "trendEditsAria": "Barres mensuelles des éditions de fiches métiers sur 6 mois",
+      "trendSchoolsTitle": "Éditions de fiches écoles par mois",
+      "trendSchoolsAria": "Barres mensuelles des éditions de fiches écoles sur 6 mois",
+      "trendReportsTitle": "Signalements ouverts par mois",
+      "trendReportsAria": "Barres mensuelles des signalements ouverts sur 6 mois"
     }
   }
 }
