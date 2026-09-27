@@ -362,3 +362,53 @@ class CounselorNote(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - debug helper
         return f"CounselorNote({self.id}, {self.counselor_id} -> {self.student_id})"
+
+
+def _default_counselor_intervention_id() -> str:
+    return generate_id("cvi")
+
+
+class CounselorIntervention(models.Model):
+    """Story 10.1 — "intervention en cours" marker on an at-risk student.
+
+    One row per (counselor, student): marking creates or REOPENS it
+    (`resolved_at` cleared), resolving stamps `resolved_at` — the pair's
+    history stays one row, mirroring `CounselorConsent`'s single-row
+    lifecycle. While an intervention is open, the risk list shows the
+    student under "intervention en cours" instead of re-alerting (AC:
+    "éviter les doublons d'alertes").
+
+    Counselor-private like `CounselorNote` (same "plain FK, no RLS" choice,
+    always filtered by `counselor=request.user`). The STUDENT has no read
+    path — the risk flag is counselor-only information by AC ("l'élève ne
+    voit pas qu'il est marqué à risque"); its right-of-access implications
+    are a DPO item consigned in the story doc.
+    """
+
+    id = models.CharField(
+        primary_key=True,
+        max_length=32,
+        default=_default_counselor_intervention_id,
+        editable=False,
+    )
+    counselor = models.ForeignKey(User, on_delete=models.CASCADE, related_name="interventions")
+    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "counselor_interventions"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["counselor", "student"],
+                name="unique_intervention_per_student_counselor",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - debug helper
+        return f"CounselorIntervention({self.id}, {self.counselor_id} -> {self.student_id})"
+
+    @property
+    def in_progress(self) -> bool:
+        return self.resolved_at is None

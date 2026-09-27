@@ -1221,6 +1221,25 @@ def _mfa_user_response(user) -> dict:
     return {"user": UserDetailsSerializer(user).data}
 
 
+def _bind_verified_device(request, user) -> None:
+    """Story 10.1 fix — mark the fresh session as OTP-verified.
+
+    `django_otp.login(request, device)` writes the device id into the
+    session; `OTPMiddleware` then makes `request.user.is_verified()` True on
+    subsequent requests. Without it, every `requires_mfa_verified` permission
+    (IsCounselor, IsSchoolAdmin, IsSupport, non-superuser IsPathAdmin)
+    refuses a staff user who JUST passed the challenge. The recovery-code
+    path binds the confirmed TOTP device too: the semantic carried by the
+    flag is "this session proved a second factor", not which one.
+    """
+    import django_otp
+    from django_otp.plugins.otp_totp.models import TOTPDevice
+
+    device = TOTPDevice.objects.filter(user=user, confirmed=True).first()
+    if device is not None:
+        django_otp.login(request, device)
+
+
 def _mfa_minimal_user(user) -> dict:
     """Scrubbed user envelope for the half-login response (before MFA confirm).
 
@@ -1440,6 +1459,9 @@ def mfa_enroll_confirm_view(request: Request) -> Response:
     # choice because the user was just authenticated by dj-rest-auth's
     # serializer (which delegates to `authenticate()` → ModelBackend).
     django_login(request, user, backend="apps.accounts.backends.TenantAwareModelBackend")
+    # Story 10.1 fix — même correctif que le challenge : la session issue de
+    # l'enrollment doit porter le device fraîchement confirmé.
+    _bind_verified_device(request, user)
 
     return Response(
         {
@@ -1577,6 +1599,12 @@ def mfa_challenge_view(request: Request) -> Response:
     # choice because the user was just authenticated by dj-rest-auth's
     # serializer (which delegates to `authenticate()` → ModelBackend).
     django_login(request, user, backend="apps.accounts.backends.TenantAwareModelBackend")
+    # Story 10.1 fix (attrapé en preuve live) : sans `django_otp.login`, la
+    # session ne porte JAMAIS le device vérifié → `user.is_verified()` reste
+    # False et toute permission `requires_mfa_verified` répond 403 pour un
+    # staff réel non-superuser. Le bypass superuser d'IsPathAdmin masquait le
+    # bug dans les preuves des epics 5-9.
+    _bind_verified_device(request, user)
     return Response(_mfa_user_response(user))
 
 
