@@ -6,11 +6,10 @@
  * users see nothing, and resolution (status flips to active on a refetch)
  * hides the banner and shows the confirmation toast.
  */
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NextIntlClientProvider } from "next-intl";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import messages from "../../../../messages/fr.json";
 import { ApiError } from "@/lib/api/client";
@@ -45,21 +44,19 @@ const BASE_USER: CurrentUser = {
 };
 
 function renderFlow() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  const utils = render(
-    <QueryClientProvider client={queryClient}>
-      <NextIntlClientProvider locale="fr" messages={messages}>
-        <ParentalConsentSideFlow />
-      </NextIntlClientProvider>
-    </QueryClientProvider>,
+  return render(
+    <NextIntlClientProvider locale="fr" messages={messages}>
+      <ParentalConsentSideFlow />
+    </NextIntlClientProvider>,
   );
-  return { queryClient, ...utils };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("ParentalConsentSideFlow", () => {
@@ -137,6 +134,7 @@ describe("ParentalConsentSideFlow", () => {
   });
 
   it("hides the banner and confirms with a toast when the account becomes active", async () => {
+    vi.useFakeTimers();
     vi.mocked(fetchCurrentUser)
       .mockResolvedValueOnce(BASE_USER)
       .mockResolvedValue({
@@ -145,15 +143,20 @@ describe("ParentalConsentSideFlow", () => {
         is_fully_active: true,
         parental_consent_state: null,
       });
-    const { queryClient } = renderFlow();
+    renderFlow();
 
-    expect(await screen.findByText(/Ton parent reçoit l'email/)).toBeInTheDocument();
+    // Initial fetch resolves → banner visible.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(screen.getByText(/Ton parent reçoit l'email/)).toBeInTheDocument();
 
-    await queryClient.invalidateQueries({ queryKey: ["current-user"] });
+    // The 30s poll picks up the now-active account.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
 
-    expect(
-      await screen.findByText("Ton compte est entièrement actif maintenant."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Ton compte est entièrement actif maintenant.")).toBeInTheDocument();
     expect(screen.queryByText(/Ton parent reçoit l'email/)).not.toBeInTheDocument();
   });
 });

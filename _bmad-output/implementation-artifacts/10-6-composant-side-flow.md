@@ -19,9 +19,16 @@ flows non-bloquants soient gérés proprement (UX-DR18).
 - **`components/ui/toast.tsx`** — `useToast` + `<Toast>` extraits des copies
   identiques de `ReportErrorButton` et `ReviewRequestButton` (3.7/3.8), les deux
   boutons migrés dessus.
-- **`hooks/use-current-user.ts`** — query TanStack partagée (`["current-user"]`)
-  avec `pollWhile` conditionnel (patron `use-ocr-job`) : le poll s'arrête seul à
-  la résolution.
+- **`hooks/use-current-user.ts`** — lecture partagée de `/auth/user/` avec
+  `pollWhile` conditionnel, en fetch + `setTimeout` chaîné (patron
+  `AdmissionStatPoller`, ADD-8). **Leçon (attrapée par la gate Lighthouse)** :
+  la première version utilisait `useQuery`, et webpack a replié query-core
+  dans le chunk commun que les pages publiques chargent — +11,5 KB et
+  +200 ms de LCP sur les landings SEO (2560 ms vs budget 2500, baseline
+  verte 2353). Diagnostic par diff des rapports LHCI uploadés (bootup
+  +150 ms, main-thread +268 ms) puis diff des chunks entre builds main et
+  branche. Un composant du layout authentifié ne doit jamais taxer le
+  bundle public.
 - **`components/features/auth/parental-consent-sideflow.tsx`** — l'instance 1.4,
   remplace `LimitedModeBanner` (supprimé) dans le layout authentifié. Poll 30 s
   (ADD-8 : pas de WebSocket MVP) tant que `pending_parental_consent`.

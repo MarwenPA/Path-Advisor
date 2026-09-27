@@ -1,35 +1,60 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 
 import { fetchCurrentUser, type CurrentUser } from "@/lib/api/auth";
 
-export const CURRENT_USER_QUERY_KEY = ["current-user"] as const;
-
 /**
- * Shared authenticated-user query — Story 10.6.
+ * Shared authenticated-user read with optional polling — Story 10.6.
  *
- * Until now every consumer (`mfa-banner`, `ProgressionModule`,
- * `outreach-section`, …) ran its own one-shot `fetchCurrentUser()` in a
- * `useEffect`. This hook gives them a common cache key so N banners on one
- * page cost one request. `pollWhile` turns on a conditional refetch interval
- * (the `use-ocr-job` pattern): return the delay in ms while the condition
- * holds, and the polling stops by itself once it resolves.
+ * Plain fetch + chained `setTimeout` (the `AdmissionStatPoller` pattern,
+ * ADD-8: no WebSocket in MVP), NOT TanStack Query — deliberately. A first
+ * version used `useQuery`, and webpack folded query-core into the commons
+ * chunk that PUBLIC pages load: +11.5 KB and +200 ms of LCP on the SEO
+ * landing pages, caught by the Lighthouse CI gate (budget 2500 ms). The
+ * banners that consume this hook live in the authenticated layout only —
+ * they must never tax the public bundle.
  *
- * `retry: false` — a 401 means the session is gone; retrying only delays the
- * redirect the next server navigation will perform.
+ * `pollWhile` returns the next delay in ms while the condition holds, or
+ * `false` to stop; the loop stops by itself once resolved. A failed fetch
+ * (session blip) keeps the last known user for the decision instead of
+ * killing the loop.
  */
 export function useCurrentUser(options?: {
   pollWhile?: (user: CurrentUser | undefined) => number | false;
 }) {
-  const pollWhile = options?.pollWhile;
-  return useQuery({
-    queryKey: CURRENT_USER_QUERY_KEY,
-    queryFn: fetchCurrentUser,
-    staleTime: 30_000,
-    retry: false,
-    refetchInterval: pollWhile
-      ? (query: { state: { data?: CurrentUser } }) => pollWhile(query.state.data)
-      : undefined,
+  const [user, setUser] = useState<CurrentUser | undefined>(undefined);
+  const pollWhileRef = useRef(options?.pollWhile);
+  useEffect(() => {
+    pollWhileRef.current = options?.pollWhile;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+    let tid: ReturnType<typeof setTimeout> | null = null;
+    let lastKnown: CurrentUser | undefined;
+
+    const tick = async () => {
+      try {
+        lastKnown = await fetchCurrentUser();
+        if (!cancelled) setUser(lastKnown);
+      } catch {
+        // Anonymous or expired session — keep the last known state; the
+        // next server navigation redirects to login anyway.
+      }
+      if (cancelled) return;
+      const delay = pollWhileRef.current?.(lastKnown);
+      if (delay) {
+        tid = setTimeout(() => void tick(), delay);
+      }
+    };
+
+    void tick();
+    return () => {
+      cancelled = true;
+      if (tid !== null) clearTimeout(tid);
+    };
+  }, []);
+
+  return { data: user };
 }
