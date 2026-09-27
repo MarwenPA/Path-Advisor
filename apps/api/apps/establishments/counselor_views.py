@@ -8,18 +8,27 @@ Mounted at `api/v1/` via `apps.establishments.cohort_urls` (distinct from
 
 from __future__ import annotations
 
+from typing import cast
+
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status as drf_status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.models import User
+from apps.audit.decorators import record_audit
+from apps.audit.models import AuditResult
 from apps.core.permissions import IsCounselor, IsStudent
 from apps.core.rls import bypass_rls
 from apps.establishments.exceptions import StudentNotInCounselorsEstablishment
-from apps.establishments.models import CounselorConsent, StudentImportInvitation
+from apps.establishments.models import (
+    CounselorConsent,
+    CounselorIntervention,
+    StudentImportInvitation,
+)
 from apps.establishments.serializers import (
     CohortDashboardSerializer,
     ConsentDecisionSerializer,
@@ -41,6 +50,7 @@ from apps.establishments.services.counselor_profile import (
     get_student_profile_for_counselor,
     list_counselor_notes,
 )
+from apps.establishments.services.risk_detection import get_at_risk_students
 
 
 @api_view(["POST"])
@@ -166,3 +176,79 @@ def counselor_interview_sheet_pdf(request: Request, student_id: str) -> HttpResp
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="fiche-entretien-{student_id}.pdf"'
     return response
+
+
+@api_view(["GET"])
+@permission_classes([IsCounselor])
+def counselor_at_risk_students(request: Request) -> Response:
+    """GET /api/v1/establishments/cohort-dashboard/at-risk/ — Story 10.1.
+
+    Reason CODES + numbers only; the UI owns the constructive wording (AC3).
+    Individual-data rules (profil/bulletins) run only for consent-granted
+    students — the response says how many were engagement-checked only.
+    Audited: this list derives individual signals, like the 6.8 profile view.
+    """
+    counselor = cast(User, request.user)
+    payload = get_at_risk_students(counselor=counselor)
+    record_audit(
+        action="establishments.at_risk_list_viewed",
+        result=AuditResult.SUCCESS,
+        actor=counselor,
+        metadata={
+            "flagged": len(payload["students"]),
+            "without_consent": payload["students_without_consent"],
+        },
+    )
+    return Response(payload)
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsCounselor])
+def counselor_student_intervention(request: Request, student_id: str) -> Response:
+    """POST/DELETE /api/v1/establishments/students/{student_id}/intervention/
+    — Story 10.1. POST marks (or reopens) "intervention en cours"; DELETE
+    resolves it, both idempotent. Establishment membership is the
+    authorization (same check as the consent request) — no consent needed:
+    the marker is the counselor's OWN workflow state, not student data.
+    """
+    with bypass_rls(reason="counselor_views.resolve_invitation_for_intervention"):
+        invitation = get_object_or_404(
+            StudentImportInvitation.objects.select_related("cohort"),
+            user_id=student_id,
+            status="accepted",
+        )
+        student = get_object_or_404(User, id=student_id)
+
+    if invitation.cohort.establishment_id != cast(User, request.user).tenant_id:
+        raise StudentNotInCounselorsEstablishment()
+
+    if request.method == "POST":
+        intervention, created = CounselorIntervention.objects.get_or_create(
+            counselor_id=request.user.pk, student=student
+        )
+        if not created and intervention.resolved_at is not None:
+            intervention.resolved_at = None
+            intervention.save(update_fields=["resolved_at", "updated_at"])
+        record_audit(
+            action="establishments.intervention_marked",
+            result=AuditResult.SUCCESS,
+            actor=request.user,
+            subject_id=student_id,
+            metadata={"intervention_id": intervention.id},
+        )
+        return Response(
+            {"intervention_in_progress": True},
+            status=drf_status.HTTP_201_CREATED if created else drf_status.HTTP_200_OK,
+        )
+
+    updated = CounselorIntervention.objects.filter(
+        counselor_id=request.user.pk, student_id=student_id, resolved_at__isnull=True
+    ).update(resolved_at=timezone.now())
+    if updated:
+        record_audit(
+            action="establishments.intervention_resolved",
+            result=AuditResult.SUCCESS,
+            actor=request.user,
+            subject_id=student_id,
+        )
+    return Response(status=drf_status.HTTP_204_NO_CONTENT)

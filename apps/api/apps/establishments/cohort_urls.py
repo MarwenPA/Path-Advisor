@@ -57,4 +57,15 @@ urlpatterns = [
         counselor_views.counselor_interview_sheet_pdf,
         name="counselor-interview-sheet-pdf",
     ),
+    # Story 10.1 — profils à risque + marqueur d'intervention
+    path(
+        "cohort-dashboard/at-risk/",
+        counselor_views.counselor_at_risk_students,
+        name="counselor-at-risk-students",
+    ),
+    path(
+        "students/<str:student_id>/intervention/",
+        counselor_views.counselor_student_intervention,
+        name="counselor-student-intervention",
+    ),
 ]

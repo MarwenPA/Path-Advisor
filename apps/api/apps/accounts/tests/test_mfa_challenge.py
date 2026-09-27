@@ -349,3 +349,27 @@ def test_half_login_response_scrubs_user_profile(api_client):
     }, f"D5 — half-login user envelope leaked extra fields: {sorted(user_envelope.keys())}"
     assert "email" not in user_envelope
     assert "mfa_recovery_codes_remaining" not in user_envelope
+
+
+# ---------------------------------------------------------------------------
+# Story 10.1 fix — la session issue du challenge porte le device vérifié
+# ---------------------------------------------------------------------------
+
+
+def test_challenge_binds_otp_device_to_session(api_client):
+    """Sans `django_otp.login`, `user.is_verified()` restait False et toute
+    permission `requires_mfa_verified` refusait un staff réel (403
+    `not_mfa_verified`) — attrapé par la preuve live 10.1 avec une
+    conseillère non-superuser."""
+    from django_otp.middleware import OTPMiddleware  # noqa: F401 — doc import
+
+    user = _make_enrolled_user(email="verified-session@example.test", role=UserRole.COUNSELOR)
+    token = _issue_challenge_token(user)
+    response = api_client.post(
+        reverse("mfa_challenge"),
+        {"mfa_session": token, "code": _valid_totp(user), "method": "totp"},
+        format="json",
+    )
+    assert response.status_code == 200
+    device = TOTPDevice.objects.get(user=user, confirmed=True)
+    assert api_client.session.get("otp_device_id") == device.persistent_id
