@@ -126,13 +126,57 @@ def send_school_responded_email(*, outreach: EarlyOutreachRequest, response) -> 
     )
 
 
+def _meeting_context(outreach: EarlyOutreachRequest) -> dict[str, object]:
+    """Story 10.4 — date (Europe/Paris, pré-formatée : le worker rend en
+    fr-fr mais pas en tz locale) + lien visio du RDV, vides si aucun RDV
+    (slot legacy illisible)."""
+    from django.utils import timezone as dj_timezone
+    from django.utils.formats import date_format
+
+    meeting = getattr(outreach, "meeting", None)
+    if meeting is None:
+        return {"meeting": None}
+    local = dj_timezone.localtime(meeting.scheduled_at)
+    return {
+        "meeting": {
+            "date_label": date_format(local, "l j F Y à H:i"),
+            "visio_url": meeting.visio_url,
+        }
+    }
+
+
 def send_interview_slot_accepted_email(*, outreach: EarlyOutreachRequest, staff_email: str) -> None:
     """Story 5.7 — sent to a school-admin email when the student accepts
-    one of the proposed interview slots."""
+    one of the proposed interview slots. Story 10.4: carries the meeting
+    date + visio link (the school joins from this email)."""
     _queue(
         template_base="interview_slot_accepted",
         to=staff_email,
-        context={"outreach": {"id": outreach.id}},
+        context={"outreach": {"id": outreach.id}, **_meeting_context(outreach)},
+    )
+
+
+def send_interview_confirmed_email(*, outreach: EarlyOutreachRequest, meeting) -> None:
+    """Story 10.4 — student confirmation with the visio link. Routed through
+    the ENGINE (category `school_responses` : l'entretien est la suite
+    directe d'une réponse école, même canal d'opt-out) + push sobre (écran
+    verrouillé : jamais le nom de l'école)."""
+    notify(
+        user_id=outreach.student.id,
+        email=outreach.student.email,
+        category=NotificationCategory.SCHOOL_RESPONSES,
+        template_app="outreach",
+        template_base="email/interview_confirmed",
+        context={
+            "school": {"name": outreach.school.name},
+            "outreach": {"id": outreach.id},
+            **_meeting_context(outreach),
+        },
+        push={
+            "title": "Entretien confirmé",
+            "body": "Le lien visio t'attend dans Mes envois.",
+            "url": f"{_site_url()}/mes-envois/{outreach.id}",
+        },
     )
 
 
@@ -145,4 +189,29 @@ def send_interview_alternative_proposed_email(
         template_base="interview_alternative_proposed",
         to=staff_email,
         context={"outreach": {"id": outreach.id}},
+    )
+
+
+def send_interview_reminder_email(*, outreach: EarlyOutreachRequest, meeting, horizon: str) -> None:
+    """Story 10.4 — rappel J-1 (`horizon="24h"`) ou H-1 (`horizon="1h"`),
+    envoyé par le beat `outreach.send_interview_reminders`. Même moteur et
+    même catégorie que la confirmation ; copie calme (pas d'urgence
+    fabriquée), push sûr pour écran verrouillé."""
+    notify(
+        user_id=outreach.student.id,
+        email=outreach.student.email,
+        category=NotificationCategory.SCHOOL_RESPONSES,
+        template_app="outreach",
+        template_base="email/interview_reminder",
+        context={
+            "school": {"name": outreach.school.name},
+            "outreach": {"id": outreach.id},
+            "horizon": horizon,
+            **_meeting_context(outreach),
+        },
+        push={
+            "title": "Ton entretien approche",
+            "body": "Le lien visio est dans Mes envois.",
+            "url": f"{_site_url()}/mes-envois/{outreach.id}",
+        },
     )

@@ -33,6 +33,7 @@ from apps.outreach.models import (
 )
 from apps.outreach.services.early_outreach_email import (
     send_interview_alternative_proposed_email,
+    send_interview_confirmed_email,
     send_interview_slot_accepted_email,
     send_school_responded_email,
 )
@@ -157,8 +158,43 @@ def accept_interview_slot(*, outreach: EarlyOutreachRequest, slot: str) -> Early
 
     response.accepted_slot = slot
     response.save(update_fields=["accepted_slot", "updated_at"])
+
+    # Story 10.4 — la confirmation crée le RDV visio (lien généré, AC2).
+    meeting = _create_meeting(outreach, slot)
+
     _notify_school_staff(outreach, kind="accepted")
+    if meeting is not None:
+        try:
+            send_interview_confirmed_email(outreach=outreach, meeting=meeting)
+        except Exception:
+            # Best-effort, même contrat que school_responded : l'entretien
+            # est confirmé (état persisté), l'email ne doit pas le casser.
+            logger.warning(
+                "outreach.interview_confirmed.notify_failed",
+                extra={"outreach_id": outreach.id},
+                exc_info=True,
+            )
     return response
+
+
+def _create_meeting(outreach: EarlyOutreachRequest, slot: str):
+    """Story 10.4 — matérialise le créneau accepté en `InterviewMeeting`.
+
+    Les slots 5.7 sont des chaînes ISO produites par le front école ; un
+    slot illisible (données legacy) ne crée pas de RDV et se consigne en
+    warning — l'acceptation elle-même reste valide (comportement 5.7)."""
+    from django.utils.dateparse import parse_datetime
+
+    from apps.outreach.models import InterviewMeeting
+
+    scheduled_at = parse_datetime(slot)
+    if scheduled_at is None or scheduled_at.tzinfo is None:
+        logger.warning(
+            "outreach.interview_meeting.unparseable_slot",
+            extra={"outreach_id": outreach.id, "slot": slot},
+        )
+        return None
+    return InterviewMeeting.objects.create(outreach=outreach, scheduled_at=scheduled_at)
 
 
 @audit_action(

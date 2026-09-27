@@ -31,8 +31,14 @@ describe("InterviewResponseForm", () => {
     acceptMock.mockResolvedValue({});
     render(<InterviewResponseForm outreachId="reach_1" proposedSlots={SLOTS} />);
 
-    const slotLabel = new Date(SLOTS[0] as string).toLocaleString("fr-FR");
-    fireEvent.click(screen.getByRole("button", { name: slotLabel }));
+    // Story 10.4 — mini-calendrier : le bouton porte l'HEURE (Europe/Paris),
+    // le jour est le titre du groupe.
+    const hourLabel = new Date(SLOTS[0] as string).toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: "Europe/Paris",
+    });
+    fireEvent.click(screen.getByRole("button", { name: hourLabel }));
 
     await waitFor(() => expect(routerMock.refresh).toHaveBeenCalled());
     expect(acceptMock).toHaveBeenCalledWith("reach_1", SLOTS[0]);

@@ -1,0 +1,16 @@
+{% extends "notifications/email/base.html" %}
+{% block content %}
+<h1 style="font-size: 20px; margin-top: 0;">Entretien confirmé</h1>
+<p>Salut,</p>
+<p>
+  C'est noté : ton entretien avec <strong>{{ school.name }}</strong>
+  {% if meeting %}aura lieu {{ meeting.date_label }}.{% endif %}
+</p>
+{% if meeting %}
+<p><a href="{{ meeting.visio_url }}">Rejoindre la visio le jour J</a></p>
+<p style="color: #555; font-size: 14px;">
+  Aucune vidéo n'est enregistrée ni conservée — l'échange reste entre vous.
+</p>
+{% endif %}
+<p>Tu retrouves tout dans « Mes envois » depuis ton espace.</p>
+{% endblock %}

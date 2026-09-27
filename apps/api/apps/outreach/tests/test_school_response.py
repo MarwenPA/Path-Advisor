@@ -265,8 +265,10 @@ class TestInterviewFollowUp:
 
         assert response.status_code == 200, response.content
         assert response.json()["response"]["accepted_slot"] == "2026-10-01T10:00:00Z"
-        assert len(mail.outbox) == 1
-        assert mail.outbox[0].to == [school_admin.email]
+        # Story 10.4 : l'acceptation notifie l'école ET confirme à l'élève
+        # (RDV visio créé) — 2 emails désormais.
+        assert len(mail.outbox) == 2
+        assert {m.to[0] for m in mail.outbox} == {school_admin.email, student.email}
 
     def test_accepting_a_slot_not_proposed_returns_400(
         self, student_client, student, school, profession

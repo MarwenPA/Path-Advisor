@@ -84,9 +84,40 @@ function OutreachCard({ r }: { r: EarlyOutreachRequestItem }) {
       !r.response.alternative_note ? (
         <InterviewResponseForm outreachId={r.id} proposedSlots={r.response.proposed_slots} />
       ) : null}
-      {r.response?.accepted_slot ? (
+      {r.response?.meeting ? (
+        // Story 10.4 — le RDV visio confirmé. Fuseau Europe/Paris explicite :
+        // ce composant est rendu SERVEUR, sans ça l'heure suivrait le tz du
+        // process Node (incohérence 5.7 corrigée).
+        <div className="mt-2 flex flex-col gap-2 rounded-md border border-border bg-bg p-3">
+          <p className="text-body-sm font-medium text-text">
+            Entretien confirmé —{" "}
+            {new Date(r.response.meeting.scheduled_at).toLocaleString("fr-FR", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              hour: "2-digit",
+              minute: "2-digit",
+              timeZone: "Europe/Paris",
+            })}
+          </p>
+          <a
+            href={r.response.meeting.visio_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-fit rounded-lg bg-primary px-3 py-1.5 text-body-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Rejoindre la visio
+          </a>
+          <p className="text-caption text-text-subtle">
+            Aucune vidéo n&apos;est enregistrée ni conservée — l&apos;échange reste entre vous.
+          </p>
+        </div>
+      ) : r.response?.accepted_slot ? (
         <p className="mt-2 text-body-sm text-text-muted">
-          Créneau accepté : {new Date(r.response.accepted_slot).toLocaleString("fr-FR")}
+          Créneau accepté :{" "}
+          {new Date(r.response.accepted_slot).toLocaleString("fr-FR", {
+            timeZone: "Europe/Paris",
+          })}
         </p>
       ) : null}
       {r.response?.alternative_note ? (

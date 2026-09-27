@@ -423,6 +423,13 @@ WEBPUSH_VAPID_PRIVATE_KEY = os.environ.get("WEBPUSH_VAPID_PRIVATE_KEY", "")
 # to users.
 WEBPUSH_VAPID_ADMIN_EMAIL = os.environ.get("WEBPUSH_VAPID_ADMIN_EMAIL", "ops@path-advisor.fr")
 
+# --- Visio (Story 10.4 — RDV entretien école↔élève) ---
+# Base URL of the Jitsi instance the meeting links point to. Dev/staging use
+# the public meet.jit.si; production points to a self-hosted instance (PRD:
+# "liens jitsi self-hosted"). Transit only — Path-Advisor stores the link,
+# never any media (AC3/RGPD).
+VISIO_BASE_URL = os.environ.get("VISIO_BASE_URL", "https://meet.jit.si")
+
 # --- Email (overridden per environment) ---
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@path-advisor.local")
 

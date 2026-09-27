@@ -96,6 +96,9 @@ def bypass_rls(*, reason: str, metadata: dict[str, Any] | None = None) -> Iterat
     6. `apps.notifications.views.UnsubscribeView` (Story 8.2) — the email
        footer's legal unsubscribe link: signed token proves the claim, the
        anonymous click must flip the recipient's own RLS-protected row.
+    7. `apps.outreach.tasks.send_interview_reminders` (Story 10.4 beat) —
+       reads meetings + student/school emails across users to send the
+       J-1/H-1 visio reminders (same shape as `expire_stale_requests`).
 
     `reason` is mandatory and persisted in the audit row so DPO can grep.
     """

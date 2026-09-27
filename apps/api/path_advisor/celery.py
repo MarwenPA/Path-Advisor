@@ -115,6 +115,13 @@ app.conf.beat_schedule = {
         "task": "outreach.expire_stale_requests",
         "schedule": crontab(hour=4, minute=45),
     },
+    # Story 10.4 — rappels J-1 / H-1 des RDV visio. Toutes les 15 min : les
+    # fenêtres se réclament par UPDATE conditionnel (un ETA Redis > 4h de
+    # visibility_timeout serait redélivré — voir la tâche).
+    "outreach-send-interview-reminders": {
+        "task": "outreach.send_interview_reminders",
+        "schedule": crontab(minute="*/15"),
+    },
 }
 
 

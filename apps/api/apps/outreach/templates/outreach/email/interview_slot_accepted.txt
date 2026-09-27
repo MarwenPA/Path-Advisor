@@ -1,6 +1,8 @@
 Bonjour,
 
 L'élève a accepté un créneau d'entretien pour la demande {{ outreach.id }}.
-Connecte-toi à ton espace école pour voir le créneau retenu.
-
+{% if meeting %}Rendez-vous {{ meeting.date_label }}.
+Lien visio (aucun enregistrement, transit uniquement) : {{ meeting.visio_url }}
+{% else %}Connecte-toi à ton espace école pour voir le créneau retenu.
+{% endif %}
 L'équipe Path-Advisor

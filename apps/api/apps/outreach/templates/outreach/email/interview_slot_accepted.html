@@ -5,9 +5,17 @@
     <p>Bonjour,</p>
     <p>
       L'élève a accepté un créneau d'entretien pour la demande
-      <code>{{ outreach.id }}</code>. Connecte-toi à ton espace école pour voir le créneau
-      retenu.
+      <code>{{ outreach.id }}</code>.
     </p>
+    {% if meeting %}
+    <p>Rendez-vous {{ meeting.date_label }}.</p>
+    <p>
+      <a href="{{ meeting.visio_url }}">Rejoindre la visio</a> — aucun
+      enregistrement, transit uniquement.
+    </p>
+    {% else %}
+    <p>Connecte-toi à ton espace école pour voir le créneau retenu.</p>
+    {% endif %}
     <p>L'équipe Path-Advisor</p>
   </body>
 </html>
