@@ -268,16 +268,6 @@
     "signupCta": "Crée ton compte pour voir ta proba d'admission personnalisée"
   },
   "notifications": {
-    "settings": {
-      "metaTitle": "Notifications | Path-Advisor",
-      "metaDescription": "Choisis les catégories d'emails que tu veux recevoir de Path-Advisor.",
-      "title": "Notifications",
-      "intro": "Choisis les emails que tu veux recevoir. Chaque changement est enregistré immédiatement.",
-      "stateEnabled": "Activé",
-      "stateDisabled": "Désactivé",
-      "statePending": "Enregistrement…",
-      "updateError": "Le changement n'a pas pu être enregistré — le réglage a été remis comme avant. Réessaie dans un instant."
-    },
     "unsubscribe": {
       "metaTitle": "Se désinscrire | Path-Advisor",
       "metaDescription": "Confirme la désinscription d'une catégorie d'emails Path-Advisor.",
@@ -341,6 +331,25 @@
       "expiredMessage": "La demande de validation parentale a expiré. Passe par la page support pour la relancer.",
       "goToSupport": "Contacter le support",
       "resolvedToast": "Ton compte est entièrement actif maintenant."
+    }
+  },
+  "notificationSettings": {
+    "metaTitle": "Notifications | Path-Advisor",
+    "metaDescription": "Choisis les catégories d'emails que tu veux recevoir de Path-Advisor.",
+    "title": "Notifications",
+    "intro": "Choisis les emails que tu veux recevoir. Chaque changement est enregistré immédiatement.",
+    "stateEnabled": "Activé",
+    "stateDisabled": "Désactivé",
+    "statePending": "Enregistrement…",
+    "updateError": "Le changement n'a pas pu être enregistré — le réglage a été remis comme avant. Réessaie dans un instant.",
+    "push": {
+      "label": "Notifications push sur cet appareil",
+      "description": "En plus des emails, reçois une notification du navigateur pour les réponses d'écoles et les échéances Parcoursup.",
+      "stateOn": "Activé",
+      "stateOff": "Désactivé",
+      "statePending": "Enregistrement…",
+      "denied": "Ton navigateur bloque les notifications pour Path-Advisor. Tu peux les autoriser dans les réglages du site — les emails continuent d'arriver quoi qu'il en soit.",
+      "error": "L'activation n'a pas abouti — le réglage a été remis comme avant. Réessaie dans un instant."
     }
   },
   "admin": {

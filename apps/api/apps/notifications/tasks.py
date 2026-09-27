@@ -136,6 +136,14 @@ def send_parcoursup_milestone_notifications() -> int:
                             "cta_label": copy["cta_label"],
                             "cta_url": f"{_site_url()}{copy['cta_path']}",
                         },
+                        # Story 10.2 — calendar milestones are the second
+                        # critical push event (AC1). Same calm copy as the
+                        # email subject/intro, no invented urgency.
+                        push={
+                            "title": str(copy["subject"]).format(date=date_fr),
+                            "body": str(copy["intro"]).format(date=date_fr),
+                            "url": f"{_site_url()}{copy['cta_path']}",
+                        },
                     )
                     if row is not None:
                         queued_milestone += 1
@@ -300,3 +308,20 @@ def send_new_schools_digest() -> int:
 
     log.info("notifications.new_schools_digest_sent", week=week, queued=queued)
     return queued
+
+
+@shared_task(name="notifications.send_web_push")
+def send_web_push(user_id: str, category: str, payload: dict) -> dict:
+    """Story 10.2 — deliver a Web Push payload to every subscription of one
+    user. Enqueued by `notify()` next to the email (same opt-out gate); the
+    worker has no request context, so the `push_subscriptions` read runs
+    under `with_system_actor` (whitelist #12 in core/rls.py).
+
+    Best-effort by design: a failed push is logged, never retried — the
+    email is the durable channel, and a late duplicate buzz is worse than
+    no buzz (no urgence fabriquée).
+    """
+    from .push import deliver_web_push
+
+    with with_system_actor(reason="notifications.send_web_push"):
+        return deliver_web_push(user_id=user_id, category=category, payload=payload)

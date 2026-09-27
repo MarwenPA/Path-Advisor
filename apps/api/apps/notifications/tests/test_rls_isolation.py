@@ -126,3 +126,34 @@ def test_cross_user_delta_cursor_is_invisible_and_unwritable(skip_if_sqlite):
         # Cross-user UPDATE matches nothing (USING filters it out).
         cur.execute("UPDATE delta_recap_cursors SET seen_at = now() WHERE id = %s", [bob_cursor.pk])
         assert cur.rowcount == 0
+
+
+# ---------------------------------------------------------------------------
+# Story 10.2 — `push_subscriptions` (same policy shape, migration 0009)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db(transaction=True)
+def test_cross_user_push_subscription_is_invisible_and_unwritable(skip_if_sqlite):
+    from apps.notifications.models import PushSubscription
+
+    alice = _make_student("alice-push@test.local")
+    bob = _make_student("bob-push@test.local")
+    with as_path_admin():
+        PushSubscription.objects.create(
+            user=alice, endpoint="https://push.test/a", p256dh="BPa", auth="aa"
+        )
+        bob_sub = PushSubscription.objects.create(
+            user=bob, endpoint="https://push.test/b", p256dh="BPb", auth="bb"
+        )
+
+    with transaction.atomic(), connection.cursor() as cur:
+        _set_gucs(cur, user_id=alice.id, actor_role="student")
+        cur.execute("SELECT user_id FROM push_subscriptions")
+        visible = {r[0] for r in cur.fetchall()}
+        assert alice.id in visible  # positive control — the session is live
+        assert bob.id not in visible, "RLS must hide other users' push subscriptions."
+        # Cross-user DELETE matches nothing (USING filters it out) — an
+        # attacker must not be able to sever someone else's push channel.
+        cur.execute("DELETE FROM push_subscriptions WHERE id = %s", [bob_sub.pk])
+        assert cur.rowcount == 0

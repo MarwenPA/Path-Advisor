@@ -115,6 +115,14 @@ def send_school_responded_email(*, outreach: EarlyOutreachRequest, response) -> 
             "response_url": f"{_site_url()}/mes-envois/{outreach.id}",
             "explore_url": f"{_site_url()}/schools",
         },
+        # Story 10.2 — critical event, push channel too. Lock-screen-safe
+        # copy on purpose: no school name, no action verb (the phone of a
+        # minor can be read over a shoulder — the email has the details).
+        push={
+            "title": "Une école t'a répondu",
+            "body": "Ta réponse t'attend dans Mes envois.",
+            "url": f"{_site_url()}/mes-envois/{outreach.id}",
+        },
     )
 
 

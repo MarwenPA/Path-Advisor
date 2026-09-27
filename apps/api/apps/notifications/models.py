@@ -147,3 +147,40 @@ class DeltaRecapCursor(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover — debug nicety
         return f"{self.user_id} seen_at={self.seen_at:%Y-%m-%d %H:%M}"
+
+
+class PushSubscription(models.Model):
+    """Story 10.2 — one browser's Web Push subscription (endpoint + keys).
+
+    Opt-in model: the row IS the consent for this device — no row, no push
+    (graceful degradation NFR-R4: email stays the durable channel). The
+    category preference gate (`is_enabled`) still applies on top at send
+    AND at delivery time, mirroring the email path.
+
+    `endpoint` is unique per browser profile: re-subscribing after an
+    account switch on the same profile reassigns the row to the new user
+    (a push service endpoint can only belong to one live subscription).
+    Rows are hard-deleted on unsubscribe and purged automatically when the
+    push service answers 404/410 (browser revoked it).
+
+    Personal data (device reachability of a minor) → RLS from migration
+    0009, policies mirroring `delta_recap_cursors`.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.TextField(unique=True)
+    # Client public key + auth secret from `PushSubscription.toJSON().keys` —
+    # required by the aes128gcm payload encryption (RFC 8291).
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "push_subscriptions"
+
+    def __str__(self) -> str:  # pragma: no cover — debug nicety
+        return f"{self.user_id} @ {self.endpoint[:40]}…"

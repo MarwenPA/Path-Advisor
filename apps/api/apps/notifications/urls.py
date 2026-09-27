@@ -8,7 +8,9 @@ from .views import (
     DeltaRecapAckView,
     DeltaRecapView,
     NotificationPreferencesView,
+    PushSubscriptionsView,
     UnsubscribeView,
+    VapidPublicKeyView,
 )
 
 urlpatterns = [
@@ -32,4 +34,11 @@ urlpatterns = [
         name="notification-preferences",
     ),
     path("notifications/unsubscribe/", UnsubscribeView.as_view(), name="notification-unsubscribe"),
+    # Story 10.2 — Web Push opt-in/out (la ligne du dessus reste le canal email).
+    path("me/push-subscriptions/", PushSubscriptionsView.as_view(), name="push-subscriptions"),
+    path(
+        "notifications/push/vapid-public-key/",
+        VapidPublicKeyView.as_view(),
+        name="push-vapid-public-key",
+    ),
 ]

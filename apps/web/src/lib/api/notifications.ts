@@ -22,7 +22,10 @@ export type NotificationCategory =
   | "parcoursup_calendar"
   | "school_responses"
   | "new_schools"
-  | "profile_completion";
+  | "profile_completion"
+  // Story 9.3 backend category — was missing from this union (drive-by fix
+  // Story 10.2): the preferences GET returns it since the report queue ships.
+  | "report_updates";
 
 export interface NotificationPreference {
   category: NotificationCategory;
@@ -71,5 +74,38 @@ export async function unsubscribeByToken(token: string): Promise<UnsubscribeResp
   return apiFetch<UnsubscribeResponse>("/api/v1/notifications/unsubscribe/", {
     method: "POST",
     body: { token },
+  });
+}
+
+// --- Story 10.2 — Web Push -------------------------------------------------
+
+/** `null` when the server has no VAPID config (204) — the toggle hides. */
+export async function fetchVapidPublicKey(): Promise<string | null> {
+  const res = await apiFetch<{ public_key: string } | null>(
+    "/api/v1/notifications/push/vapid-public-key/",
+  );
+  return res?.public_key ?? null;
+}
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export async function createPushSubscription(
+  payload: PushSubscriptionPayload,
+): Promise<{ detail: string }> {
+  return apiFetch<{ detail: string }>("/api/v1/me/push-subscriptions/", {
+    method: "POST",
+    csrfToken: readCsrfCookie() ?? undefined,
+    body: payload,
+  });
+}
+
+export async function deletePushSubscription(endpoint: string): Promise<void> {
+  await apiFetch<void>("/api/v1/me/push-subscriptions/", {
+    method: "DELETE",
+    csrfToken: readCsrfCookie() ?? undefined,
+    body: { endpoint },
   });
 }

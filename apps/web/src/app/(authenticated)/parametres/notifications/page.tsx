@@ -4,20 +4,21 @@
  * One toggle per notification category (the 4 backend categories), saved
  * immediately per change — no "save" button. Category labels come from the
  * API (backend French labels, `NotificationCategory.choices`); page chrome
- * strings live in `messages/fr.json#notifications.settings` (Story 7.7
+ * strings live in `messages/fr.json#notificationSettings (auth-only)` (Story 7.7
  * conventions).
  */
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { NotificationPreferencesList } from "./notification-preferences-list";
+import { PushToggle } from "./push-toggle";
 import { fetchNotificationPreferences } from "@/lib/api/notifications";
 
 // Authenticated per-user data — same rationale as /parametres/abonnement.
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations("notifications.settings");
+  const t = await getTranslations("notificationSettings");
   return {
     title: t("metaTitle"),
     description: t("metaDescription"),
@@ -25,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function NotificationsPage() {
-  const t = await getTranslations("notifications.settings");
+  const t = await getTranslations("notificationSettings");
   const { preferences } = await fetchNotificationPreferences();
 
   return (
@@ -36,6 +37,10 @@ export default async function NotificationsPage() {
       </header>
 
       <NotificationPreferencesList initialPreferences={preferences} />
+
+      {/* Story 10.2 — opt-in push par appareil ; se cache seul si non
+          supporté / non configuré (dégradation gracieuse, NFR-R4). */}
+      <PushToggle />
     </main>
   );
 }

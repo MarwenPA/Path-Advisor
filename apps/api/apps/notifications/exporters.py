@@ -20,8 +20,14 @@ if TYPE_CHECKING:
 @register_exporter("notifications")
 def export_notifications(user: User) -> Iterable[ExporterEntry]:
     """Preference rows (opt-out model: absence = enabled) + the DeltaRecap
-    cursor (when the student last consumed their recap)."""
-    from .models import DeltaRecapCursor, NotificationCategory, NotificationPreference
+    cursor (when the student last consumed their recap) + the Story 10.2
+    push subscriptions (device reachability)."""
+    from .models import (
+        DeltaRecapCursor,
+        NotificationCategory,
+        NotificationPreference,
+        PushSubscription,
+    )
 
     rows = {
         p.category: {"enabled": p.enabled, "updated_at": p.updated_at.isoformat()}
@@ -40,6 +46,10 @@ def export_notifications(user: User) -> Iterable[ExporterEntry]:
     }
     cursor = DeltaRecapCursor.objects.filter(user_id=user.pk).first()
     payload["delta_recap_seen_at"] = cursor.seen_at.isoformat() if cursor else None
+    payload["push_subscriptions"] = [
+        {"endpoint": s.endpoint, "created_at": s.created_at.isoformat()}
+        for s in PushSubscription.objects.filter(user_id=user.pk)
+    ]
 
     yield ExporterEntry(
         archive_path="notifications/notifications.json",
