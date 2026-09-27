@@ -163,6 +163,28 @@ class UserDetailsSerializer(serializers.Serializer):
     mfa_enrolled = serializers.SerializerMethodField()
     mfa_recovery_codes_remaining = serializers.SerializerMethodField()
 
+    # Story 10.6 — fine-grained consent state for the parental SideFlow.
+    # `status` alone can't tell "waiting on the parent" (resend makes sense)
+    # from "granted but email unverified" or "expired" (resend 404s): the old
+    # banner offered a CTA that could only fail in those two states.
+    parental_consent_state = serializers.SerializerMethodField()
+
+    def get_parental_consent_state(self, obj) -> str | None:
+        from django.utils import timezone
+
+        from apps.accounts.models import ParentalConsentDecision, UserStatus
+
+        if obj.status != UserStatus.PENDING_PARENTAL_CONSENT:
+            return None
+        consent = obj.parental_consents.order_by("-requested_at").first()
+        if consent is None:
+            return "none"
+        if consent.decision == ParentalConsentDecision.GRANTED:
+            return "granted"
+        if consent.decision is None and consent.expires_at > timezone.now():
+            return "pending"
+        return "expired"
+
     def get_mfa_required_by_role(self, obj) -> bool:
         from apps.accounts.models import STAFF_ROLES_REQUIRING_MFA
 

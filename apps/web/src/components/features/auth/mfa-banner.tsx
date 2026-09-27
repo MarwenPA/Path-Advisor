@@ -13,7 +13,8 @@ import { type CurrentUser, fetchCurrentUser } from "@/lib/api/auth";
  * persistent reminder — staff users who never visit
  * `/parametres/securite/mfa` would otherwise miss the obligation.
  *
- * Client-rendered (mirrors LimitedModeBanner from Story 1.4): fetches
+ * Client-rendered (same pattern as the Story 1.4 consent banner, now
+ * `ParentalConsentSideFlow` since Story 10.6): fetches
  * `/auth/user/` once on mount, hides for non-staff or already-enrolled
  * users so unaffected accounts see the layout exactly as pre-1.6.
  *

@@ -3,7 +3,7 @@ import { getMessages } from "next-intl/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { LimitedModeBanner } from "@/components/features/auth/limited-mode-banner";
+import { ParentalConsentSideFlow } from "@/components/features/auth/parental-consent-sideflow";
 import { MfaBanner } from "@/components/features/auth/mfa-banner";
 import { DesktopSidebar } from "@/components/features/navigation/desktop-sidebar";
 import { MobileNav } from "@/components/features/navigation/mobile-nav";
@@ -26,8 +26,9 @@ import { cn } from "@/lib/utils";
  *    user's role against `ROUTE_ALLOWED_ROLES`. Refused users redirect
  *    to `/auth/forbidden?from=<sanitized-path>` (a dead-end page).
  * 3. **UX banners** — `MfaBanner` for staff non-enrolled (Story 1.6
- *    §AC8), `LimitedModeBanner` for pending-parental-consent kids
- *    (Story 1.4 §AC7). Both self-hide when not applicable.
+ *    §AC8), `ParentalConsentSideFlow` for pending-parental-consent kids
+ *    (Story 1.4 §AC7, generalized by Story 10.6). Both self-hide when
+ *    not applicable.
  *
  * Pathname is read from the `x-pathname` header injected by the root
  * `middleware.ts` (Next.js 15 does not expose pathname to Server
@@ -79,7 +80,7 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         <div className="flex min-h-screen flex-1 flex-col">
           <MobileNav role={safeRole} email={email} />
           <MfaBanner />
-          <LimitedModeBanner />
+          <ParentalConsentSideFlow />
           {/* Code-review fix (2026-09): the bottom-tab-bar space was reserved
             unconditionally — roles without a tab bar (parent, counselor,
             school_admin, support, path_admin) got 64px of dead space at the

@@ -105,6 +105,11 @@ export interface CurrentUser {
   mfa_required_by_role: boolean;
   mfa_enrolled: boolean;
   mfa_recovery_codes_remaining: number;
+  // Story 10.6 — fine-grained parental-consent state for the SideFlow banner.
+  // Non-null only while `status === "pending_parental_consent"`: `pending`
+  // (parent hasn't decided), `granted` (decided yes, student email still
+  // unverified), `expired`/`none` (60-day window closed — resend would 404).
+  parental_consent_state: "pending" | "granted" | "expired" | "none" | null;
 }
 
 /**
