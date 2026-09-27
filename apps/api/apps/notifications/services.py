@@ -21,6 +21,7 @@ outbox's job (8.1). One responsibility per layer.
 from __future__ import annotations
 
 import structlog
+from django.db import transaction
 
 from apps.mailer.models import EmailOutbox
 from apps.mailer.service import send_transactional
@@ -38,12 +39,19 @@ def notify(
     template_app: str,
     template_base: str,
     context: dict[str, object],
+    push: dict[str, str] | None = None,
 ) -> EmailOutbox | None:
     """Send a category notification — or refuse, loudly-in-logs, if opted out.
 
     Returns the outbox row, or None when the user is unsubscribed (callers
     must treat None as success: "not sent because the user said no" is a
     normal outcome, not an error).
+
+    Story 10.2 — `push` opts the event into the Web Push channel IN ADDITION
+    to the email: `{"title", "body", "url"}`, enqueued on commit (a rolled-
+    back caller transaction must never buzz a phone) behind the SAME opt-out
+    gate. Callers keep the copy lock-screen-safe: generic words, no school
+    name, no personal data. No push subscriptions = email only (NFR-R4).
     """
     if category not in NotificationCategory.values:
         raise ValueError(f"Unknown notification category: {category!r}")
@@ -55,7 +63,7 @@ def notify(
         log.info("notifications.skipped_opted_out", user_id=user_id, category=category)
         return None
 
-    return send_transactional(
+    row = send_transactional(
         template_app=template_app,
         template_base=template_base,
         to=email,
@@ -65,3 +73,13 @@ def notify(
         notification_user_id=user_id,
         notification_category=category,
     )
+
+    if push is not None:
+        # Local import: tasks.py imports this module (notify), a module-level
+        # import here would cycle.
+        from .tasks import send_web_push
+
+        payload = dict(push)
+        transaction.on_commit(lambda: send_web_push.delay(user_id, category, payload), robust=True)
+
+    return row

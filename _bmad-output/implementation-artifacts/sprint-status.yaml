@@ -197,9 +197,9 @@ development_status:
   # Epic 10 — Fast-follow post-MVP (mois 9-12)
   epic-10: in-progress  # demarre 2026-09-27
   10-1-detection-profils-a-risque: backlog
-  10-2-push-web-notifications: backlog
+  10-2-push-web-notifications: review
   10-3-tableau-qualite-referentiel: backlog
   10-4-rdv-visio-ecole-eleve: backlog
   10-5-parrainage-lien-tracable: backlog
-  10-6-composant-side-flow: review
+  10-6-composant-side-flow: done  # merge #120
   epic-10-retrospective: optional

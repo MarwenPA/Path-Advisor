@@ -11,6 +11,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { NotificationPreferencesList } from "./notification-preferences-list";
+import { PushToggle } from "./push-toggle";
 import { fetchNotificationPreferences } from "@/lib/api/notifications";
 
 // Authenticated per-user data — same rationale as /parametres/abonnement.
@@ -36,6 +37,10 @@ export default async function NotificationsPage() {
       </header>
 
       <NotificationPreferencesList initialPreferences={preferences} />
+
+      {/* Story 10.2 — opt-in push par appareil ; se cache seul si non
+          supporté / non configuré (dégradation gracieuse, NFR-R4). */}
+      <PushToggle />
     </main>
   );
 }

@@ -411,6 +411,18 @@ STRIPE_CHECKOUT_CANCEL_URL = os.environ.get(
     "STRIPE_CHECKOUT_CANCEL_URL", "http://localhost:3000/premium"
 )
 
+# --- Web Push (Story 10.2 — VAPID) ---
+# The keypair identifies OUR server to the browser push services (RFC 8292).
+# The PRIVATE key is a secret: env only (Doppler/Scaleway Secrets in
+# staging/prod, gitignored .env locally — `manage.py generate_vapid_keys`
+# prints a fresh pair to copy there). Empty private key = push channel
+# disabled entirely, emails keep flowing (graceful degradation, NFR-R4).
+WEBPUSH_VAPID_PUBLIC_KEY = os.environ.get("WEBPUSH_VAPID_PUBLIC_KEY", "")
+WEBPUSH_VAPID_PRIVATE_KEY = os.environ.get("WEBPUSH_VAPID_PRIVATE_KEY", "")
+# RFC 8292 `sub` claim — a contact for push-service operators, never sent
+# to users.
+WEBPUSH_VAPID_ADMIN_EMAIL = os.environ.get("WEBPUSH_VAPID_ADMIN_EMAIL", "ops@path-advisor.fr")
+
 # --- Email (overridden per environment) ---
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "no-reply@path-advisor.local")
 

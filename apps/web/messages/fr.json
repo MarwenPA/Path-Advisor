@@ -276,7 +276,16 @@
       "stateEnabled": "Activé",
       "stateDisabled": "Désactivé",
       "statePending": "Enregistrement…",
-      "updateError": "Le changement n'a pas pu être enregistré — le réglage a été remis comme avant. Réessaie dans un instant."
+      "updateError": "Le changement n'a pas pu être enregistré — le réglage a été remis comme avant. Réessaie dans un instant.",
+      "push": {
+        "label": "Notifications push sur cet appareil",
+        "description": "En plus des emails, reçois une notification du navigateur pour les réponses d'écoles et les échéances Parcoursup.",
+        "stateOn": "Activé",
+        "stateOff": "Désactivé",
+        "statePending": "Enregistrement…",
+        "denied": "Ton navigateur bloque les notifications pour Path-Advisor. Tu peux les autoriser dans les réglages du site — les emails continuent d'arriver quoi qu'il en soit.",
+        "error": "L'activation n'a pas abouti — le réglage a été remis comme avant. Réessaie dans un instant."
+      }
     },
     "unsubscribe": {
       "metaTitle": "Se désinscrire | Path-Advisor",

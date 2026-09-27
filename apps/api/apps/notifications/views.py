@@ -33,8 +33,9 @@ from .models import (
     NotificationCategory,
     NotificationPreference,
     ParcoursupMilestone,
+    PushSubscription,
 )
-from .serializers import AdminMilestoneSerializer
+from .serializers import AdminMilestoneSerializer, PushSubscriptionSerializer
 from .tokens import read_unsubscribe_token
 
 log = structlog.get_logger(__name__)
@@ -269,3 +270,69 @@ class AdminMilestoneDetailView(APIView):
             metadata={"changed_fields": changed},
         )
         return Response({"id": milestone.pk})
+
+
+class VapidPublicKeyView(APIView):
+    """GET /api/v1/notifications/push/vapid-public-key/ — Story 10.2.
+
+    The browser needs the VAPID *public* key as `applicationServerKey` to
+    subscribe. Served by the API (not baked into the web bundle) so rotating
+    the pair is an env change, not a frontend deploy. Authenticated: only
+    signed-in users can subscribe anyway. 204 when push is not configured —
+    the settings UI hides the toggle (graceful degradation, NFR-R4).
+    """
+
+    permission_classes = [IsAuthenticatedAndActive]
+
+    def get(self, request: Request) -> Response:
+        from django.conf import settings as django_settings
+
+        if not django_settings.WEBPUSH_VAPID_PUBLIC_KEY:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({"public_key": django_settings.WEBPUSH_VAPID_PUBLIC_KEY})
+
+
+class PushSubscriptionsView(APIView):
+    """POST/DELETE /api/v1/me/push-subscriptions/ — Story 10.2 opt-in/out.
+
+    POST body = the browser's `PushSubscription.toJSON()` shape
+    (`endpoint`, `keys.p256dh`, `keys.auth`). `endpoint` is unique per
+    browser profile: re-posting updates in place, and a profile that
+    switched accounts is REASSIGNED to the current user (a push service
+    endpoint belongs to exactly one live subscription — the previous
+    owner's browser already revoked it).
+
+    DELETE body = `{"endpoint": ...}`, idempotent 204: the AC's guarantee
+    ("aucun push après désactivation") holds even if the row was already
+    purged by a 410.
+    """
+
+    permission_classes = [IsAuthenticatedAndActive]
+
+    def post(self, request: Request) -> Response:
+        serializer = PushSubscriptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        _, created = PushSubscription.objects.update_or_create(
+            endpoint=data["endpoint"],
+            defaults={
+                "user_id": request.user.pk,
+                "p256dh": data["keys"]["p256dh"],
+                "auth": data["keys"]["auth"],
+            },
+        )
+        log.info("notifications.push_subscribed", user_id=request.user.pk, created=created)
+        return Response(
+            {"detail": "Notifications push activées sur cet appareil."},
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+    def delete(self, request: Request) -> Response:
+        endpoint = (request.data or {}).get("endpoint", "")
+        if not isinstance(endpoint, str) or not endpoint:
+            return Response({"detail": "endpoint manquant."}, status=status.HTTP_400_BAD_REQUEST)
+        deleted, _ = PushSubscription.objects.filter(
+            user_id=request.user.pk, endpoint=endpoint
+        ).delete()
+        log.info("notifications.push_unsubscribed", user_id=request.user.pk, deleted=deleted)
+        return Response(status=status.HTTP_204_NO_CONTENT)
