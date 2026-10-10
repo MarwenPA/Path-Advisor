@@ -38,11 +38,14 @@ app.conf.beat_schedule = {
     # promises must actually RUN. Daily, in the 04:xx maintenance band.
     "mailer-prune-email-outbox": {
         "task": "mailer.prune_email_outbox",
-        "schedule": crontab(hour=4, minute=40),
+        # 04:25 : créneau dédoublonné de billing-process-dunning (revue
+        # codebase 2026-10-10 — la convention d'étalement était violée).
+        "schedule": crontab(hour=4, minute=25),
     },
     "telemetry-prune-rum-vitals": {
         "task": "telemetry.prune_rum_vitals",
-        "schedule": crontab(hour=4, minute=45),
+        # 04:55 : créneau dédoublonné d'outreach-expire-stale-requests.
+        "schedule": crontab(hour=4, minute=55),
     },
     # Story 9.6 — weekly ML audit (drift KS + biais), dimanche 05:00 UTC.
     "recommendations-run-ml-audit": {
@@ -88,7 +91,8 @@ app.conf.beat_schedule = {
         "schedule": crontab(hour=4, minute=30),
     },
     # Story 1.12 — hard-delete cascade for account-deletion requests past their
-    # 30-day grace window. 03:45 Paris = 02:45 UTC (Celery beat default TZ).
+    # 30-day grace window. 02:45 UTC (beat tourne en UTC — commentaire
+    # « 03:45 Paris » corrigé par la revue 2026-10-10 : l'heure Paris varie).
     # Slotted 15 minutes after the audit archival / GDPR-export expiry tasks so
     # the daily ordering is deterministic for incident debugging.
     "accounts-sweep-account-deletions": {
@@ -121,6 +125,13 @@ app.conf.beat_schedule = {
     "outreach-send-interview-reminders": {
         "task": "outreach.send_interview_reminders",
         "schedule": crontab(minute="*/15"),
+    },
+    # Story 2.3 — purge RGPD des bulletins jamais validés (30 j). La tâche
+    # existait depuis l'epic 2 avec une docstring « runs daily »… sans être
+    # inscrite ICI : elle ne tournait nulle part (revue codebase 2026-10-10).
+    "bulletins-purge-expired": {
+        "task": "bulletins.purge_expired",
+        "schedule": crontab(hour=4, minute=20),
     },
 }
 

@@ -466,3 +466,7 @@ def test_maintenance_tasks_are_scheduled():
     assert "mailer.prune_email_outbox" in scheduled
     assert "telemetry.prune_rum_vitals" in scheduled
     assert "mailer.sweep_stale_outbox" in scheduled
+    # Revue codebase 2026-10-10 : cette purge RGPD existait sans être
+    # planifiée nulle part — épinglée pour qu'elle ne redisparaisse pas.
+    assert "bulletins.purge_expired" in scheduled
+    assert "recommendations.prune_scoring_decisions" in scheduled

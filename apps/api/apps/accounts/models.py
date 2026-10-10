@@ -196,6 +196,10 @@ STAFF_ROLES_REQUIRING_MFA = frozenset(
         UserRole.COUNSELOR,
         UserRole.SCHOOL_ADMIN,
         UserRole.PATH_ADMIN,
+        # Revue codebase 2026-10-10 : `IsSupport` exige requires_mfa_verified,
+        # mais le rôle manquait ici — un compte support réel ne pouvait donc
+        # jamais s'enrôler via le flux staff et restait 403 partout.
+        UserRole.SUPPORT,
     }
 )
 

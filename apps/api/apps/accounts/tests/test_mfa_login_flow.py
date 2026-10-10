@@ -236,3 +236,12 @@ def test_b2c_non_mfa_login_success_clears_lockout(api_client, settings):
         )
     user.refresh_from_db()
     assert user.locked_until is None
+
+
+def test_support_role_requires_mfa():
+    """Revue codebase 2026-10-10 — `IsSupport` exige requires_mfa_verified ;
+    le rôle DOIT donc être dans STAFF_ROLES_REQUIRING_MFA, sinon un compte
+    support ne s'enrôle jamais via le flux staff et reste 403 partout."""
+    from apps.accounts.models import STAFF_ROLES_REQUIRING_MFA, UserRole
+
+    assert UserRole.SUPPORT in STAFF_ROLES_REQUIRING_MFA

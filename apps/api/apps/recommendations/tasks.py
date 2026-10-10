@@ -11,10 +11,18 @@ log = structlog.get_logger(__name__)
 @shared_task(name="recommendations.prune_scoring_decisions")
 def prune_scoring_decisions_task(days: int = 365) -> int:
     """Story 9.5 — art. 22 journal retention (12 months, DPO note in the
-    story doc). Personal data of minors must not accumulate forever."""
+    story doc). Personal data of minors must not accumulate forever.
+
+    Revue codebase 2026-10-10 : `scoring_decisions` est en FORCE RLS — sans
+    `with_system_actor`, le DELETE du beat ne supprimait AUCUNE ligne sous
+    Postgres (silencieusement : la rétention promise ne s'appliquait pas).
+    Whitelist #13 de core/rls.py."""
+    from apps.core.rls import with_system_actor
+
     from .model_governance import prune_scoring_decisions
 
-    deleted = prune_scoring_decisions(days=days)
+    with with_system_actor(reason="recommendations.prune_scoring_decisions"):
+        deleted = prune_scoring_decisions(days=days)
     log.info("recommendations.pruned_scoring_decisions", deleted=deleted, days=days)
     return deleted
 
