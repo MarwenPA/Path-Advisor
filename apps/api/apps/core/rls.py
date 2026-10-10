@@ -143,6 +143,9 @@ def with_system_actor(*, reason: str, metadata: dict[str, Any] | None = None) ->
     12. `apps.notifications.tasks.send_web_push` (Story 10.2 worker task) —
        reads (and purges 404/410) `push_subscriptions` for ONE user from a
        worker with no request context; the opt-out gate re-runs inside.
+    13. `apps.recommendations.tasks.prune_scoring_decisions_task` (Story 9.5
+       beat) — DELETE de rétention sur `scoring_decisions` (FORCE RLS) ;
+       ajouté par la revue codebase 2026-10-10, le beat tournait sans GUC.
 
     Maintainers: any new Celery task that touches RLS-protected tables MUST
     wrap its body in `with_system_actor()` or set GUCs manually.

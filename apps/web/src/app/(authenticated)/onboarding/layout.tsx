@@ -18,8 +18,8 @@ function getStepIndex(pathname: string): number {
 }
 
 function getBackHref(stepIndex: number): string {
-  if (stepIndex <= 0) return "/dashboard";
-  return STEPS[stepIndex - 1]?.path ?? "/dashboard";
+  if (stepIndex <= 0) return "/accueil";
+  return STEPS[stepIndex - 1]?.path ?? "/accueil";
 }
 
 export default function OnboardingLayout({ children }: { children: ReactNode }) {

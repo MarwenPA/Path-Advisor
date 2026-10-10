@@ -290,3 +290,33 @@ def test_prune_keeps_the_365_day_window():
     assert prune_scoring_decisions() == 1
     remaining = set(ScoringDecision.objects.values_list("pk", flat=True))
     assert remaining == {fresh.pk}
+
+
+@pytest.mark.postgresql_only
+@pytest.mark.rls
+@pytest.mark.django_db(transaction=True)
+def test_prune_task_deletes_under_force_rls(skip_if_sqlite):
+    """Revue codebase 2026-10-10 — le beat de rétention tournait SANS
+    with_system_actor : sous FORCE RLS, son DELETE ne supprimait aucune
+    ligne, silencieusement. Ce test rejoue le beat tel quel contre Postgres."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    from apps.recommendations.models import ScoringDecision
+    from apps.recommendations.tasks import prune_scoring_decisions_task
+
+    user = _mk_student("prune-rls@test.local")
+    version = _legacy_version()
+    with as_path_admin():
+        old = ScoringDecision.objects.create(
+            user=user, model_version=version, inputs_snapshot={}, top_scores=[]
+        )
+        ScoringDecision.objects.filter(pk=old.pk).update(
+            created_at=timezone.now() - timedelta(days=400)
+        )
+
+    deleted = prune_scoring_decisions_task(days=365)
+    assert deleted >= 1
+    with as_path_admin():
+        assert not ScoringDecision.objects.filter(pk=old.pk).exists()

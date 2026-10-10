@@ -141,11 +141,9 @@ class EarlyOutreachRequestAdmin(admin.ModelAdmin):
 
 @admin.register(EarlyOutreachResponse)
 class EarlyOutreachResponseAdmin(admin.ModelAdmin):
-    """Story 5.7 — read-only. `comment` isn't gated by an a-priori
-    moderation queue (see the model's docstring for why); this admin is
-    the reactive-moderation surface a path_admin can use if a comment is
-    ever reported as inappropriate — no bulk action needed for that, just
-    visibility."""
+    """Story 5.7 — read-only. Depuis la 9.4, `comment` EST gaté a priori
+    (`comment_status`) via les endpoints `admin/moderation/school-comments/` ;
+    cet écran n'est plus qu'une surface de visibilité break-glass."""
 
     list_display = ("id", "request", "action", "created_at")
     list_filter = ("action",)

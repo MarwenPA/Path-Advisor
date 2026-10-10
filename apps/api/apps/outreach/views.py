@@ -11,10 +11,10 @@ Routes:
   GET  /api/v1/ecole/outreach/{id}/            — one request's detail, school-scoped (5.6)
   POST /api/v1/ecole/outreach/{id}/respond/    — school's one-shot response (5.7)
 
-Moderation itself (approve/reject a `pending_moderation` motivation) is a
-`path_admin` action exposed via the Django admin (`apps/outreach/admin.py`),
-not a separate DRF endpoint — Story 9.4 (back-office admin) is the future
-home for a dedicated moderation queue UI; the admin is the interim tool.
+Moderation (motivations + commentaires d'écoles) vit depuis la Story 9.4
+dans les endpoints DRF `admin/moderation/*` de ce module (files SLA 24 h
+ouvrées + actions approve/reject) ; le Django admin de
+`apps/outreach/admin.py` n'est plus que l'outil break-glass.
 """
 
 from __future__ import annotations

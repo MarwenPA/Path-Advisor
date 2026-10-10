@@ -1,6 +1,6 @@
 .PHONY: help dev down logs test test-web test-api test-ai test-rls lint lint-web lint-api lint-ai seed openapi clean
 
-DEFAULT_GOAL := help
+.DEFAULT_GOAL := help
 
 help: ## Display this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'

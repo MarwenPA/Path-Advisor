@@ -77,9 +77,10 @@ export default function ProfileHistoryPage() {
                     year: "numeric",
                   })}
                 </p>
-                <Link href={`/profile/history/${entry.id}`} className="text-xs underline">
-                  Revoir l&apos;ancien profil
-                </Link>
+                {/* Revue 2026-10-10 : le lien pointait vers
+                    /profile/history/{id}, une route qui n'existe pas (404
+                    garanti). Retiré jusqu'à ce qu'une vue de snapshot soit
+                    livrée — l'entrée reste informative sans être cliquable. */}
               </Card>
             </li>
           ))}
