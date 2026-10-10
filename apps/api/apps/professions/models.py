@@ -5,7 +5,8 @@ vocationnel scoring engine (Story 3.3). Field names use snake_case per
 project conventions (implementation-patterns §Naming Patterns).
 
 Data classification: public reference data, no PHI.
-RLS: read-only for authenticated students; full CRUD for admins.
+Pas de RLS (choix assumé) : données de référentiel publiques, zéro PII.
+L'accès en écriture est gardé au niveau API (IsPathAdmin), pas en base.
 """
 
 from __future__ import annotations

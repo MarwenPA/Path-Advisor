@@ -160,13 +160,11 @@ class EarlyOutreachResponse(models.Model):
     )
     action = models.CharField(max_length=30, choices=EarlyOutreachResponseAction.choices)
     # "Commentaire pour l'élève" — optional, ≤200 words (validated in the
-    # serializer). §2 scope decision: NOT gated through the a-priori
-    # moderation queue Story 5.5 built for the student's motivation — a
-    # school's response needs to reach the student promptly (the epic's own
-    # "5 min" propagation promise), and the abuse surface is much smaller
-    # (few dozen partner-school staff accounts, onboarded manually, vs.
-    # thousands of students). Visible to a path_admin after the fact via
-    # the Django admin for reactive moderation if ever needed.
+    # serializer). Depuis la Story 9.4 (revue Epic 8, P2-5), un commentaire
+    # non vide est gaté A PRIORI (`comment_status=PENDING`) : l'email de
+    # réponse part immédiatement SANS lui, et il n'atteint le mineur in-app
+    # qu'une fois approuvé. (La décision 5.7 initiale « pas de modération »
+    # a été renversée — docstring mise à jour par la revue 2026-10-10.)
     comment = models.TextField(blank=True)
     # Only for INTERVIEW_REQUESTED — 2-3 ISO-8601 datetime strings the
     # school proposes.

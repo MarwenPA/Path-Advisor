@@ -14,7 +14,8 @@ school they represent (Story 5.6) — the tenant-boundary anchor for the
 
 Data classification: public reference data, no PHI. `SchoolStaff` is the
 exception — it's an access-control link, not referential data.
-RLS: read-only for authenticated users; full CRUD for admins.
+Pas de RLS (choix assumé) : référentiel public. Seule frontière en base :
+aucune — `SchoolStaff` est la frontière de tenant, vérifiée au niveau API.
 """
 
 from __future__ import annotations

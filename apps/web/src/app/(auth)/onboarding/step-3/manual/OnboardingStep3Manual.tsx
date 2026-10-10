@@ -77,7 +77,7 @@ export function OnboardingStep3Manual({
     commit.mutate(payload, {
       onSuccess: () => {
         flushDraft();
-        router.push("/dashboard");
+        router.push("/accueil");
       },
     });
   }
@@ -167,7 +167,7 @@ export function OnboardingStep3Manual({
             className="mt-2 w-full text-sm text-brand underline"
             onClick={async () => {
               await fetch("/api/v1/students/me/bulletins/postpone", { method: "POST" });
-              router.push("/dashboard");
+              router.push("/accueil");
             }}
           >
             ⏭ Plus tard, je préfère explorer d&apos;abord

@@ -4,7 +4,8 @@
 `BulletinOCRJob` — async OCR job tied to a Bulletin, managed by Celery.
 
 Tenant isolation follows Story 1.8 pattern (tenant_id denormalized).
-RLS: students read/write only their own rows.
+Pas de RLS (choix assumé) : l'isolation est applicative —
+`filter(student=request.user)` sur chaque vue. Aucune policy en migration.
 
 GDPR / HDS:
 - `file_path` is an S3 key under `bulletins/{student_id}/` (SSE-S3 at rest).

@@ -118,7 +118,7 @@ export function OnboardingStep3() {
         method: "POST",
         credentials: "include",
       }).catch(() => {});
-      router.push("/dashboard");
+      router.push("/accueil");
     }
   }, [state.context.navigateTo, router]);
 
@@ -177,7 +177,7 @@ export function OnboardingStep3() {
   // Redirect on validated
   useEffect(() => {
     if (state.matches("validated")) {
-      router.push("/dashboard");
+      router.push("/accueil");
     }
   }, [state, router]);
 
