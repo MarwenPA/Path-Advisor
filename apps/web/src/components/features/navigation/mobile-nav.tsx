@@ -19,6 +19,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Logo } from "@/components/ui/logo";
 import type { UserRole } from "@/lib/api/auth";
 import { hasBottomTabBar, NAV_ITEMS } from "@/lib/auth/nav-items";
 import { cn } from "@/lib/utils";
@@ -40,7 +41,10 @@ export function MobileNav({ role, email }: MobileNavProps) {
     );
     return (
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:hidden">
-        <span className="text-h3 font-semibold text-text">{current?.label ?? "Path Advisor"}</span>
+        <span className="inline-flex items-center gap-2 text-h3 font-semibold text-text">
+          <Logo decorative className="h-6 w-6" />
+          {current?.label ?? "Path-Advisor"}
+        </span>
         <div className="flex items-center gap-1">
           {items.map((item) => {
             const Icon = item.icon;

@@ -14,6 +14,7 @@ import { usePathname } from "next/navigation";
 import type { UserRole } from "@/lib/api/auth";
 import { getPostLoginPath } from "@/lib/auth/post-login-redirect";
 import { NAV_ITEMS } from "@/lib/auth/nav-items";
+import { LogoWordmark } from "@/components/ui/logo";
 import { cn } from "@/lib/utils";
 
 import { AccountMenu } from "./account-menu";
@@ -44,17 +45,12 @@ export function DesktopSidebar({ role, email }: DesktopSidebarProps) {
       className="hidden w-56 shrink-0 flex-col border-r border-border bg-card lg:flex"
     >
       {homeIsExternal ? (
-        <a
-          href={homeHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-5 text-h3 font-bold text-text"
-        >
-          Path Advisor
+        <a href={homeHref} target="_blank" rel="noopener noreferrer" className="px-4 py-5">
+          <LogoWordmark />
         </a>
       ) : (
-        <Link href={homeHref} className="px-4 py-5 text-h3 font-bold text-text">
-          Path Advisor
+        <Link href={homeHref} className="px-4 py-5">
+          <LogoWordmark />
         </Link>
       )}
 

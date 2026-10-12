@@ -83,6 +83,6 @@ describe("MobileNav", () => {
   it("falls back to a generic title when the current path matches no nav item", () => {
     pathname = "/parametres/confidentialite";
     render(<MobileNav role="parent" email="martin@ex.test" />);
-    expect(screen.getByText("Path Advisor")).toBeInTheDocument();
+    expect(screen.getByText("Path-Advisor")).toBeInTheDocument();
   });
 });
