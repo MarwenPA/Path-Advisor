@@ -25,17 +25,22 @@ export function renderOgImage({ eyebrow, title }: { eyebrow: string; title: stri
         backgroundImage: "linear-gradient(135deg, #FFF5F4 0%, #FFFFFF 60%)",
       }}
     >
-      <div
-        style={{
-          fontSize: 32,
-          fontWeight: 600,
-          color: "#C8312D",
-          letterSpacing: 2,
-          textTransform: "uppercase",
-          marginBottom: 24,
-        }}
-      >
-        Path-Advisor
+      <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
+        <svg width="56" height="56" viewBox="0 0 64 64" fill="none">
+          <path
+            d="M10 45.9A26 26 0 1 1 26 57.3"
+            stroke="#1A1A1A"
+            strokeWidth={4}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle cx="32" cy="32" r="14" stroke="#1A1A1A" strokeWidth={4} />
+          <path d="M18 32V61" stroke="#1A1A1A" strokeWidth={4} strokeLinecap="round" />
+          <circle cx="32" cy="32" r="6" fill="#C8312D" />
+        </svg>
+        <div style={{ fontSize: 36, fontWeight: 600, color: "#1A1A1A", letterSpacing: -1 }}>
+          Path-Advisor
+        </div>
       </div>
       <div style={{ fontSize: 28, color: "#6B6B6B", marginBottom: 16 }}>{eyebrow}</div>
       <div

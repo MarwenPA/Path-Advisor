@@ -5,6 +5,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { AhaMomentsSection } from "@/components/features/homepage/aha-moments-section";
 import { HeroSection } from "@/components/features/homepage/hero-section";
 import { HowItWorksSection } from "@/components/features/homepage/how-it-works-section";
+import { SiteHeader } from "@/components/features/homepage/site-header";
 import { TrustSection } from "@/components/features/homepage/trust-section";
 import { fetchCurrentUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
@@ -51,6 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function Home() {
   const tCommon = await getTranslations("common");
+  const tFooter = await getTranslations("homepage.footer");
 
   try {
     const user = await fetchCurrentUser();
@@ -76,19 +78,24 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-1 flex-col">
-      <HeroSection />
-      <HowItWorksSection />
-      <AhaMomentsSection />
-      <TrustSection />
-      <footer className="border-t border-border bg-bg px-4 py-8 text-center">
-        <Link
-          href="/legal/rgpd"
-          className="text-caption text-text-subtle underline underline-offset-4 hover:text-text"
-        >
-          {tCommon("legalMentionsLink")}
-        </Link>
+    <>
+      <SiteHeader />
+      <main className="flex flex-1 flex-col">
+        <HeroSection />
+        <HowItWorksSection />
+        <AhaMomentsSection />
+        <TrustSection />
+      </main>
+      <footer className="border-t border-border bg-bg px-4 py-8">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-3 text-caption text-text-subtle">
+          <span>
+            © {new Date().getFullYear()} {tFooter("tagline")}
+          </span>
+          <Link href="/legal/rgpd" className="underline underline-offset-4 hover:text-text">
+            {tCommon("legalMentionsLink")}
+          </Link>
+        </div>
       </footer>
-    </main>
+    </>
   );
 }

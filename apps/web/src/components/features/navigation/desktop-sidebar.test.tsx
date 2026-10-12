@@ -21,7 +21,7 @@ describe("DesktopSidebar", () => {
     pathname = "/accueil";
     render(<DesktopSidebar role="student" email="sarah@ex.test" />);
 
-    expect(screen.getByRole("link", { name: /path advisor/i })).toHaveAttribute("href", "/accueil");
+    expect(screen.getByRole("link", { name: /path-advisor/i })).toHaveAttribute("href", "/accueil");
     expect(screen.getByRole("link", { name: /accueil/i })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /mes métiers/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /mes paris/i })).toBeInTheDocument();
@@ -58,7 +58,7 @@ describe("DesktopSidebar", () => {
 
     expect(screen.queryByRole("link", { name: /cohorte/i })).not.toBeInTheDocument();
     // Logo + account menu trigger are still present.
-    expect(screen.getByRole("link", { name: /path advisor/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /path-advisor/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /dupont@ex\.test/i })).toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe("DesktopSidebar", () => {
     pathname = "/parametres/confidentialite";
     render(<DesktopSidebar role="path_admin" email="admin@ex.test" />);
 
-    const logoLink = screen.getByRole("link", { name: /path advisor/i });
+    const logoLink = screen.getByRole("link", { name: /path-advisor/i });
     expect(logoLink).toHaveAttribute("href", "/admin/");
     expect(logoLink).toHaveAttribute("target", "_blank");
     expect(logoLink).toHaveAttribute("rel", "noopener noreferrer");

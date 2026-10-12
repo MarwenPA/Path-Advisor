@@ -16,4 +16,18 @@ describe("TrustSection", () => {
     const legalLink = screen.getByRole("link", { name: /confidentialité/i });
     expect(legalLink).toHaveAttribute("href", "/legal/rgpd");
   });
+
+  it("lists three reassurance points and repeats the auth CTAs", () => {
+    renderWithIntl(<TrustSection />);
+
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.getByRole("link", { name: /créer un compte/i })).toHaveAttribute(
+      "href",
+      "/auth/signup",
+    );
+    expect(screen.getByRole("link", { name: /se connecter/i })).toHaveAttribute(
+      "href",
+      "/auth/login",
+    );
+  });
 });

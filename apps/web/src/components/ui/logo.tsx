@@ -2,68 +2,61 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type LogoVariant = "color" | "mono";
+type LogoVariant = "light" | "dark";
 
 interface LogoProps extends React.SVGAttributes<SVGSVGElement> {
   variant?: LogoVariant;
   title?: string;
+  decorative?: boolean;
 }
 
 export function Logo({
-  variant = "color",
-  title = "Path Advisor",
+  variant = "light",
+  title = "Path-Advisor",
+  decorative = false,
   className,
   ...props
 }: LogoProps) {
-  const isMono = variant === "mono";
-  const strokeLeft = isMono ? "stroke-brand" : "stroke-semantic-audacieux";
-  const strokeMid = isMono ? "stroke-brand" : "stroke-semantic-realiste";
-  const strokeRight = isMono ? "stroke-brand" : "stroke-semantic-sur";
-  const fillLeft = isMono ? "fill-brand" : "fill-semantic-audacieux";
-  const fillMid = isMono ? "fill-brand" : "fill-semantic-realiste";
-  const fillRight = isMono ? "fill-brand" : "fill-semantic-sur";
+  const stroke = variant === "dark" ? "stroke-bg" : "stroke-text";
+  const a11y = decorative
+    ? ({ "aria-hidden": true } as const)
+    : ({ role: "img", "aria-label": title } as const);
 
   return (
     <svg
-      viewBox="0 0 80 80"
+      viewBox="0 0 64 64"
       fill="none"
-      role="img"
-      aria-label={title}
       className={cn("h-10 w-10", className)}
+      {...a11y}
       {...props}
     >
-      <title>{title}</title>
+      {decorative ? null : <title>{title}</title>}
       <path
-        d="M 40 64 C 34 52, 18 40, 12 18"
-        strokeWidth={3.5}
+        d="M10 45.9A26 26 0 1 1 26 57.3"
+        strokeWidth={4}
         strokeLinecap="round"
-        className={strokeLeft}
+        strokeLinejoin="round"
+        className={stroke}
       />
-      <circle cx="12" cy="18" r="3.5" className={fillLeft} />
-      <path
-        d="M 40 64 C 40 50, 40 28, 40 14"
-        strokeWidth={3.5}
-        strokeLinecap="round"
-        className={strokeMid}
-      />
-      <circle cx="40" cy="14" r="3.5" className={fillMid} />
-      <path
-        d="M 40 64 C 46 52, 62 40, 68 18"
-        strokeWidth={3.5}
-        strokeLinecap="round"
-        className={strokeRight}
-      />
-      <circle cx="68" cy="18" r="3.5" className={fillRight} />
-      <circle cx="40" cy="64" r="5" className="fill-brand" />
+      <circle cx="32" cy="32" r="14" strokeWidth={4} className={stroke} />
+      <path d="M18 32V61" strokeWidth={4} strokeLinecap="round" className={stroke} />
+      <circle cx="32" cy="32" r="6" className="fill-brand" />
     </svg>
   );
 }
 
-export function LogoWordmark({ variant = "color", className, ...props }: LogoProps) {
+export function LogoWordmark({ variant = "light", className, ...props }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-3", className)}>
-      <Logo variant={variant} className="h-9 w-9" {...props} />
-      <span className="text-xl font-semibold tracking-tight text-text">Path Advisor</span>
+      <Logo variant={variant} decorative className="h-9 w-9" {...props} />
+      <span
+        className={cn(
+          "text-xl font-semibold tracking-tight",
+          variant === "dark" ? "text-bg" : "text-text",
+        )}
+      >
+        Path-Advisor
+      </span>
     </span>
   );
 }

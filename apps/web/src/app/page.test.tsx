@@ -80,7 +80,9 @@ describe("Home page", () => {
     renderWithIntl(await Home());
 
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /créer un compte/i })).toBeInTheDocument();
+    // Hero + closing CTA box both carry the signup CTA.
+    expect(screen.getAllByRole("link", { name: /créer un compte/i })).toHaveLength(2);
+    expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(redirectMock).not.toHaveBeenCalled();
   });
 

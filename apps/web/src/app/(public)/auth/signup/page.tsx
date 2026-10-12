@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { SignupForm } from "@/components/features/auth/signup-form";
+import { LogoWordmark } from "@/components/ui/logo";
 
 export const metadata: Metadata = {
   title: "Créer un compte | Path-Advisor",
@@ -17,7 +19,10 @@ export default async function SignupPage({
   // quel : la validation est silencieuse côté API (pas d'oracle).
   const { ref } = await searchParams;
   return (
-    <main className="flex flex-1 flex-col items-center justify-center bg-bg px-4 py-12">
+    <main className="flex flex-1 flex-col items-center justify-center gap-8 bg-bg px-4 py-12">
+      <Link href="/" aria-label="Path-Advisor, accueil">
+        <LogoWordmark />
+      </Link>
       <SignupForm referralCode={typeof ref === "string" ? ref : undefined} />
     </main>
   );
