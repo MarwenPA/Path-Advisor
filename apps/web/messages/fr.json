@@ -16,48 +16,132 @@
       "title": "Path-Advisor — Trouve ta voie, étape par étape",
       "description": "Découvre les métiers qui te correspondent, comprends tes vraies chances d'admission et construis ton parcours d'orientation, du collège aux études supérieures."
     },
+    "header": {
+      "brandName": "Path-Advisor",
+      "homeLinkLabel": "Path-Advisor, accueil",
+      "loginCta": "Se connecter"
+    },
     "hero": {
-      "title": "Trouve ta voie, étape par étape.",
+      "eyebrow": "Orientation · du collège aux études sup",
+      "titleLead": "Trouve ta voie,",
+      "titleAccent": "étape par étape.",
       "subtitle": "Path-Advisor t'aide à découvrir les métiers qui te correspondent, à comprendre tes vraies chances d'admission et à construire ton parcours d'orientation — du collège aux études supérieures.",
       "signupCta": "Créer un compte",
-      "loginCta": "Se connecter"
+      "loginCta": "Se connecter",
+      "guaranteesLabel": "Garanties",
+      "guarantees": {
+        "free": "Gratuit pour commencer",
+        "neutral": "Aucune revente de données aux écoles",
+        "explained": "Recommandations expliquées"
+      },
+      "example": {
+        "ariaLabel": "Exemple fictif de recommandation de métier",
+        "label": "Exemple fictif · profil Terminale",
+        "score": "87 / 100",
+        "job": "Ingénieur·e en génie biomédical",
+        "jobMeta": "Santé · Ingénierie · Bac +5",
+        "signalsLabel": "Signaux expliqués",
+        "signals": {
+          "interest": {
+            "label": "Intérêt déclaré · sciences du vivant",
+            "value": "fort"
+          },
+          "grades": {
+            "label": "Résultats · maths & physique-chimie",
+            "value": "14,8 / 20"
+          },
+          "comments": {
+            "label": "Appréciations · rigueur, curiosité",
+            "value": "positif"
+          }
+        },
+        "whyTitle": "Pourquoi ce métier ?",
+        "whyText": "Tes passions pour la biologie et ton niveau en sciences se croisent. Aucun signal n'est caché : tu peux contester ou ajuster chaque critère."
+      }
     },
     "howItWorks": {
       "title": "Comment ça marche",
+      "intro": "Quatre étapes, dans l'ordre. Ton profil s'enrichit à chaque année scolaire.",
       "steps": {
         "profil": {
-          "title": "1. Construis ton profil",
+          "title": "Construis ton profil",
           "description": "Passions, niveau scolaire, bulletins — Path-Advisor apprend à te connaître."
         },
         "recommandations": {
-          "title": "2. Reçois des recommandations",
+          "title": "Reçois des recommandations",
           "description": "Des métiers qui te correspondent vraiment, expliqués et sourcés."
         },
         "parcours": {
-          "title": "3. Explore ton parcours",
+          "title": "Explore ton parcours",
           "description": "Formations, écoles, chances d'admission réelles pour chaque métier."
         },
         "suivi": {
-          "title": "4. Suis ton évolution",
+          "title": "Suis ton évolution",
           "description": "Ton profil et tes recommandations évoluent avec toi, année après année."
         }
       }
     },
     "ahaMoments": {
       "title": "Ce qui change tout",
+      "intro": "Deux moments clés : savoir qui tu peux devenir, puis comment y arriver avec tes vraies chances.",
       "recommandation": {
         "title": "Découvre les métiers faits pour toi",
-        "description": "Notre moteur de recommandation croise tes passions, ton niveau et tes résultats pour te proposer des métiers pertinents — avec les signaux expliqués en clair, jamais une boîte noire."
+        "description": "Notre moteur de recommandation croise tes passions, ton niveau et tes résultats pour te proposer des métiers pertinents — avec les signaux expliqués en clair, jamais une boîte noire.",
+        "examplesLabel": "Exemples de métiers recommandés",
+        "examples": {
+          "biomedical": "Génie biomédical · 87",
+          "orthoptiste": "Orthoptiste · 81",
+          "dataSante": "Data analyst santé · 78",
+          "kine": "Kinésithérapeute · 74"
+        }
       },
       "parcours": {
         "title": "Vois tes vraies chances d'admission",
-        "description": "Pour chaque métier, un graphe de parcours te montre les formations possibles et une estimation personnalisée de tes chances d'admission dans chaque école."
+        "description": "Pour chaque métier, un graphe de parcours te montre les formations possibles et une estimation personnalisée de tes chances d'admission dans chaque école.",
+        "legendLabel": "Légende des paris",
+        "legend": {
+          "sur": "Pari sûr",
+          "realiste": "Pari réaliste",
+          "audacieux": "Pari audacieux"
+        },
+        "graph": {
+          "ariaLabel": "Exemple de graphe de parcours : depuis la Terminale, trois formations avec des chances d'admission estimées",
+          "start": "Terminale",
+          "startCaption": "aujourd'hui",
+          "end": "Métier",
+          "nodes": {
+            "but": "BUT Génie bio",
+            "licence": "Licence Sciences",
+            "cpge": "CPGE BCPST"
+          }
+        }
       }
     },
     "trust": {
       "title": "Gratuit pour commencer, tes données t'appartiennent",
-      "descriptionBeforeLink": "Créer ton profil et découvrir tes premières recommandations est gratuit. Path-Advisor est conçu dans le respect du RGPD : tu gardes le contrôle sur tes données à tout moment.",
-      "privacyLink": "En savoir plus sur la confidentialité"
+      "description": "Créer ton profil et découvrir tes premières recommandations est gratuit. Path-Advisor est conçu dans le respect du RGPD : tu gardes le contrôle sur tes données à tout moment.",
+      "privacyLink": "En savoir plus sur la confidentialité",
+      "points": {
+        "hosting": {
+          "title": "Hébergement en Europe, données chiffrées",
+          "description": "Bulletins stockés chiffrés, jamais partagés sans ton accord."
+        },
+        "neutrality": {
+          "title": "Neutralité commerciale",
+          "description": "Aucune école ne paie pour apparaître dans tes recommandations."
+        },
+        "explainability": {
+          "title": "Recommandations explicables (RGPD art. 22)",
+          "description": "Chaque score est justifié, contestable, et un humain peut relire ton dossier."
+        }
+      },
+      "cta": {
+        "title": "Prêt·e à voir tes premiers métiers ?",
+        "description": "Moins de 10 minutes pour un premier profil. Les bulletins sont facultatifs : sans eux, tu obtiens quand même des recommandations."
+      }
+    },
+    "footer": {
+      "tagline": "Path-Advisor · Orientation continue, du collège aux études supérieures"
     }
   },
   "metierPage": {
